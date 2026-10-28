@@ -27,6 +27,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Gerçek denemede (llama3.1:8b, kod modeli yok) bulunanlar: model test kodunu JSON içinde ters tırnakla yazıyordu (ayrıştırıcı artık okuyor); madde listesi teknik kuralları madde sanıyordu (istem düzeltildi); boş `return true;` testleri 'anlamsız' diye yakalanıyor. Oyun kalitesi modele bağlı: llama3.1:8b zayıf yazıyor; qwen2.5-coder:7b önerilir ama indirmek kullanıcı onayı ister (henüz indirilmedi, denenmedi).
 - Yazı tipi: Determination (FontStruct, anonymous-1438277) eklendi ve bütün yazılara uygulandı (`ui/fonts.py`); atıf pencerede ve `assets/fonts/LICENSE.txt` içinde. Türkçe harflerin hepsi destekleniyor; `✓ → ₺` yok ama Tk yedek yazı tipiyle çiziyor. Lisans metnini kullanıcının verdiği atıf şartından başka doğrulayamadım (yayından önce FontStruct sayfasındaki lisansı okumak gerekir).
 - Karakter adları: danışman (mor resepsiyonist) **Don**, ayı (otel görevlisi) **Bob**; konuşma etiketleri DON / BOB / SEN (kullanıcı), adlar çevrilmez.
+- Kod modeli denemesi (qwen2.5-coder:14b, kullanıcı yükledi; indirme yapılmadı): aynı tarifle (zıplayan kare) hat ~6,5 dakikada bitti: 3 madde geçti, 1 doğrulanamadı, 3 otomatik düzeltme; oyun gerçekten oynanıyor (zıplama, engel, skor). Karşılaştırma: llama3.1:8b ~3 dakika, hiçbir madde geçmedi, oyun zayıf. Kod modeli kesin daha iyi; varsayılan öneri qwen2.5-coder serisi olarak kalıyor.
 - Uygulama ilerlemesi: Hepsi tamam (371 test); kod modeliyle (qwen2.5-coder:14b, zaten kurulu) gerçek deneme sürüyor
 
 ## Kullanıcıyla çalışma
