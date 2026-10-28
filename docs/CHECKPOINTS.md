@@ -48,3 +48,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-39 | 2026-10-28 | Don 12 piksel daha yukarı alındı (ADVISOR_ANCHOR 529,297); exe derlendi | 21a7156 |
 | CP-40 | 2026-10-28 | Don ve Bob'un ekranları siyahtan ~1,2 sn'de açılıyor; karakterler adlarını söylüyor (Ben Don!/Ben Bob!); sığmayan mesajlar sayfalara bölünüyor (◀ ▶ ve fare tekerleği); 2 yeni test; exe derlendi | 180cfd3 |
 | CP-41 | 2026-10-28 | Bob, Don'un hafıza notlarını okuyor: ad sorulduktan sonra 'Don bana şunları anlattı...' diyor, 'evet' ya da ekleme bekliyor; tarif baştan sorulmuyor; 2 yeni test; exe derlendi | 10892d7 |
+| CP-42 | 2026-10-28 | Başla: oyun yoksa Don, varsa Bob'un kütüphanesi; Yeni oyun Don'la başlar, Don bitirince Bob'a geçer; model zaten seçildiyse Don tekrar sormaz; testler güncellendi; exe derlendi | f3c5344 |
