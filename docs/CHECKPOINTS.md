@@ -25,3 +25,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-16 | 2026-10-28 | Görev 8: htmlscan (10 test) | d568df0 |
 | CP-17 | 2026-10-28 | Görev 9: report_server + harness (25 test; tarayıcıda elle doğrulandı) | 19f612e |
 | CP-18 | 2026-10-28 | Görev 10: testlist + checker (16 test; rapor sunucusuna report_url/clear_events) | 5ca495c |
+| CP-19 | 2026-10-28 | Görev 11: studio (15 test; en iyi sürüm, 3 deneme, bozuk düzenleme reddi) | 25c69e5 |
