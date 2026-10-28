@@ -28,19 +28,26 @@ Danışmanla konuşma ekranı: karanlık piksel sanat bir ofis sahnesi, masanın
 
 ## Oyun üretme ekranının maskotu (otel görevlisi ayı)
 
-Danışman, model bulunup kurulana kadarki ekranın maskotu. Bulunan model ile oyun yapıldığı ekranda (tarif yazma, üretim, deneme, düzenleme) bu ayı görünür. Kareler `assets/ui/maskot/` altında, 278x268, hepsi aynı tuvalde (kasket ucundan ayak tabanına 200 piksel, ayaklar aynı çizgide). Kullanıcının tek sayfalık, damalı çizimi `tools/build_mascot.py` ile bölündü ve boyutları eşitlendi.
+Danışman, model bulunup kurulana kadarki ekranın maskotu. Bulunan model ile oyun yapıldığı ekranda (tarif yazma, üretim, deneme, düzenleme) bu ayı görünür. Kareler `assets/ui/maskot/` altında, 269x339 (ampul ve ışıltılar için üstte pay var), hepsi aynı tuvalde: kasket ucundan ayak tabanına yaklaşık 271 piksel, ayaklar aynı çizgide, kasket aynı dikey eksende. İkinci (düz magenta zeminli, 4x3 ızgara) set `tools/build_mascot.py` ile bölündü; ilk, damalı set CP-3'te duruyor.
+
+Sahnede yaklaşık 0.75 ölçekle (200 piksel boy) iyi oturuyor; en yakın komşu değil, LANCZOS ile küçültüldü.
 
 | Kare | Görünüm | Kullanılacağı durum |
 |---|---|---|
-| `bosta` | Eller önde, sakin | Boşta: tarif bekleniyor, kullanıcı yazarken |
-| `selamlama` | Bavullu, el sallıyor | Ekran ilk açıldığında selam |
-| `konusuyor_a` | Parmakla gösteriyor | Maskotun mesajı ekrana yazılırken; `konusuyor_b` ile dönüşümlü |
-| `konusuyor_b` | Elinde tepsi, konuşuyor | `konusuyor_a` ile aynı |
-| `dusunuyor` | Kafasını kaşıyor, elinde tepsi | Oyun üretilirken; oyun deneniyorken; hata düzeltilirken; test maddesi doğrulanamadığında |
-| `anladim` | Parmak havada, ampul | Oyun hazır olduğunda; hata bulunup çözüldüğünde ("buldum") |
-| `veda` | El sallıyor | Ekran kapatılırken |
+| `bosta` | Eller önde, sakin, ağzı kapalı | Boşta: tarif bekleniyor |
+| `dinliyor` | Kafası hafif eğik, dikkatli | Kullanıcı tarif yazarken |
+| `selamlama` | Kapalı gözlü gülümseme, el sallıyor | Ekran ilk açıldığında |
+| `veda` | Hafif gülümseme, el sallıyor | Ekran kapatılırken |
+| `konusuyor_a` | `bosta` ile aynı poz, ağzı açık | Maskotun mesajı yazılırken; `bosta` ve `konusuyor_b` ile dönüşümlü (ağız animasyonu) |
+| `konusuyor_b` | `bosta` ile aynı poz, yuvarlak "o" ağız | `konusuyor_a` ile aynı |
+| `dusunuyor` | Kafasını kaşıyor, soru işareti | Oyun üretilirken |
+| `test_ediyor` | Büyüteçle bakıyor | Oyun deneniyorken (test sekmesi açıkken) |
+| `anladim` | Parmak havada, ampul | Hata bulunup çözüldüğünde ("buldum") |
+| `basari` | İki kolu havada, ışıltılı | Oyun hazır olduğunda |
+| `hata` | Elleri yanaklarında, ter damlası | Bir şey ters gitti (Ollama cevap vermedi, indirme hatası) |
+| `emin_degil` | Omuz silkiyor | Test maddesi doğrulanamadı; uygun model/cevap bulunamadı |
 
-Eksik kalanlar (şimdilik yok): ayrı bir hata karesi (hata mesajında `dusunuyor` kullanılır) ve "test ediyor" karesi (`dusunuyor` ile aynı). İstenirse sonradan eklenir.
+Önizleme: `docs/onizleme-lobi.png` (yeni lobi arka planı + `basari` karesi + diyalog kutusu).
 
 ## Diyalog kutusu kuralı
 Sıra tek tarafta olur, ikisi aynı anda konuşmaz:

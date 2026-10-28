@@ -1,119 +1,115 @@
-"""Tek sayfada gelen maskot pozlarını (damalı arka planlı, etiketli) ayrı, eşit boyutlu karelere böler.
+"""Düz magenta zeminli maskot ızgarasını (4 sütun x 3 satır) ayrı, eşit boyutlu karelere böler.
 
 Kullanım: python tools/build_mascot.py girdi.webp cikti_klasoru
 
-Her poz: kutudan kesilir (etiket yazıları kutunun dışında kalır), damalı arka plan şeffaf yapılır,
-kasket ucundan ayak tabanına kadar aynı boya ölçeklenir, ayaklar aynı çizgiye ve gövde (kasket)
-aynı dikey eksene gelecek şekilde ortak bir tuvale yerleştirilir.
+Magenta zemin kenarlardan başlayıp şeffaf yapılır, kenardaki pembemsi artıklar silinir.
+Her hücre kasket ucundan ayak tabanına aynı boya ölçeklenir; kasket aynı dikey eksene,
+ayaklar aynı çizgiye gelecek şekilde ortak bir tuvale yerleştirilir.
 Bir kerelik geliştirme aracıdır, uygulamanın bağımlılığı değildir.
 """
 import os
 import sys
+from collections import deque
 
 from PIL import Image
 
-sys.path.insert(0, os.path.dirname(__file__))
-import remove_checkerboard as rc  # noqa: E402
-
-# ad: (sol, üst, sağ, alt) — etiket satırlarını dışarıda bırakacak şekilde, 1024x572 sayfa için
-KUTULAR = {
-    "bosta": (60, 30, 205, 282),
-    "selamlama": (225, 30, 480, 282),
-    "konusuyor_a": (560, 30, 760, 282),
-    "konusuyor_b": (760, 30, 965, 282),
-    "dusunuyor": (225, 316, 450, 522),
-    "anladim": (470, 316, 615, 522),
-    "veda": (660, 316, 820, 522),
-}
-HEDEF_BOY = 200  # kasket ucu - ayak tabanı, piksel
+SUTUN, SATIR = 4, 3
+# ızgara sırası: soldan sağa, yukarıdan aşağıya
+ADLAR = [
+    "bosta", "konusuyor_a", "selamlama", "veda",
+    "dinliyor", "dusunuyor", "anladim", "test_ediyor",
+    "basari", "hata", "emin_degil", "konusuyor_b",
+]
 PAY = 6
+ZEMIN_FARK = 110   # r-g ve b-g bundan büyükse zemin (magenta)
+HALE_FARK = 45     # kenar artığı: r-g ve b-g bundan büyükse pembemsi sayılır
 
 
-def is_hat_red(p):
-    r, g, b, a = p
-    return a > 0 and r > 120 and g < 90 and b < 90
+def pembe(p, fark):
+    r, g, b = p[:3]
+    return r - g > fark and b - g > fark
 
 
-def yazi_parcalarini_sil(parca, en_cok=1500, oran=0.7):
-    """Komşu etiketlerden kutuya taşan kopuk yazı parçalarını (beyaz+siyah, küçük) siler."""
-    from collections import deque
-    px = parca.load()
-    w, h = parca.size
+def zemini_sil(img):
+    img = img.convert("RGBA")
+    px = img.load()
+    w, h = img.size
     gorulen = [[False] * w for _ in range(h)]
-    for sy in range(h):
-        for sx in range(w):
-            if gorulen[sy][sx] or px[sx, sy][3] == 0:
-                continue
-            bilesen, q = [], deque([(sx, sy)])
-            gorulen[sy][sx] = True
-            while q:
-                x, y = q.popleft()
-                bilesen.append((x, y))
-                for dx in (-1, 0, 1):
-                    for dy in (-1, 0, 1):
-                        nx, ny = x + dx, y + dy
-                        if 0 <= nx < w and 0 <= ny < h and not gorulen[ny][nx] and px[nx, ny][3]:
-                            gorulen[ny][nx] = True
-                            q.append((nx, ny))
-            if len(bilesen) > en_cok:
-                continue
-            yazi = sum(1 for x, y in bilesen
-                       if min(px[x, y][:3]) >= 190 or max(px[x, y][:3]) <= 90)
-            if yazi / len(bilesen) >= oran:
-                for x, y in bilesen:
-                    px[x, y] = (0, 0, 0, 0)
+    q = deque([(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)]
+              + [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)])
+    while q:
+        x, y = q.popleft()
+        if not (0 <= x < w and 0 <= y < h) or gorulen[y][x] or not pembe(px[x, y], ZEMIN_FARK):
+            continue
+        gorulen[y][x] = True
+        px[x, y] = (0, 0, 0, 0)
+        q.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+    for y in range(h):  # kol ile kafa arasında kapalı kalan zemin ceplerini de sil
+        for x in range(w):
+            if px[x, y][3] and pembe(px[x, y], ZEMIN_FARK):
+                px[x, y] = (0, 0, 0, 0)
+    for _ in range(2):  # şeffafa komşu pembemsi kenar artıkları
+        sil = [(x, y) for y in range(h) for x in range(w)
+               if px[x, y][3] and pembe(px[x, y], HALE_FARK)
+               and any(0 <= x + dx < w and 0 <= y + dy < h and px[x + dx, y + dy][3] == 0
+                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+        for x, y in sil:
+            px[x, y] = (0, 0, 0, 0)
+    return img
 
 
-def ayir(sayfa, kutu):
-    parca = sayfa.crop(kutu)
-    yazi_parcalarini_sil(parca)
-    kutu_alpha = parca.getchannel("A").getbbox()
-    parca = parca.crop(kutu_alpha)
-    px = parca.load()
-    w, h = parca.size
-    kirmizi = [(x, y) for y in range(h) for x in range(w) if is_hat_red(px[x, y])]
+def kasket_kirmizi(p):
+    r, g, b, a = p
+    return a > 0 and r > 100 and g < 80 and b < 80 and r - g > 60
+
+
+def olc(hucre):
+    """(kasket üst y, kasket merkez x, alt y) — kırpılmış hücre için."""
+    px = hucre.load()
+    w, h = hucre.size
     satir = {}
-    for _, y in kirmizi:
-        satir[y] = satir.get(y, 0) + 1
-    ust = min(y for y, n in satir.items() if n >= 6)   # ampul gibi tek tük kırmızı piksele aldanma
-    kirmizi = [(x, y) for x, y in kirmizi if y >= ust]
-    # kasket: en üstteki kırmızı bölgenin (üst %15) yatay merkezi
-    kasket = [x for x, y in kirmizi if y < ust + max(6, int(0.12 * (h - ust)))]
-    cx = sum(kasket) / len(kasket)
-    return parca, ust, cx
+    for y in range(h):
+        n = sum(1 for x in range(w) if kasket_kirmizi(px[x, y]))
+        if n:
+            satir[y] = n
+    ust = min(y for y, n in satir.items() if n >= 6)
+    alt = hucre.getchannel("A").getbbox()[3]
+    kasket = [x for y in range(ust, min(h, ust + 14)) for x in range(w) if kasket_kirmizi(px[x, y])]
+    return ust, sum(kasket) / len(kasket), alt
 
 
 def main(girdi, klasor):
     os.makedirs(klasor, exist_ok=True)
-    sayfa = rc.remove(Image.open(girdi))
-    parcalar = {}
-    for ad, kutu in KUTULAR.items():
-        parca, ust, cx = ayir(sayfa, kutu)
-        boy = parca.height - ust            # kasket ucu -> en alt (ayak / bavul / tepsi alt)
-        olcek = HEDEF_BOY / boy
-        yeni = parca.convert("RGBa").resize(
-            (max(1, round(parca.width * olcek)), max(1, round(parca.height * olcek))), Image.LANCZOS
+    sayfa = zemini_sil(Image.open(girdi))
+    W, H = sayfa.size
+    hw, hh = W / SUTUN, H / SATIR
+    kareler = {}
+    for i, ad in enumerate(ADLAR):
+        c, r = i % SUTUN, i // SUTUN
+        hucre = sayfa.crop((round(c * hw), round(r * hh), round((c + 1) * hw), round((r + 1) * hh)))
+        hucre = hucre.crop(hucre.getchannel("A").getbbox())
+        ust, cx, alt = olc(hucre)
+        kareler[ad] = (hucre, ust, cx, alt - ust)
+    boylar = sorted(b for *_, b in kareler.values())
+    hedef = boylar[len(boylar) // 2]
+    print("ölçülen boylar:", {a: v[3] for a, v in kareler.items()}, "hedef", hedef)
+    olcekli = {}
+    for ad, (hucre, ust, cx, boy) in kareler.items():
+        o = hedef / boy
+        yeni = hucre.convert("RGBa").resize(
+            (max(1, round(hucre.width * o)), max(1, round(hucre.height * o))), Image.LANCZOS
         ).convert("RGBA")
-        parcalar[ad] = (yeni, round(ust * olcek), cx * olcek)
-        print(ad, "ölçek", round(olcek, 2))
-    sol = max(cx for _, _, cx in parcalar.values())
-    sag = max(im.width - cx for im, _, cx in parcalar.values())
-    ust = max(u for _, u, _ in parcalar.values())          # kasket üstü ile görüntü üstü arası (ampul vb.)
-    alt = max(im.height - u for im, u, _ in parcalar.values())
-    W, H = round(sol + sag) + 2 * PAY, round(ust + alt) + 2 * PAY
-    for ad, (im, u, cx) in parcalar.items():
-        tuval = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        olcekli[ad] = (yeni, round(ust * o), cx * o)
+    sol = max(cx for _, _, cx in olcekli.values())
+    sag = max(im.width - cx for im, _, cx in olcekli.values())
+    ust = max(u for _, u, _ in olcekli.values())
+    alt = max(im.height - u for im, u, _ in olcekli.values())
+    TW, TH = round(sol + sag) + 2 * PAY, round(ust + alt) + 2 * PAY
+    for ad, (im, u, cx) in olcekli.items():
+        tuval = Image.new("RGBA", (TW, TH), (0, 0, 0, 0))
         tuval.alpha_composite(im, (round(sol - cx) + PAY, round(ust - u) + PAY))
-        yol = os.path.join(klasor, ad + ".png")
-        tuval.save(yol)
-        px = tuval.load()
-        sat = {}
-        for yy in range(H):
-            sat[yy] = sum(1 for xx in range(W) if is_hat_red(px[xx, yy]))
-        kirmizi_ust = min(yy for yy, n in sat.items() if n >= 6)
-        alt_y = tuval.getchannel("A").getbbox()[3]
-        print("  ", ad, "kasket ucu", kirmizi_ust, "alt", alt_y, "boy", alt_y - kirmizi_ust)
-    print("tuval", W, "x", H)
+        tuval.save(os.path.join(klasor, ad + ".png"))
+    print("tuval", TW, "x", TH)
 
 
 if __name__ == "__main__":

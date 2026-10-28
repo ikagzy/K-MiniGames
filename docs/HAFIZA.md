@@ -17,12 +17,12 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Her iş bitişinde CHECKPOINTS.md'ye kayıt; bu dosya da HAFIZA.md.
 
 - Danışman ekranı: piksel sanat ofis sahnesi + masanın arkasında mor yaratık (resepsiyonist) + altta diyalog kutusu. Sıra tek tarafta: `DANIŞMAN` / `SEN` etiketi üstte, mesaj altta. Ayrıntı ve kare–durum eşleşmesi: `docs/ui-varliklari.md`.
-- Oyun üretme ekranının maskotu ayrı: otel görevlisi ayı, 7 kare (`assets/ui/maskot/`); eşleşme `docs/ui-varliklari.md`'de. Danışman (mor yaratık) model kurulana kadar, ayı ondan sonra.
+- Oyun üretme ekranının maskotu ayrı: otel görevlisi ayı, 12 kare (`assets/ui/maskot/`, ikinci set: düz magenta zeminli, GPT ile); eşleşme `docs/ui-varliklari.md`'de. Danışman (mor yaratık) model kurulana kadar, ayı ondan sonra.
 - Görseller damalı (sahte şeffaf) geliyor; `tools/remove_checkerboard.py` temizliyor (Pillow yalnızca bu araç için, uygulamaya girmez).
 
 ## Durum
 - Brainstorming bitti, spec yazıldı; kullanıcı spec'i henüz onaylamadı. Onaydan sonra `writing-plans`.
-- UI görselleri (sahne, diyalog kutusu, 9 danışman karesi, 7 ayı karesi) hazır ve repoda (CP-1..CP-3). Üretim ekranı için ayrı arka plan kullanıcı tarafından hazırlanıyor (GPT ile). Başlangıç, kütüphane ve düzenleme ekranlarının görselleri henüz yok.
+- UI görselleri (sahne, diyalog kutusu, 9 danışman karesi, 12 ayı karesi) hazır ve repoda (CP-1..CP-3). Üretim ekranı için ayrı arka plan kullanıcı tarafından hazırlanıyor (GPT ile). Başlangıç, kütüphane ve düzenleme ekranlarının görselleri henüz yok.
 - Henüz uygulama kodu yok.
 
 ## Kullanıcıyla çalışma
