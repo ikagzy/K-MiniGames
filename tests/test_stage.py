@@ -83,3 +83,20 @@ def test_stop_asking_removes_the_text_box(root):
     stage.ask(lambda text: None)
     stage.stop_asking()
     assert stage.entry is None and stage.find_withtag("input") == ()
+
+
+def test_the_window_shows_no_font_attribution_it_lives_in_the_readme(root):
+    stage = Stage(root)
+    stage.set_scene("danisman")
+    stage.say("DON", "merhaba")
+    assert not any("Determination" in x or "fontstruct" in x for x in texts(stage))
+
+
+def test_showing_the_same_picture_again_does_not_redraw_it(root):
+    stage = Stage(root)
+    stage.set_character("bear", "thinking")
+    first = stage.find_withtag("character")
+    stage.set_character("bear", "thinking")
+    assert stage.find_withtag("character") == first
+    stage.set_character("bear", "success")
+    assert stage.find_withtag("character") != first

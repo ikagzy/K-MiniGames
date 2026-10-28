@@ -70,6 +70,7 @@ _PAIRS = {
     "Hata kaldı: ": "Error left: ", "Sorun kaldı: ": "Problem left: ", "… ve ": "… and ", " hata daha": " more errors",
     "Dikkat: oyun konsola ": "Warning: the game writes ", " hata mesajı yazıyor": " error messages to the console",
     "İndirme iptal edildi.": "The download was cancelled.",
+    "Ollama hata verdi (HTTP ": "Ollama reported an error (HTTP ",
     "Oyun tarayıcıda denenemedi; çalıştığını doğrulayamadım.":
         "The game could not be tried in the browser; I could not confirm that it works.",
     "Dikkat: oyun bir dış ağ adresi kullanıyor": "Warning: the game uses an external web address",

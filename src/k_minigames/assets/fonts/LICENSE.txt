@@ -4,4 +4,4 @@ The FontStruction “Determination”
 (https://fontstruct.com/fontstructions/show/2368299) by “anonymous-1438277”
 
 The license of the font is given on that FontStruct page; it asks for the attribution above whenever the font
-is used or shared. K-MiniGames shows this attribution in its window and keeps this file next to the font.
+is used or shared. K-MiniGames gives this attribution in its README and keeps this file next to the font.

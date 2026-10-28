@@ -7,7 +7,7 @@ import tkinter as tk
 
 from k_minigames import hardware, i18n
 from k_minigames.advisor import Advisor
-from k_minigames.ollama_client import OllamaError
+from k_minigames.ollama_client import OllamaError, OllamaServerError
 from k_minigames.startup import advisor_id
 from k_minigames.ui.advisor_flow import AdvisorFlow
 from k_minigames.ui import fonts
@@ -87,7 +87,9 @@ class AdvisorScreen:
         self._say_then(reply.text, "idle", self._dispatch)
 
     def _on_error(self, error: Exception) -> None:
-        if isinstance(error, OllamaError):
+        if isinstance(error, OllamaServerError):
+            self._say_then(t(str(error)), "unsure", self._ask)
+        elif isinstance(error, OllamaError):
             self._say_then(t(UNREACHABLE), "unsure", self._ask)
         else:
             self._say_then(f"{error}", "unsure", self._ask)

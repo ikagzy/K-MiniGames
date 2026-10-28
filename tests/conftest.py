@@ -1,4 +1,5 @@
 """Safety net: no test may touch the real settings folders or the network."""
+import gc
 import urllib.request
 from urllib.error import URLError
 
@@ -23,3 +24,14 @@ def no_network(monkeypatch):
         raise URLError("no network in tests")
 
     monkeypatch.setattr(urllib.request, "urlopen", refuse)
+
+
+@pytest.fixture(autouse=True)
+def collect_tk_garbage():
+    """Free the Tk pictures of windows a test closed here, on the main thread.
+
+    Left to chance, Python frees them on whatever thread happens to run the garbage collector (for example the
+    report server's). A Tk call from another thread waits for the main thread, which is busy waiting for that very
+    server: the test then hangs until its timeout."""
+    yield
+    gc.collect()

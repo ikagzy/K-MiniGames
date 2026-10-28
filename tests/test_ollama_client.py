@@ -163,3 +163,17 @@ def test_installed_raises_when_ollama_is_unreachable():
     c, _ = client(error=URLError("kapalı"))
     with pytest.raises(OllamaError):
         c.installed()
+
+
+def test_a_server_error_shows_what_ollama_said_and_is_not_called_unreachable():
+    import urllib.error
+
+    def failing(request, timeout=None):
+        raise urllib.error.HTTPError(request.full_url, 500, "Internal Server Error", {},
+                                     io.BytesIO(b'{"error": "model requires more system memory"}'))
+
+    c = OllamaClient(opener=failing)
+    with pytest.raises(OllamaError) as caught:
+        c.chat("m", [])
+    assert "500" in str(caught.value) and "model requires more system memory" in str(caught.value)
+    assert "ulaşılamadı" not in str(caught.value)

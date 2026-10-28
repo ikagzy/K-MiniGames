@@ -4,6 +4,7 @@ Every network failure is turned into an `OllamaError` (or `False` for `pull`), s
 the app: the caller shows a message instead."""
 import http.client
 import json
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -14,6 +15,20 @@ NUM_CTX = 8192  # Ollama's default context is too short for a whole game's HTML 
 
 class OllamaError(Exception):
     pass
+
+
+class OllamaServerError(OllamaError):
+    """Ollama was reached and answered with an error (for example when a model does not fit in memory)."""
+
+
+def _explain(exc: Exception) -> OllamaError:
+    if isinstance(exc, urllib.error.HTTPError):
+        try:
+            detail = json.loads(exc.read().decode("utf-8", "replace")).get("error")
+        except Exception:
+            detail = None
+        return OllamaServerError(f"Ollama hata verdi (HTTP {exc.code}): {detail or exc.reason}")
+    return OllamaError(f"Ollama'ya ulaşılamadı: {exc}")
 
 
 @dataclass(frozen=True)
@@ -88,7 +103,7 @@ class OllamaClient:
         try:
             response = self._open("/api/chat", payload)
         except _NET_ERRORS as exc:
-            raise OllamaError(f"Ollama'ya ulaşılamadı: {exc}") from exc
+            raise _explain(exc) from exc
         parts: list[str] = []
         done = False
         with response:

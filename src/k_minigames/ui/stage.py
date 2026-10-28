@@ -34,8 +34,7 @@ class Stage(tk.Canvas):
         self.entry: tk.Entry | None = None
         self._send_button: tk.Button | None = None
         self._dialog_drawn = False
-        self.create_text(8, 4, anchor="nw", text=fonts.ATTRIBUTION, fill="#9a9ab0",
-                         font=fonts.font(self, fonts.SMALL), tags="credit")
+        self._frame = ""   # the picture of the character that is shown now
 
     def _picture(self, relative: str) -> tk.PhotoImage:
         if relative not in self._pictures:
@@ -46,7 +45,6 @@ class Stage(tk.Canvas):
 
     def _layer(self) -> None:
         """scene at the bottom, then the character, then the dialogue box and its widgets."""
-        self.tag_raise("credit")
         for tag in ("dialog", "dialogtext", "input"):
             self.tag_raise(tag)
         if self.find_withtag("dialog"):
@@ -59,10 +57,13 @@ class Stage(tk.Canvas):
         self._layer()
 
     def set_character(self, character: str, state: str, tick: int = 0) -> None:
+        frame = mascot.frame(character, state, tick)
+        if frame == self._frame and self.find_withtag("character"):
+            return   # the same picture again: drawing it anew only makes it flicker
         x, y = ADVISOR_ANCHOR if character == "advisor" else BEAR_ANCHOR
         self.delete("character")
-        self.create_image(x, y + FOOT_PAD, anchor="s", tags="character",
-                          image=self._picture(mascot.frame(character, state, tick) + ".png"))
+        self.create_image(x, y + FOOT_PAD, anchor="s", tags="character", image=self._picture(frame + ".png"))
+        self._frame = frame
         self._layer()
 
     def say(self, speaker: str, text: str) -> None:
