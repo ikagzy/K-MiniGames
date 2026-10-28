@@ -9,8 +9,8 @@ from k_minigames.ui.stage import BEAR_NAME, LABEL_COLOR, TEXT_COLOR, TEXT_X
 
 t = i18n.t
 
-INTRO = "Oyunların burada. Birini seç ya da yeni oyun yap!"
-EMPTY = "Henüz oyunun yok. Hadi ilkini yapalım!"
+INTRO = "Ben Bob! Oyunların burada, birini seç."
+EMPTY = "Ben Bob! Henüz oyunun yok, ilkini yapalım!"
 SPEAKER = BEAR_NAME
 LIST_Y, BUTTON_X, BUTTON_W = 440, 660, 190
 

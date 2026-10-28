@@ -99,3 +99,21 @@ def test_forgetting_the_memory_asks_first(env):
     screen._on_reset()
     assert memory.load(memory.advisor_path()) == "" and infos
     screen.hide()
+
+
+def test_the_characters_tell_their_names_and_the_room_fades_in(env):
+    from k_minigames import i18n
+    from k_minigames.ui import advisor_screen, library_screen, setup_screen, studio_screen
+    for text, name in ((setup_screen.INTRO, "Don"), (advisor_screen.GREETING, "Don"), (library_screen.INTRO, "Bob"),
+                       (library_screen.EMPTY, "Bob"), (studio_screen.ASK_NAME, "Bob")):
+        assert f"Ben {name}" in text
+    i18n.set_language("en")
+    assert i18n.t(advisor_screen.GREETING) == "I'm Don, your advisor! What kind of game do you want to make?"
+    assert i18n.t(studio_screen.ASK_NAME).startswith("I'm Bob!")
+    services, *_ = env
+    stage, ticks = services.stage, []
+    stage.fade_in(lambda ms, fn: ticks.append(fn) or "job")
+    assert stage.find_withtag("fade")
+    while ticks:
+        ticks.pop(0)()
+    assert not stage.find_withtag("fade") and not stage._fade_hidden

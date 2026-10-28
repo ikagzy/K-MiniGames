@@ -25,7 +25,7 @@ from k_minigames.ui.worker import CancelToken
 t = i18n.t
 
 SPEAKER = BEAR_NAME
-ASK_NAME = "Oyununa ne ad verelim?"
+ASK_NAME = "Ben Bob! Oyununa ne ad verelim?"
 ASK_DESCRIPTION = ("Nasıl bir oyun istiyorsun? Anlat bakalım. İstersen önce sağ üstteki 'Doku ekle' ile resimlerini "
                    "ekleyebilirsin.")
 ASK_CHANGE = "Ne değiştirmek istiyorsun?"

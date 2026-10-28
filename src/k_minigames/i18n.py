@@ -84,6 +84,13 @@ _PAIRS = {
     "Kurulum dosyası başlatılamadı.": "The setup file could not be started.",
     "Ollama kuruldu ama çalışmadı. Birazdan 'Ollama'yı başlat' düğmesini dene.":
         "Ollama was installed but did not start. Try the 'Start Ollama' button in a moment.",
+    # introductions: the characters say their names
+    "Ben Don! Önce Ollama ve bir model lazım.": "I'm Don! First we need Ollama and a model.",
+    "Ben Don. Ayarlar: Ollama, model, klasör.": "I'm Don. Settings: Ollama, model, folder.",
+    "Ben Don, danışmanın! ": "I'm Don, your advisor! ", "Nasıl bir oyun yapmak istiyorsun?": "What kind of game do you want to make?",
+    "Ben Bob! Oyunların burada, birini seç.": "I'm Bob! Your games are here, pick one.",
+    "Ben Bob! Henüz oyunun yok, ilkini yapalım!": "I'm Bob! You have no games yet, let's make the first!",
+    "Ben Bob! ": "I'm Bob! ",
     # title and settings
     "Başla": "Start", "Ayarlar": "Settings", "Çıkış": "Quit", "← Geri": "← Back", "Hafızayı sil": "Forget memory",
     "Ayarlar: Ollama, model ve klasör.": "Settings: Ollama, model and folder.",

@@ -16,7 +16,7 @@ def type_text(stage, after: Callable, jobs: list, character: str, speaker: str, 
         nonlocal shown, steps, last_tick
         shown += CHARS_PER_STEP
         steps += 1
-        stage.say(speaker, text[:shown])
+        stage.say(speaker, text[:shown], follow=shown < len(text))
         if shown >= len(text):
             stage.set_character(character, then_state)
             then()

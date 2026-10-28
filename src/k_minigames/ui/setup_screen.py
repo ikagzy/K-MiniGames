@@ -15,7 +15,7 @@ from k_minigames.ui.stage import ADVISOR_NAME, LABEL_COLOR, TEXT_COLOR, TEXT_X
 
 t = i18n.t
 
-INTRO = "Merhaba! Önce Ollama ve bir danışman model lazım."
+INTRO = "Ben Don! Önce Ollama ve bir model lazım."
 BUTTON_Y, PROGRESS_Y, STATUS_Y, FOLDER_Y = 448, 484, 500, 532
 _MEASURE = object()
 _INSTALL_RESULT = {

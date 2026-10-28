@@ -64,8 +64,11 @@ class App(tk.Tk):
             return self.start()
         if self._current is not None:
             self._current.hide()
+        self.stage.cancel_fade()
         self._current = self._factories[name](self.services)
         self._current.show()
+        if name != "title":   # Don's and Bob's rooms come up slowly out of the black
+            self.stage.fade_in(self.after)
 
 
 def run(first_screen: str | None = None) -> None:

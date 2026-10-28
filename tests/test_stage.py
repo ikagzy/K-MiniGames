@@ -111,3 +111,21 @@ def test_a_long_message_gets_a_smaller_type_and_stays_in_the_box(root):
                      "Ayrıca kontrollerin nasıl çalışmasını hayal ediyorsun? Zorluk ve görsel stil de önemli.")
     assert stage.bbox("message")[3] <= MESSAGE_BOTTOM
     assert len(stage.find_withtag("message")) == 1 and short < MESSAGE_BOTTOM
+
+
+def test_a_message_too_long_even_for_the_small_type_is_split_into_pages(root):
+    from k_minigames.ui.stage import MESSAGE_BOTTOM
+    stage = Stage(root)
+    text = "\n".join(f"{i}. Bu satır oyun hakkında bir soru ya da açıklama içeriyor." for i in range(1, 15))
+    stage.say("DON", text)
+    assert len(stage._pages) > 1 and stage._page == 0
+    assert stage.bbox("message")[3] <= MESSAGE_BOTTOM
+    first = stage.itemcget("message", "text")
+    stage.turn_page(1)
+    assert stage.itemcget("message", "text") != first and "2/" in texts(stage)[-1] + " ".join(texts(stage))
+    stage.turn_page(-5)
+    assert stage._page == 0
+    stage.say("DON", text, follow=True)   # while the text is still being typed the newest page shows
+    assert stage._page == len(stage._pages) - 1
+    stage.say("DON", "kısa")
+    assert stage._pages == ["kısa"] and not stage.find_withtag("pager")

@@ -18,7 +18,7 @@ from k_minigames.ui.worker import CancelToken
 
 t = i18n.t
 
-GREETING = "Merhaba! Nasıl bir oyun yapmak istiyorsun?"
+GREETING = "Ben Don, danışmanın! Nasıl bir oyun yapmak istiyorsun?"
 UNREACHABLE = "Ollama'ya ulaşamadım. Çalışıp çalışmadığını kontrol edip tekrar yazar mısın?"
 DOWNLOAD_FAILED = "Model indirilemedi. İstersen tekrar deneyelim."
 DOWNLOAD_CANCELLED = "İndirme iptal edildi."

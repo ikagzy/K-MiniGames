@@ -6,7 +6,7 @@ from k_minigames.ui.stage import TEXT_X
 
 t = i18n.t
 
-SETTINGS_INTRO = "Ayarlar: Ollama, model ve klasör."
+SETTINGS_INTRO = "Ben Don. Ayarlar: Ollama, model, klasör."
 
 
 class SettingsScreen(SetupScreen):

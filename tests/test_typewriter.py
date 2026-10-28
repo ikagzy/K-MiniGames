@@ -11,7 +11,7 @@ class FakeStage:
     def stop_asking(self):
         pass
 
-    def say(self, speaker, text):
+    def say(self, speaker, text, follow=False):
         self.shown = text
 
     def set_character(self, character, state, tick=0):

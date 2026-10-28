@@ -5,6 +5,7 @@ The dialogue box shows who is speaking (DON, the advisor; BOB, the bellhop bear;
 message; only one side speaks at a time."""
 import base64
 import tkinter as tk
+from tkinter import font as tkfont
 from collections.abc import Callable
 from pathlib import Path
 
@@ -24,7 +25,9 @@ TEXT_X = 170
 LABEL_Y, MESSAGE_Y, INPUT_Y = 380, 410, 520
 MESSAGE_WIDTH = 680
 MESSAGE_BOTTOM = 512          # the message ends above the text box (INPUT_Y)
-MESSAGE_SIZES = (fonts.MESSAGE, 20, 17, 15)
+FADE_STIPPLES = ("", "gray75", "gray50", "gray25", "gray12")   # black, then thinner and thinner
+FADE_MS = 240
+MESSAGE_SIZES = (fonts.MESSAGE, 20)   # a long message first gets a smaller type, then pages (click ◀ ▶ or the wheel)
 LABEL_COLOR, TEXT_COLOR = "#ffcc66", "#f2f2f2"
 
 
@@ -37,6 +40,11 @@ class Stage(tk.Canvas):
         self._send_button: tk.Button | None = None
         self._dialog_drawn = False
         self._frame = ""   # the picture of the character that is shown now
+        self._fade_job = None
+        self._fade_hidden: list[int] = []
+        self._pages: list[str] = []
+        self._page = 0
+        self.bind("<MouseWheel>", lambda event: self.turn_page(-1 if event.delta > 0 else 1))
 
     def _picture(self, relative: str) -> tk.PhotoImage:
         if relative not in self._pictures:
@@ -47,14 +55,50 @@ class Stage(tk.Canvas):
 
     def _layer(self) -> None:
         """scene at the bottom, then the character, then the dialogue box and its widgets."""
-        for tag in ("dialog", "dialogtext", "input"):
+        for tag in ("dialog", "dialogtext", "input", "fade"):
             self.tag_raise(tag)
         if self.find_withtag("dialog"):
             self.tag_lower("character", "dialog")
         self.tag_lower("scene")
 
+    def fade_in(self, after) -> None:
+        """Come up slowly from black: a black sheet over everything gets thinner (a stipple, since Tk has no
+        transparency). The widgets inside the stage stay hidden until it is gone."""
+        self.cancel_fade()
+        self.create_rectangle(0, 0, WIDTH, HEIGHT, fill="black", outline="", tags="fade")
+        self._fade_step(after, 0)
+
+    def _fade_step(self, after, step: int) -> None:
+        for item in self.find_all():   # widgets that a screen added meanwhile stay hidden too
+            if self.type(item) == "window" and self.itemcget(item, "state") != "hidden":
+                self.itemconfigure(item, state="hidden")
+                self._fade_hidden.append(item)
+        if step >= len(FADE_STIPPLES):
+            self.cancel_fade()
+            return
+        self.itemconfigure("fade", stipple=FADE_STIPPLES[step])
+        self.tag_raise("fade")
+        self._fade_job = after(FADE_MS, lambda: self._fade_step(after, step + 1))
+
+    def cancel_fade(self) -> None:
+        """Stop a fade-in that is running and show everything at once."""
+        if self._fade_job is not None:
+            try:
+                self.after_cancel(self._fade_job)
+            except tk.TclError:
+                pass
+            self._fade_job = None
+        self.delete("fade")
+        for item in self._fade_hidden:
+            try:
+                self.itemconfigure(item, state="normal")
+            except tk.TclError:
+                pass   # the widget was destroyed meanwhile
+        self._fade_hidden = []
+
     def clear(self) -> None:
         """Wipe everything (a plain black stage, for the title screen)."""
+        self.cancel_fade()
         self.stop_asking()
         self.delete("all")
         self._dialog_drawn = False
@@ -75,20 +119,66 @@ class Stage(tk.Canvas):
         self._frame = frame
         self._layer()
 
-    def say(self, speaker: str, text: str) -> None:
+    def say(self, speaker: str, text: str, follow: bool = False) -> None:
         if not self._dialog_drawn:
             self.create_image(*DIALOG_ORIGIN, anchor="nw", image=self._picture("diyalog.png"), tags="dialog")
             self._dialog_drawn = True
         self.delete("dialogtext")
         self.create_text(TEXT_X, LABEL_Y, anchor="nw", text=i18n.t(speaker), fill=LABEL_COLOR,
                          font=fonts.font(self, fonts.LABEL), tags="dialogtext")
-        for size in MESSAGE_SIZES:   # a long message gets a smaller type instead of running out of the box
-            self.delete("message")
-            self.create_text(TEXT_X, MESSAGE_Y, anchor="nw", text=text, fill=TEXT_COLOR, width=MESSAGE_WIDTH,
-                             font=fonts.font(self, size), tags=("dialogtext", "message"))
+        self._pages, self._page, self._size = [text], 0, MESSAGE_SIZES[0]
+        for size in MESSAGE_SIZES:   # a long message first gets a smaller type
+            self._size = size
+            self._draw_message(text)
             if self.bbox("message")[3] <= MESSAGE_BOTTOM:
                 break
+        else:                        # still too long: pages, the last one while the text is still being typed
+            self._pages = self._paginate(text, self._size)
+            self._page = len(self._pages) - 1 if follow else 0
+            self._show_page()
         self._layer()
+
+    def _draw_message(self, text: str) -> None:
+        self.delete("message")
+        self.create_text(TEXT_X, MESSAGE_Y, anchor="nw", text=text, fill=TEXT_COLOR, width=MESSAGE_WIDTH,
+                         font=fonts.font(self, self._size), tags=("dialogtext", "message"))
+
+    def _paginate(self, text: str, size: int) -> list[str]:
+        font = tkfont.Font(self, font=fonts.font(self, size))
+        lines: list[str] = []
+        for paragraph in text.split("\n"):
+            line = ""
+            for word in paragraph.split(" "):
+                trial = f"{line} {word}" if line else word
+                if line and font.measure(trial) > MESSAGE_WIDTH:
+                    lines.append(line)
+                    line = word
+                else:
+                    line = trial
+            lines.append(line)
+        per_page = max(1, (MESSAGE_BOTTOM - MESSAGE_Y) // font.metrics("linespace"))
+        return ["\n".join(lines[i:i + per_page]) for i in range(0, len(lines), per_page)]
+
+    def _show_page(self) -> None:
+        self._draw_message(self._pages[self._page])
+        self.delete("pager")
+        if len(self._pages) > 1:
+            font, right, y = fonts.font(self, fonts.BUTTON), TEXT_X + MESSAGE_WIDTH, LABEL_Y + 4
+            prev = self.create_text(right - 100, y, anchor="ne", text="◀", fill=LABEL_COLOR, font=font,
+                                    tags=("dialogtext", "pager"))
+            self.create_text(right - 50, y, anchor="n", text=f"{self._page + 1}/{len(self._pages)}", fill=TEXT_COLOR,
+                             font=font, tags=("dialogtext", "pager"))
+            nxt = self.create_text(right, y, anchor="ne", text="▶", fill=LABEL_COLOR, font=font,
+                                   tags=("dialogtext", "pager"))
+            self.tag_bind(prev, "<Button-1>", lambda event: self.turn_page(-1))
+            self.tag_bind(nxt, "<Button-1>", lambda event: self.turn_page(1))
+        self._layer()
+
+    def turn_page(self, step: int) -> None:
+        """Show the previous (-1) or next (1) page of a message that is too long for the box."""
+        if len(self._pages) > 1:
+            self._page = max(0, min(len(self._pages) - 1, self._page + step))
+            self._show_page()
 
     def ask(self, on_submit: Callable[[str], None]) -> None:
         """Show a text box inside the dialogue box; Enter or the button sends the text to `on_submit`."""
