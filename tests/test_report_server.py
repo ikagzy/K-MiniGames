@@ -117,3 +117,11 @@ def test_a_body_over_the_limit_is_refused(server):
 def test_a_body_that_is_not_a_json_object_is_a_bad_request(server, body):
     assert request(server, "POST", f"/report/{server.token}", body)[0] == 400
     assert server.events() == []
+
+
+def test_report_url_points_at_the_report_route_and_events_can_be_cleared(server):
+    assert server.report_url() == f"http://127.0.0.1:{server.port}/report/{server.token}"
+    request(server, "POST", f"/report/{server.token}", b'{"type": "done"}')
+    assert server.events() != []
+    server.clear_events()
+    assert server.events() == [] and server.wait_for("done", 0.05) is None

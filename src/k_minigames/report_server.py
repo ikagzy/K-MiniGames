@@ -130,6 +130,14 @@ class ReportServer:
     def page_url(self) -> str:
         return f"http://{self.host}:{self.port}/play/{self.token}/oyun.html"
 
+    def report_url(self) -> str:
+        return f"http://{self.host}:{self.port}/report/{self.token}"
+
+    def clear_events(self) -> None:
+        """Forget the events of an earlier run (a second run must not see the first run's `done`)."""
+        with self._cond:
+            self._events.clear()
+
     def set_page(self, html: str) -> None:
         with self._cond:
             self._page = html
