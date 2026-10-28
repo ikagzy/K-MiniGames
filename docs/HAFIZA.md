@@ -21,7 +21,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Görseller damalı (sahte şeffaf) geliyor; `tools/remove_checkerboard.py` temizliyor (Pillow yalnızca bu araç için, uygulamaya girmez).
 
 ## Durum
-- Brainstorming bitti, spec yazıldı; kullanıcı spec'i henüz onaylamadı. Onaydan sonra `writing-plans`.
+- Brainstorming bitti, spec onaylandı (2026-10-28). Uygulama planı yazıldı: `docs/superpowers/plans/2026-10-28-k-minigames.md` (17 görev; 17. görev K-Optimizer deposunda K-Series entegrasyonu). Kullanıcının planı incelemesi ve yürütme yöntemini (subagent/native) seçmesi bekleniyor.
 - UI görselleri (sahne, diyalog kutusu, 9 danışman karesi, 12 ayı karesi) hazır ve repoda (CP-1..CP-3). Üretim ekranının arka planı (otel lobisi, `lobi.png`) eklendi (CP-5). Başlangıç, kütüphane ve düzenleme ekranlarının görselleri henüz yok.
 - Henüz uygulama kodu yok.
 
