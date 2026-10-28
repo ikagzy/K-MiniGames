@@ -67,6 +67,9 @@ _PAIRS = {
     "Hata buldum, düzeltiyorum (": "I found a bug, fixing it (",
     " madde geçti": " items passed", " madde doğrulanamadı": " items could not be verified",
     " madde kaldı": " items failed", " kez otomatik düzelttim": " automatic fixes made",
+    "Hata kaldı: ": "Error left: ", "Sorun kaldı: ": "Problem left: ", "… ve ": "… and ", " hata daha": " more errors",
+    "Oyun tarayıcıda denenemedi; çalıştığını doğrulayamadım.":
+        "The game could not be tried in the browser; I could not confirm that it works.",
     "Dikkat: oyun bir dış ağ adresi kullanıyor": "Warning: the game uses an external web address",
     "Bu düzenleme çalışmadı; oyunun önceki hâli korundu.": "This change did not work; the earlier version of the game was kept.",
     "Doku açıklaması": "Texture description",

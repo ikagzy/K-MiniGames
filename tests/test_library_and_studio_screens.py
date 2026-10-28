@@ -1,3 +1,4 @@
+import threading
 import time
 import tkinter as tk
 from pathlib import Path
@@ -237,3 +238,66 @@ def test_going_back_to_an_older_version_asks_which_one(env):
     screen.go_back_a_version()
     assert "1" in log["asked"][0] and game.html_path.read_text(encoding="utf-8") == "<html>v1</html>"
     assert library.versions(game) == [1, 2]
+
+
+# --- review: leaving the studio, and the writable check in edit mode --------------------------------------------
+
+class BlockingFlows(FakeFlows):
+    """A build that keeps going until it is cancelled."""
+    def __init__(self):
+        super().__init__()
+        self.started, self.token = threading.Event(), None
+
+    def create(self, generator, game, description, textures, server, open_url, on_status, cancel=None, *, memory="",
+               background=None):
+        self.token = cancel
+        self.started.set()
+        end = time.monotonic() + 5
+        while not cancel() and time.monotonic() < end:
+            time.sleep(0.01)
+        return self.outcome
+
+
+def test_leaving_the_studio_during_a_build_cancels_it_and_draws_nothing_afterwards(env):
+    services, games, log, pump, texts = env
+    services.session = {"mode": "create"}
+    flows = BlockingFlows()
+    screen = studio(services, flows)
+    screen.show()
+    answer(services, pump, "Uzay")
+    answer(services, pump, "uzay oyunu")
+    assert pump(flows.started.is_set)
+    screen.hide()
+    assert pump(lambda: flows.token() is True)
+    pump(lambda: False, 0.6)
+    assert screen.actions_visible() is False and not any("madde" in x for x in texts())
+
+
+def test_the_toolbar_does_nothing_while_a_build_is_running(env, tmp_path):
+    services, games, log, pump, texts = env
+    image = tmp_path / "zemin.png"
+    image.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+    log["files"].append(str(image))
+    services.session = {"mode": "create"}
+    flows = BlockingFlows()
+    screen = studio(services, flows)
+    screen.show()
+    answer(services, pump, "Uzay")
+    answer(services, pump, "uzay oyunu")
+    assert pump(flows.started.is_set)
+    screen.add_textures()
+    assert library.textures(library.Game("Uzay", games / "Uzay")) == []
+    screen.hide()
+
+
+def test_editing_checks_the_games_folder_first(env, monkeypatch):
+    services, games, log, pump, texts = env
+    game = make_game(games)
+    services.session = {"mode": "edit", "game": game}
+    monkeypatch.setattr(library, "can_write", lambda folder, min_free_mb=50: False)
+    flows = FakeFlows()
+    screen = studio(services, flows)
+    screen.show()
+    answer(services, pump, "topu hızlandır")
+    assert pump(lambda: any("yazılamıyor" in x for x in texts()))
+    assert flows.calls == []

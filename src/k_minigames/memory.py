@@ -5,6 +5,7 @@ There are two memories: the advisor's (`danisman_hafiza.md` in the app's folder)
 game folder, which is the bellhop bear's memory while that game is made). After every exchange the model rewrites the
 summary; if it cannot, the request is added as one short line so nothing is lost."""
 import os
+import threading
 from pathlib import Path
 
 from k_minigames import settings
@@ -37,7 +38,8 @@ def game_path(game) -> Path:
 
 def load(path: Path) -> str:
     try:
-        return path.read_text(encoding="utf-8")
+        # a file saved by hand in an old code page must not break every build: odd bytes become "\ufffd"
+        return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
 
@@ -83,3 +85,21 @@ def update(client, model: str, previous: str, user_text: str, reply_text: str, c
     if not answer or len(answer) > MAX_CHARS * _TOO_LONG:
         return _fallback(previous, user_text)
     return _fit(answer)
+
+
+_locks: dict[str, threading.Lock] = {}
+_locks_guard = threading.Lock()
+
+
+def _lock_for(path: Path) -> threading.Lock:
+    with _locks_guard:
+        return _locks.setdefault(str(path), threading.Lock())
+
+
+def remember(path: Path, client, model: str, user_text: str, reply_text: str, cancel=None) -> str:
+    """Read the memory file, rewrite it after one exchange and save it, all under one lock per file, so two updates
+    that overlap (the summary takes a while) never drop each other's exchange. Returns the new memory."""
+    with _lock_for(path):
+        updated = update(client, model, load(path), user_text, reply_text, cancel)
+        save(path, updated)
+        return updated

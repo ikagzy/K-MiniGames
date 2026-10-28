@@ -120,8 +120,28 @@ def test_a_body_that_is_not_a_json_object_is_a_bad_request(server, body):
 
 
 def test_report_url_points_at_the_report_route_and_events_can_be_cleared(server):
-    assert server.report_url() == f"http://127.0.0.1:{server.port}/report/{server.token}"
+    base = f"http://127.0.0.1:{server.port}/report/{server.token}/"
+    assert server.report_url().startswith(base) and server.report_url()[len(base):].isdigit()
     request(server, "POST", f"/report/{server.token}", b'{"type": "done"}')
     assert server.events() != []
     server.clear_events()
     assert server.events() == [] and server.wait_for("done", 0.05) is None
+
+
+def test_events_from_a_tab_of_an_earlier_run_are_ignored(server):
+    def route(url):
+        return url[url.index("/report/"):]
+
+    old = server.report_url()
+    server.clear_events()
+    new = server.report_url()
+    assert old != new
+    assert request(server, "POST", route(old), b'{"type": "error", "message": "eski sekme"}')[0] == 204
+    assert server.events() == []
+    assert request(server, "POST", route(new), b'{"type": "done"}')[0] == 204
+    assert server.events() == [{"type": "done"}]
+
+
+def test_a_report_without_a_run_number_is_still_accepted(server):
+    assert request(server, "POST", f"/report/{server.token}", b'{"type": "done"}')[0] == 204
+    assert server.events() == [{"type": "done"}]

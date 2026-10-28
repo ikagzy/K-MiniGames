@@ -101,9 +101,10 @@ def _with_new_tests(generator, html: str, items: list[TestItem], cancel, memory:
 def remember_exchange(generator, game: Game, user_text: str, note: str, previous: str) -> None:
     """Rewrite the game's memory (the bear's memory) after one request. It never raises: a summary that cannot be
     made falls back to a one-line note (see memory.update)."""
-    updated = memory_notes.update(getattr(generator, "client", None), getattr(generator, "model", ""),
-                                  previous, user_text, note)
-    memory_notes.save(memory_notes.game_path(game), updated)
+    # `previous` is what the flow read when it started; the update re-reads the file under a lock instead, so two
+    # overlapping updates cannot drop each other's exchange
+    memory_notes.remember(memory_notes.game_path(game), getattr(generator, "client", None),
+                          getattr(generator, "model", ""), user_text, note)
 
 
 def _outcome_note(outcome: Outcome) -> str:
@@ -161,7 +162,8 @@ def edit_game_flow(generator, game: Game, request: str, textures: list[Texture],
     items = _with_new_tests(generator, generated.html, items, cancel, memory)
     html, report, attempts = repair_loop(generator, game, generated.html, items, server, open_url, on_status,
                                          cancel, memory=memory)
-    if _hard_problems(report) or report.js_errors:
+    if _hard_problems(report) or report.js_errors or not report.finished:
+        # an edit that could not be tried (page hung or never answered) is treated like a broken one
         outcome = Outcome(current, report, attempts, saved=False, rejected=True)
     else:
         testlist.save(game, report.items)

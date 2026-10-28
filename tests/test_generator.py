@@ -172,3 +172,8 @@ def test_the_rules_ask_for_checklist_items_about_the_users_game_and_not_about_te
 def test_the_tester_rules_ask_for_plain_json_strings_without_backticks():
     system = build_test_messages(DOC, ["a"])[0]["content"]
     assert "ters tırnak" in system and "tek satır" in system
+
+
+def test_texture_names_are_given_to_the_model_in_their_url_form():
+    text = text_of(build_create_messages("x", [Texture("uzay gemisi.png", "gemi", 8, 8)]))
+    assert "assets/uzay%20gemisi.png" in text and "assets/uzay gemisi.png" not in text

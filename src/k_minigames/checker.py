@@ -9,6 +9,7 @@ from k_minigames.htmlscan import Problem
 from k_minigames.library import Game
 from k_minigames.testlist import TestItem
 
+PER_TEST_SECONDS = 4
 _ASSET_URL = re.compile(r"/assets/(.*)$")
 
 
@@ -42,7 +43,7 @@ def run_once(game: Game, html: str, items: list[TestItem], server, open_url: Cal
     server.clear_events()
     server.set_page(harness.inject(html, server.report_url(), specs))
     open_url(server.page_url())
-    done = server.wait_for("done", timeout_s)
+    done = server.wait_for("done", timeout_s + PER_TEST_SECONDS * len(specs))   # every test runs twice, up to 8 s
     events = server.events()
     js_errors: list[str] = []
     for event in events:

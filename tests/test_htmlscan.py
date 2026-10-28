@@ -62,3 +62,22 @@ def test_problems_keep_a_stable_order_errors_and_warnings_mixed():
 
 def test_problem_is_a_plain_value():
     assert Problem("missing_asset", "a.png", "error") == Problem("missing_asset", "a.png", "error")
+
+
+# --- review: names with spaces and parentheses ---------------------------------------------------------------
+
+def test_texture_names_with_spaces_and_parentheses_are_known_files():
+    files = ["uzay gemisi.png", "ship (1).png"]
+    html = (OK + '<img src="assets/uzay gemisi.png"><div style="background: url(\'assets/ship (1).png\')"></div>'
+            '<script>load("assets/uzay%20gemisi.png")</script>')
+    assert scan(html, files) == []
+
+
+def test_a_missing_file_with_a_space_in_its_name_is_reported_with_its_whole_name():
+    problems = scan(OK + '<img src="assets/yok dosya.png">', ["var.png"])
+    assert [(p.kind, p.detail) for p in problems] == [("missing_asset", "yok dosya.png")]
+
+
+def test_an_unquoted_css_url_stops_at_its_closing_parenthesis():
+    problems = scan(OK + '<div style="background: url(assets/b.png) no-repeat"></div>', [])
+    assert [(p.kind, p.detail) for p in problems] == [("missing_asset", "b.png")]

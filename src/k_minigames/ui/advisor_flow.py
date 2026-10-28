@@ -39,10 +39,8 @@ class AdvisorFlow:
 
     def remember(self, user_text: str, reply_text: str, cancel=None) -> None:
         """Rewrite the advisor's memory after one exchange (the screen calls this in the background)."""
-        path = memory_notes.advisor_path()
-        updated = memory_notes.update(getattr(self._advisor, "client", None), getattr(self._advisor, "model", ""),
-                                      memory_notes.load(path), user_text, reply_text, cancel)
-        memory_notes.save(path, updated)
+        memory_notes.remember(memory_notes.advisor_path(), getattr(self._advisor, "client", None),
+                              getattr(self._advisor, "model", ""), user_text, reply_text, cancel)
 
     def _reset_choice(self) -> None:
         self.state, self.recommendation, self.current_offer, self._offers = "chatting", None, None, []

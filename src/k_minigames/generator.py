@@ -62,7 +62,7 @@ def _texture_lines(textures: list[Texture]) -> str:
     lines = []
     for t in textures:
         size = f"{t.width}x{t.height} piksel" if t.width and t.height else "boyutu bilinmiyor"
-        lines.append(f"- assets/{t.file} ({size}): {t.description}")
+        lines.append(f"- {t.url} ({size}): {t.description}")   # the url form: names may hold spaces
     return "Kullanabileceğin dokular:\n" + "\n".join(lines)
 
 

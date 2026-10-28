@@ -17,7 +17,7 @@ def fake_run_once(game, html, items, server, open_url=None, timeout_s=20):
     status = FAILED if "FAILTEST" in html else PASSED
     updated = [replace(i, status=status, note="") if i.code is not None
                else replace(i, status=UNVERIFIED, note="test yazılamadı") for i in items]
-    return CheckReport([], updated, errors, True)
+    return CheckReport([], updated, errors, "HANG" not in html)
 
 
 class FakeGenerator:
@@ -274,3 +274,18 @@ def test_the_background_hook_receives_the_exchange_instead_of_updating_inline(ga
     assert memory.load(memory.game_path(game)) == ""            # nothing was written inline
     assert seen[0][0] is gen and seen[0][1] == game and seen[0][2] == "uzay oyunu" and "Oyun kaydedildi" in seen[0][3]
     assert seen[0][4] == ""
+
+
+# --- review: a try whose page never reports back ------------------------------------------------------------
+
+def test_an_edit_whose_page_never_reports_back_is_rejected_and_the_working_game_is_untouched(game):
+    make_game_with_v1(game)
+    before = game.html_path.read_bytes()
+    out = flow(studio.edit_game_flow, FakeGenerator(edit=Generated("HANG", [])), game, "döngü ekle", [])
+    assert out.rejected and not out.saved
+    assert game.html_path.read_bytes() == before and library.versions(game) == []
+
+
+def test_a_new_game_whose_page_never_reports_back_is_saved_but_the_report_says_it_did_not_finish(game):
+    out = flow(studio.create_game_flow, FakeGenerator(create=Generated("HANG", [])), game, "x", [])
+    assert out.saved and out.report.finished is False

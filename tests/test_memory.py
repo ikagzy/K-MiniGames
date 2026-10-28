@@ -1,3 +1,6 @@
+import threading
+import time
+
 import pytest
 
 from k_minigames import library, memory, settings
@@ -89,3 +92,42 @@ def test_a_long_request_is_cut_to_two_hundred_characters_in_the_fallback():
 
 def test_a_multi_line_request_stays_on_one_line_in_the_fallback():
     assert memory.update(Chat(error=OllamaError("x")), "m", "A", "satır bir\nsatır iki", "r") == "A\n- satır bir satır iki"
+
+
+# --- review: overlapping updates and hand-edited files -----------------------------------------------------------
+
+class SlowChat:
+    """A summariser that keeps everything it is given, slowly (so two updates can overlap)."""
+    def chat(self, model, messages, on_token=None, cancel=None):
+        time.sleep(0.15)
+        text = messages[1]["content"]
+        previous = text.split("Eski not:\n", 1)[1].split("\n\nKullanıcı:", 1)[0]
+        user = text.split("Kullanıcı:\n", 1)[1].split("\n\nCevap:", 1)[0]
+        return ("" if previous == "(boş)" else previous) + "|" + user
+
+
+def test_two_updates_at_the_same_time_keep_both_exchanges(tmp_path):
+    path = tmp_path / "hafiza.md"
+    client = SlowChat()
+    threads = [threading.Thread(target=memory.remember, args=(path, client, "m", name, "ok"))
+               for name in ("birinci", "ikinci")]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    text = memory.load(path)
+    assert "birinci" in text and "ikinci" in text
+
+
+def test_remember_reads_writes_and_returns_the_new_memory(tmp_path):
+    path = tmp_path / "hafiza.md"
+    path.write_text("Amaç: uzay", encoding="utf-8")
+    assert memory.remember(path, Chat("Amaç: uzay\n- zıplasın"), "m", "zıplasın", "tamam") == "Amaç: uzay\n- zıplasın"
+    assert memory.load(path) == "Amaç: uzay\n- zıplasın"
+
+
+def test_a_memory_file_saved_in_an_old_code_page_is_still_read(tmp_path):
+    path = tmp_path / "hafiza.md"
+    path.write_bytes("Amaç: çöl şövalyesi\n".encode("cp1254"))
+    text = memory.load(path)
+    assert text.startswith("Ama") and "l" in text and len(text) > 10

@@ -35,6 +35,19 @@ READY = "Hazır!"
 _STATE_TO_POSE = {"generating": "thinking", "testing": "testing", "fixing": "fixed"}
 
 
+MAX_ERROR_LINES = 3
+
+
+def _leftover_lines(report: CheckReport) -> list[str]:
+    """The errors that are still there after the last try (the first few, then a count)."""
+    texts = [f"Hata kaldı: {error}" for error in report.js_errors]
+    texts += [f"Sorun kaldı: {p.as_text()}" for p in report.problems if isinstance(p, Problem) and p.severity == "error"]
+    lines = texts[:MAX_ERROR_LINES]
+    if len(texts) > MAX_ERROR_LINES:
+        lines.append(f"… ve {len(texts) - MAX_ERROR_LINES} hata daha")
+    return lines
+
+
 def summary_lines(report: CheckReport, attempts: int, rejected: bool) -> list[str]:
     """What the user is told after a try, in Turkish (the screen translates). Only counts above zero are shown."""
     counts = {PASSED: 0, UNVERIFIED: 0, FAILED: 0}
@@ -49,12 +62,25 @@ def summary_lines(report: CheckReport, attempts: int, rejected: bool) -> list[st
         lines.append(f"{counts[FAILED]} madde kaldı")
     if attempts > 0:
         lines.append(f"{attempts} kez otomatik düzelttim")
+    lines += _leftover_lines(report)
+    if not report.finished:
+        lines.append("Oyun tarayıcıda denenemedi; çalıştığını doğrulayamadım.")
     for problem in report.problems:
         if isinstance(problem, Problem) and problem.kind == "external_url":
             lines.append(f"Dikkat: oyun bir dış ağ adresi kullanıyor ({problem.detail})")
     if rejected:
         lines.append("Bu düzenleme çalışmadı; oyunun önceki hâli korundu.")
     return lines
+
+
+def result_pose(report: CheckReport, rejected: bool) -> str:
+    """Bob's face after a try: success only when the game ran, nothing is broken and nothing is unverified."""
+    hard = any(isinstance(p, Problem) and p.severity == "error" for p in report.problems)
+    if rejected or report.js_errors or hard or not report.finished:
+        return "error"
+    if any(item.status in (UNVERIFIED, FAILED) for item in report.items):
+        return "unsure"
+    return "success"
 
 
 def _in_background(generator, game, user_text: str, note: str, previous: str) -> None:
@@ -80,10 +106,12 @@ class StudioScreen:
         self._busy = False
         self._status = ("generating", "")
         self._cancel: CancelToken | None = None
+        self._hidden = False
 
     # --- life cycle ------------------------------------------------------------------------------------
 
     def show(self) -> None:
+        self._hidden = False
         stage = self.s.stage
         stage.set_scene("lobi")
         if not settings.get("game_model"):
@@ -101,6 +129,9 @@ class StudioScreen:
             self._ask(ASK_NAME, self._on_name)
 
     def hide(self) -> None:
+        self._hidden = True
+        if self._busy and self._cancel is not None:
+            self._cancel.cancel()   # leaving mid-build stops the build instead of letting it draw over the next screen
         self._busy = False
         for job in self._jobs:
             self.s.root.after_cancel(job)
@@ -172,6 +203,8 @@ class StudioScreen:
     # --- textures and versions ------------------------------------------------------------------------------
 
     def add_textures(self) -> None:
+        if self._busy:
+            return
         if self._game is None:
             self.s.info(t("Doku ekle"), t("Önce oyunun adını yaz."))
             return
@@ -184,7 +217,7 @@ class StudioScreen:
                 self.s.info(t("Doku ekle"), t(f"{path.name} bir resim değil."))
 
     def go_back_a_version(self) -> None:
-        if self._game is None:
+        if self._busy or self._game is None:
             return
         available = library.versions(self._game)
         if not available:
@@ -201,6 +234,10 @@ class StudioScreen:
         stage.stop_asking()
         if not self.s.client.is_running():
             self._finish_with_error(t(NOT_RUNNING), retry)
+            return
+        folder = settings.games_dir()
+        if folder is None or not library.can_write(folder):   # before every generation, create or edit
+            self._finish_with_error(t("Bu klasöre yazılamıyor ya da diskte yeterli yer yok."), retry)
             return
         game = self._game
         self._busy, self._status, self._cancel = True, ("generating", t("Oyun üretiliyor…")), CancelToken()
@@ -230,14 +267,18 @@ class StudioScreen:
 
     def _done(self, outcome, retry) -> None:
         self._busy = False
+        if self._hidden:
+            return
         lines = summary_lines(outcome.report, outcome.attempts, outcome.rejected)
         text = "\n".join(t(line) for line in lines) or t(READY)
-        pose = "error" if outcome.rejected else "unsure" if any("doğrulanamadı" in x for x in lines) else "success"
+        pose = result_pose(outcome.report, outcome.rejected)
         self._say(text, pose, lambda: self._show_actions(can_play=self._game is not None and self._game.html_path.exists(),
                                                        retry=retry))
 
     def _failed(self, error: Exception, retry) -> None:
         self._busy = False
+        if self._hidden:
+            return
         self._finish_with_error(f"{t(FAILED_TEXT)}: {error}", retry)
 
     def _finish_with_error(self, text: str, retry) -> None:

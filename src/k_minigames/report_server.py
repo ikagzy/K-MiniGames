@@ -14,7 +14,7 @@ from urllib.parse import unquote, urlsplit
 MAX_BODY = 64 * 1024
 _DRAIN_LIMIT = 1024 * 1024
 _PLAY = re.compile(r"^/play/([^/]+)/(.*)$")
-_REPORT = re.compile(r"^/report/([^/]+)$")
+_REPORT = re.compile(r"^/report/([^/]+)(?:/(\d+))?$")
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -87,6 +87,9 @@ class _Handler(BaseHTTPRequestHandler):
             return self._send(404)
         if not self._token_ok(match.group(1)):
             return self._send(403)
+        run = match.group(2)
+        if run is not None and int(run) != self.owner.run:
+            return self._send(204)   # a tab of an earlier run: its reports are not wanted any more
         if too_big:
             return self._send(413)
         try:
@@ -105,6 +108,7 @@ class ReportServer:
         self.token = secrets.token_urlsafe(16)
         self._page = ""
         self._events: list[dict] = []
+        self._run = 0
         self._cond = threading.Condition()
         self._httpd: ThreadingHTTPServer | None = None
 
@@ -130,13 +134,19 @@ class ReportServer:
     def page_url(self) -> str:
         return f"http://{self.host}:{self.port}/play/{self.token}/oyun.html"
 
+    @property
+    def run(self) -> int:
+        return self._run
+
     def report_url(self) -> str:
-        return f"http://{self.host}:{self.port}/report/{self.token}"
+        """Where the page of the current run sends its reports (the run number is part of the address)."""
+        return f"http://{self.host}:{self.port}/report/{self.token}/{self._run}"
 
     def clear_events(self) -> None:
         """Forget the events of an earlier run (a second run must not see the first run's `done`)."""
         with self._cond:
             self._events.clear()
+            self._run += 1   # tabs of the run before can no longer report
 
     def set_page(self, html: str) -> None:
         with self._cond:

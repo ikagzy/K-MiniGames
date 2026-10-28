@@ -11,7 +11,7 @@ class FakeServer:
     """Stands in for ReportServer: replays canned events when the page is 'opened'."""
     def __init__(self, events=(), done=True):
         self.canned, self.done = list(events), done
-        self.pages, self.cleared, self._events = [], 0, []
+        self.pages, self.cleared, self._events, self.timeouts = [], 0, [], []
 
     def clear_events(self):
         self.cleared += 1
@@ -33,6 +33,7 @@ class FakeServer:
         return list(self._events)
 
     def wait_for(self, kind, timeout_s):
+        self.timeouts.append(timeout_s)
         return next((e for e in self._events if e.get("type") == kind), None)
 
 
@@ -104,3 +105,12 @@ def test_a_timeout_leaves_the_untested_items_unverified_and_the_run_unfinished(g
     assert report.finished is False
     assert report.items[0].status == PASSED
     assert report.items[1].status == UNVERIFIED and "zaman aşımı" in report.items[1].note
+
+
+# --- review: more tests need more time ---------------------------------------------------------------------------
+
+def test_the_time_allowed_grows_with_the_number_of_tests(game):
+    server = FakeServer()
+    items = [TestItem(f"t{i}", "a", "return true;") for i in range(3)] + [TestItem("t9", "kodsuz", None)]
+    run(game, PAGE, items, server, timeout_s=20)
+    assert server.timeouts == [20 + 4 * 3]
