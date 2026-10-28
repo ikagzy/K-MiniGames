@@ -33,3 +33,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-24 | 2026-10-28 | Görev 16: launcher, K-MiniGames.spec, make_version, simge, README (3 yeni test; exe derlenip çalıştırıldı) | 0bfdc12 |
 | CP-25 | 2026-10-28 | Görev 17: K-Series, K-MiniGames'i algılıyor ve ana sayfada kart gösteriyor (K-Optimizer deposunda, 331 test) | K-Optimizer 581e83e |
 | CP-26 | 2026-10-28 | Görev 18: memory (danışman + oyun hafızası, yedek yol, arka plan kancası; 22 yeni test; gerçek modelle yeniden açılışta doğrulandı) | 7e2c5c4 |
+| CP-27 | 2026-10-28 | Determination yazı tipi (FontStruct, anonymous-1438277): yükleyici, tüm yazılara uygulama, atıf | f095a76 |

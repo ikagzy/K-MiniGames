@@ -26,7 +26,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Danışman modeli: Türkçe deneme yapıldı (aynı soru, 5 model). qwen3.5:4b en doğal, gemma3:4b akıcı, llama3/llama3.1:8b orta, qwen2.5:3b zayıf (bozuk cümleler). Varsayılan danışman qwen3.5:4b (3.4 GB) oldu; alternatif gemma3:4b. Elle doğrulanamayanlar: Görev 15 ve 18'deki gerçek üretim denemeleri (kod yazan model henüz denenmedi).
 - Gerçek denemede (llama3.1:8b, kod modeli yok) bulunanlar: model test kodunu JSON içinde ters tırnakla yazıyordu (ayrıştırıcı artık okuyor); madde listesi teknik kuralları madde sanıyordu (istem düzeltildi); boş `return true;` testleri 'anlamsız' diye yakalanıyor. Oyun kalitesi modele bağlı: llama3.1:8b zayıf yazıyor; qwen2.5-coder:7b önerilir ama indirmek kullanıcı onayı ister (henüz indirilmedi, denenmedi).
 - Yazı tipi: Determination (FontStruct, anonymous-1438277) eklendi ve bütün yazılara uygulandı (`ui/fonts.py`); atıf pencerede ve `assets/fonts/LICENSE.txt` içinde. Türkçe harflerin hepsi destekleniyor; `✓ → ₺` yok ama Tk yedek yazı tipiyle çiziyor. Lisans metnini kullanıcının verdiği atıf şartından başka doğrulayamadım (yayından önce FontStruct sayfasındaki lisansı okumak gerekir).
-- Uygulama ilerlemesi: Görev 18/18 tamam; son inceleme bekliyor
+- Uygulama ilerlemesi: Görev 18/18 tamam; yazı tipi eklendi; bağımsız inceleme bulguları düzeltiliyor
 
 ## Kullanıcıyla çalışma
 - Türkçe konuşulur. Soru başına tek soru, seçenekli.
