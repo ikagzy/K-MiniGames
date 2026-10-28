@@ -20,6 +20,7 @@
 - Oyun klasörü yapısı: `oyun.html`, `baslat.bat`, `assets\`, `surumler\` (`oyun-001.html`…), `testler.json`, `game.json`.
 - Üret → dene → düzelt döngüsünde en fazla **3** düzeltme denemesi. Test durumları: `pending`, `passed`, `failed`, `unverified` (arayüzde: bekliyor, geçti, kaldı, doğrulanamadı).
 - `report_server` yalnızca `127.0.0.1`'de, rastgele portta, jetonla dinler.
+- Hafıza: modele giden her isteğin ilk (sistem) mesajı, hafıza doluysa `"HAFIZA (bunu unutma):\n<metin>"` ile **başlar**; hafıza en fazla 1500 karakter; danışman hafızası `%LOCALAPPDATA%\K-MiniGames\danisman_hafiza.md`, oyun hafızası `<oyun>\hafiza.md`.
 - Testler gerçek ağa, gerçek Ollama'ya, gerçek `%APPDATA%`/`%LOCALAPPDATA%`'a dokunmaz (`tests/conftest.py` izole eder).
 - **Standart commit adımı (CS):** listelenen dosyalar `git add` ile eklenir; commit mesajı `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` ile biter; ardından `docs/CHECKPOINTS.md`'ye bir sonraki `CP-n` satırı (commit kısaltmasıyla) eklenir, `docs/HAFIZA.md` "Durum" bölümü güncellenir ve `docs: CP-n kaydı` diye ikinci commit atılır (`CLAUDE.md` kuralı).
 - Test komutu: `python -m pytest -q` (depo kökünden).
@@ -44,7 +45,7 @@ src/k_minigames/
   __init__.py (__version__)  __main__.py  settings.py  i18n.py
   ollama_client.py  hardware.py  catalog.py  data/models.json  model_check.py
   installer.py  advisor.py  library.py  generator.py  htmlscan.py
-  report_server.py  harness.py  testlist.py  checker.py  studio.py  mascot.py
+  report_server.py  harness.py  testlist.py  checker.py  studio.py  memory.py  mascot.py
   ui/ worker.py  stage.py  app.py  setup_screen.py  advisor_flow.py  advisor_screen.py
       library_screen.py  studio_screen.py
   assets/ui/ (mevcut kaynak görseller)   assets/runtime/ (sabit boyutlu çalışma görselleri)
@@ -141,11 +142,11 @@ def system_prompt() -> str            # Türkçe; katalogdaki tüm coder kimlikl
 def extract_proposal(text: str) -> str | None
 class Advisor:
     def __init__(self, client, model: str): ...
-    def ask(self, history: list[dict], user_text: str, on_token=None, cancel=None) -> AdvisorReply
+    def ask(self, history: list[dict], user_text: str, memory: str = "", on_token=None, cancel=None) -> AdvisorReply
 ```
 Prompt sözleşmesi: danışman, oyunu anlayınca cevabın son satırına `{"model": "<katalogdaki kimlik>"}` yazar.
 
-- [ ] **Step 1: Testler.** `extract_proposal`: düz JSON satırı, kod çiti içinde, Türkçe metnin içinde, birden çok JSON varsa sonuncusu, bozuk JSON → `None`, `model` anahtarı yoksa `None`. `ask`: `client.chat` çağrısındaki mesajlar `[system] + history + [user]` sırasında; dönen `text` JSON satırını içermez; `system_prompt()` her coder kimliğini içerir (`for m in catalog.coders(): assert m.id in prompt`).
+- [ ] **Step 1: Testler.** `extract_proposal`: düz JSON satırı, kod çiti içinde, Türkçe metnin içinde, birden çok JSON varsa sonuncusu, bozuk JSON → `None`, `model` anahtarı yoksa `None`. `ask`: `client.chat` çağrısındaki mesajlar `[system] + history + [user]` sırasında; dönen `text` JSON satırını içermez; `system_prompt()` her coder kimliğini içerir (`for m in catalog.coders(): assert m.id in prompt`); `memory="Oyun: uzay"` verilince `client.chat`'e giden ilk mesajın içeriği `"HAFIZA (bunu unutma):\nOyun: uzay"` ile **başlar** ve danışman istemi onun arkasından gelir; hafıza doluyken `history` 10 mesajdan uzunsa yalnızca son 6 mesaj gönderilir; `memory=""` iken ilk mesaj doğrudan `system_prompt()` ile başlar.
 - [ ] **Step 2–4:** başarısız → uygula → geçsin. **Step 5: CS.**
 
 ### Task 6: `library`
@@ -193,9 +194,10 @@ class Generator:
     def fix(self, html, problems: list[str], on_token=None, cancel=None) -> Generated
     def write_tests(self, html, checklist, cancel=None) -> list[str | None]
 ```
+Ortak kural: tüm `build_*` işlevleri ve `Generator` yöntemleri `memory: str = ""` anahtar sözcük parametresi alır (`Generator.edit`'te `resolved`'dan sonra); doluysa üretilen listenin ilk (sistem) mesajı `"HAFIZA (bunu unutma):\n<memory>"` ile başlar, boşsa blok hiç yer almaz.
 Sistem isteminde şu ifadeler bulunur (testler bunları denetler): `window.__game`, `assets/<dosya>` + boyut + açıklama, `getImageData`'yı kullanma, dış ağ adresi (`http://`, `https://`) kullanma, tek dosya `oyun.html`.
 
-- [ ] **Step 1: Testler.** Create isteminde her dokunun adı, boyutu ve açıklaması geçer; edit isteminde güncel HTML ve kullanıcı isteği geçer, `resolved` doluysa her biri "Daha önce çözülen hatalar (bunları tekrarlama): …" başlığı altında listelenir, boşsa bu başlık hiç yer almaz; `parse_response`: ```html çitli, çitsiz `<!doctype html>…</html>`, birden çok blok (sonuncu tam olan), **`</html>`'siz kesik cevap → `None`**, HTML'siz metin → `None` (Review Focus 2); checklist ayrıştırması; `Generator.create` ayrıştırma `None` ise `GenerationError` fırlatır ve **asla kısmi HTML döndürmez**; `parse_tests` eksik indeksleri `None` yapar.
+- [ ] **Step 1: Testler.** Create isteminde her dokunun adı, boyutu ve açıklaması geçer; edit isteminde güncel HTML ve kullanıcı isteği geçer, `resolved` doluysa her biri "Daha önce çözülen hatalar (bunları tekrarlama): …" başlığı altında listelenir, boşsa bu başlık hiç yer almaz; `parse_response`: ```html çitli, çitsiz `<!doctype html>…</html>`, birden çok blok (sonuncu tam olan), **`</html>`'siz kesik cevap → `None`**, HTML'siz metin → `None` (Review Focus 2); checklist ayrıştırması; `Generator.create` ayrıştırma `None` ise `GenerationError` fırlatır ve **asla kısmi HTML döndürmez**; `parse_tests` eksik indeksleri `None` yapar; `memory="Amaç: zıplayan kare"` ile dört `build_*` işlevinin hepsinde `messages[0]["content"].startswith("HAFIZA (bunu unutma):\nAmaç: zıplayan kare")`, `memory=""` ile hiçbirinde `"HAFIZA"` geçmez.
 - [ ] **Step 2–4:** başarısız → uygula → geçsin. **Step 5: CS.**
 
 ### Task 8: `htmlscan`
@@ -371,11 +373,35 @@ Kütüphane ekranı: oyun listesi (ad, "Aç" → `os.startfile(baslat.bat)`, "D�
 - [ ] **Step 2: Testler** (`test_products.py`, mevcut `make_exe` yardımcısı ile): hiçbir şey kurulu değilken `{"k-optimizer","k-launcher","k-minigames"}` rapor edilir ve `k-minigames` `installed is False`; `exe_path` kaydıyla bulunur; `saved_minigames` ile bulunur; yanlış yazılmış (var olmayan) `exe_path` yok sayılır ve sonraki adaya geçilir; `launch` yeni ürün için çalışır. `test_kseries_app.py`: Ana Sayfa üç ürün kartı listeler.
 - [ ] **Step 3: Başarısız. Step 4: Uygula** (kart yalnızca durum ve "Aç" düğmesi gösterir; K-MiniGames için güncelleme düğmesi ve ayrı gezinme sayfası yoktur). **Step 5: Geçsin** (K-Optimizer'ın tüm testleri: `python -m pytest -q`, kırılan olmamalı). **Step 6: Commit** (K-Optimizer deposu, kendi commit stiliyle; `git push` yapılmaz) ve K-MiniGames'te `CHECKPOINTS.md`/`HAFIZA.md` güncellenir.
 
+### Task 18: Hafıza (`memory`) ve bağlantıları
+
+Görev 5 ve 7 `memory` parametresini zaten alır; bu görev hafızayı üretir, saklar ve akışlara bağlar. Görev 11 ve 14'ten **sonra** yapılır.
+
+**Files:** Create `src/k_minigames/memory.py`, `tests/test_memory.py`; Modify `studio.py`, `ui/advisor_flow.py`, `tests/test_studio.py`, `tests/test_advisor_flow.py`
+
+**Interfaces — Consumes:** `OllamaClient.chat`, `settings.app_dir()`, `Game`. **Produces:**
+```python
+MAX_CHARS = 1500
+def block(memory: str) -> str                       # boşsa ""; doluysa "HAFIZA (bunu unutma):\n" + memory
+def advisor_path() -> Path                          # settings.app_dir() / "danisman_hafiza.md"
+def game_path(game: Game) -> Path                   # game.folder / "hafiza.md"
+def load(path: Path) -> str                         # yoksa ""
+def save(path: Path, text: str) -> bool             # geçici dosya + os.replace, UTF-8
+def update(client, model: str, previous: str, user_text: str, reply_text: str, cancel=None) -> str
+```
+`update`: modele eski hafıza + yeni alışverişi verip en fazla `MAX_CHARS` karakterlik yeni özeti ister (amaç, kullanıcının istekleri, alınan kararlar, bilinen sorunlar). Cevap boş/hatalıysa (`OllamaError`) ya da `MAX_CHARS * 1.5`'tan uzunsa yedek yol: `previous + "\n- " + user_text[:200]`; sonuç `MAX_CHARS`'ı aşarsa ilk satır korunup en eski satırlar atılır. Dönen metin her zaman `<= MAX_CHARS`.
+Bağlantılar: `create_game_flow`/`edit_game_flow` modele gitmeden `memory.load(game_path(game))`'ı `generator`'a `memory=` olarak verir ve akış sonunda `memory.update(generator.client, generator.model, önceki, kullanıcı_metni, "\n".join(summary_lines…))` sonucunu kaydeder; `AdvisorFlow.user_says` `memory.load(advisor_path())`'i `advisor.ask(..., memory=)`'e verir, cevap geldikten sonra `AdvisorFlow.remember(user_text, reply_text)` (arayüz bunu `Worker` ile arka planda çağırır) danışman hafızasını günceller. Hafıza güncellemesindeki hata hiçbir zaman sohbeti ya da üretimi durdurmaz. **Ayının hafızası oyunun hafızasıdır** (`game_path`): ayı ekranındaki her istek (oluşturma ya da düzenleme) bir prompt sayılır; üretim `GenerationError` ile bitse bile `memory.update` çağrılır ve cevap yerine "üretilemedi" notu özete girer. İlk istekte `library.create_game` klasörü zaten açmıştır, `hafiza.md` oradan başlar.
+
+- [ ] **Step 1: Testler.** `block("")` boş, `block("x").startswith("HAFIZA (bunu unutma):\n")`; `load` olmayan dosyada `""`; Türkçe metinle `save`/`load` gidiş-dönüşü; `update` sahte client özet döndürürse onu (kırpılmış hâliyle) verir; `OllamaError` durumunda eski hafızanın ilk satırı korunur, yeni satır eklenir, uzunluk `<= 1500` (60 kez çağırınca da); model 5000 karakterlik özet verirse yedek yol; `create_game_flow` sonrası `hafiza.md` model özetini içerir ve ardından `edit_game_flow`'da sahte `Generator.edit`'in aldığı `memory` o metindir (Hafıza yeniden açılışta korunur: ikinci akış yeni bir `Game` nesnesiyle çağrılır); hafıza güncellemesi `OllamaError` fırlatsa bile `create_game_flow` `Outcome` döndürür; sahte `Generator.create` `GenerationError` fırlatsa bile (ayı ekranı) `hafiza.md` kullanıcının isteğini ve "üretilemedi" notunu içerir; `AdvisorFlow`: `remember` sonrası `danisman_hafiza.md` güncel, sonraki `user_says` `advisor.ask`'e aynı metni `memory=` verir.
+- [ ] **Step 2–4:** başarısız → uygula → geçsin (tüm paket).
+- [ ] **Step 5: Elle doğrulama (gerçek Ollama):** danışmanla üç mesaj konuş, uygulamayı kapatıp aç, "az önce ne konuştuk?" diye sor; beklenen: cevap hafızadaki oyun fikrine değinir. Oyun düzenlerken de aynı. Ollama yoksa `HAFIZA.md`'ye "doğrulanamadı" diye yaz. **CS.**
+
 ---
 
 ## Self-Review
 
 - **Spec kapsamı:** Parçalar tablosundaki her modül bir görevde (ollama_client 2, installer 4, advisor 5, model_check 3, generator 7, checker 10 + htmlscan 8, report_server 9, library 6, settings 1, ui 12–15); akış 1–6 → 13, 14, 15; dokular → 6, 7, 8; deneme/test → 8–11; K-Series → 17; hata durumları (Ollama yok 13, indirme kesildi 4/13 "Tekrar dene", geçersiz öneri 3/14, bozuk HTML 7/11, disk dolu 6/15); güvenlik (127.0.0.1+jeton 9, onaylı indirme 13/14, dış ağ taraması 8); dil → 1; geliştirme süreci (CS). Açık noktalar: danışman modeli → 3 Adım 5; test sekmesi deneyimi → 15 Adım 5.
+- **Hafıza:** Spec'in "Hafıza" bölümündeki her madde Görev 18'de (iki dosya, her mesajdan sonra güncelleme, en üstte okuma, yedek yol); `memory` parametresi Görev 5 ve 7 imzalarında hazır. Modelin oyunu "eğlenceli mi" diye değerlendirmesi planda yoktur (kapsam dışı).
 - **Tip tutarlılığı:** `Problem`, `TestItem`, `CheckReport`, `Outcome`, `Recommendation`, `Texture` adları ve alanları görevler arasında aynı; durum sabitleri tek yerde (`testlist`).
 - **Spec'ten bilinçli sapma/karar:** (a) Test sayfası `file://` yerine `report_server`'dan (`http://127.0.0.1`) sunulur: CORS gerekmez; fark: `getImageData` kısıtı bu sayfada geçerli olmaz, yine de modele yasaklanır. (b) `num_ctx = 8192`. (c) Çalışma görselleri önceden hazırlanır (Tk kesirli ölçek yapamaz). (d) K-Series'te K-MiniGames için güncelleme düğmesi yok.
 - **Orantı:** Plan kod gövdeleri yerine imza, test adı ve değer içerir; kod yazımı uygulayıcıya bırakılmıştır.

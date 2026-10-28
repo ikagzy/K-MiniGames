@@ -32,6 +32,7 @@ Python 3, tkinter, PyInstaller; K-Optimizer deposuyla aynı yığın. Dış bağ
 | `report_server` | Yalnızca `127.0.0.1` üzerinde, rastgele portlu, jetonlu küçük HTTP sunucusu; oyundaki izleme betiğinden hata ve test sonuçlarını alır | standart kütüphane |
 | `library` | Oyun klasörü: oyunlar, sürümler, dokular, `.bat` başlatıcı, `testler.json` | dosya sistemi |
 | `settings` | `%LOCALAPPDATA%\K-MiniGames` altında ayarlar (oyun klasörü, seçili model); K-Series buradan okur | dosya sistemi |
+| `memory` | Danışman ve oyun hafızası: dosyadan okur/yazar, her mesajdan sonra özetler, modele giden isteğin en üstüne hafıza bloğu koyar | `ollama_client` |
 | `ui/` | Başlangıç ekranı, danışman sohbeti, kütüphane, düzenleme ekranı | hepsi |
 
 ## Oyun klasörü
@@ -66,6 +67,15 @@ Oyunlar\
 3. **Test listesi:** Her madde için model küçük bir test yazar; test sahte tuş/fare olayları gönderip `window.__game` durumunu kontrol eder. Maddeler `testler.json`da durumlarıyla saklanır: bekliyor / geçti / kaldı / doğrulanamadı.
 4. **Döngü:** Hata ya da kalan madde varsa hata mesajı ve ilgili kod modele verilir. En fazla 3 deneme; düzelmezse en iyi sürüm saklanır, ilgili madde "doğrulanamadı" işaretlenir.
 5. **Bilinen sınır:** Testi de model yazdığı için sorunun oyunda mı testte mi olduğu her zaman ayrılamaz. Testin kendisi önce boş durumla çalıştırılıp anlamsız sonuç veriyor mu diye bakılır; bu hatayı tamamen elemez, bu yüzden sonuç kullanıcıya olduğu gibi gösterilir.
+
+## Hafıza (uygulamanın kendi hafızası)
+Yerel modeller uzun sohbette baştakini unutur. Bu yüzden uygulama sohbeti kendi özetler ve her istekte modele gösterir.
+- **İki karakter, iki hafıza:** **danışmanın** hafızası `%LOCALAPPDATA%\K-MiniGames\danisman_hafiza.md`; **ayının** hafızası o oyunun `<oyun klasörü>\hafiza.md` dosyasıdır (oyunun amacı, kullanıcının istekleri, alınan kararlar, bilinen sorunlar). Oyun klasörü ilk istekten önce açıldığı için ayının hafızası ilk istekten itibaren tutulur. Ayı ekranında her istek (üretim ya da düzenleme) bir "prompt" sayılır ve üretim hata verse bile hemen ardından hafızaya yazılır. Düz metin dosyalarıdır, uygulama kapanıp açılınca da durur.
+- **Her mesajdan sonra güncellenir:** kullanıcı mesajı ve modelin cevabı geldikten sonra model, eski hafıza ile yeni alışverişi birleştirip kısa bir özet yazar (en fazla 1500 karakter). Bu iş arka planda yapılır, arayüzü bekletmez.
+- **En üstte okunur:** modele giden her isteğin (danışman, üretim, düzenleme, düzeltme) ilk sistem mesajının en başına "HAFIZA (bunu unutma): …" bloğu konur. Hafıza varken tam sohbet geçmişi yerine yalnızca son birkaç mesaj gönderilir; küçük modellerin bağlam sınırına takılmaz.
+- **Özet başarısız olursa** hafıza silinmez: yeni alışverişin kısa bir satırı (kullanıcı mesajının ilk 200 karakteri) eklenir, ilk satır (amaç) korunur, sınır aşılırsa en eski satırlar atılır.
+- Kapsam dışı (ilk sürüm): hafızayı arayüzde gösterme/düzenleme/sıfırlama; dosya düz metin olduğu için kullanıcı isterse elle düzenleyebilir.
+- `testler.json`'daki `resolved` (çözülmüş hatalar) ayrı kalır; hafıza sohbetin anlamını, `resolved` düzeltilen teknik hataları tutar.
 
 ## K-Series entegrasyonu
 K-Series `k_series/products.py` içinde K-MiniGames'i yeni bir ürün olarak algılar (çalışan süreç, kayıtlı yol `%LOCALAPPDATA%\K-MiniGames`, Programs/Program Files, masaüstü taraması; sürüm exe'den okunur). Yalnızca kart gösterir: sürüm, çalışıyor mu, "Aç". Bu değişiklik K-Optimizer deposunda ayrı bir iştir ve bu spec'in uygulama planında ayrı adım olarak yer alır.
