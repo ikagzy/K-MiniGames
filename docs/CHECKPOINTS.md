@@ -30,3 +30,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-21 | 2026-10-28 | Görev 13: kabuk, Worker, başlangıç ekranı, kurulu-model izin akışı, İngilizce çeviriler (49 yeni test; gerçek pencerede doğrulandı) | c9d9f1c |
 | CP-22 | 2026-10-28 | Görev 14: AdvisorFlow + AdvisorScreen (21 yeni test; gerçek qwen3.5:4b ile uçtan uca doğrulandı) | 30065bb |
 | CP-23 | 2026-10-28 | Görev 15: LibraryScreen, StudioScreen, summary_lines, daktilo yardımcısı (22 yeni test; gerçek modelle uçtan uca oyun üretimi denendi) | b71e9ff |
+| CP-24 | 2026-10-28 | Görev 16: launcher, K-MiniGames.spec, make_version, simge, README (3 yeni test; exe derlenip çalıştırıldı) | 0bfdc12 |
