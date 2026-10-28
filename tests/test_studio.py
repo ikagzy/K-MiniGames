@@ -198,3 +198,79 @@ def test_a_broken_edit_is_rejected_and_the_working_game_is_untouched(game):
     assert library.versions(game) == []
     assert out.html == "<html>v1</html>"
     assert game.tests_path.read_bytes() == tests_before
+
+
+# --- the game's own memory (the bellhop bear's memory) ----------------------------------------------------
+
+from k_minigames import memory  # noqa: E402
+
+
+class ChatStub:
+    def __init__(self, *answers):
+        self.answers, self.calls = list(answers), []
+
+    def chat(self, model, messages, on_token=None, cancel=None):
+        self.calls.append("\n".join(m["content"] for m in messages))
+        return self.answers.pop(0)
+
+
+def with_client(gen, client):
+    gen.client = client
+    return gen
+
+
+def test_after_creating_a_game_its_memory_holds_the_models_summary(game):
+    chat = ChatStub("Amaç: zıplayan kare\n- skor görünsün")
+    gen = with_client(FakeGenerator(create=Generated(CLEAN, ["a"])), chat)
+    flow(studio.create_game_flow, gen, game, "zıplayan kare yap", [])
+    assert memory.load(memory.game_path(game)) == "Amaç: zıplayan kare\n- skor görünsün"
+    assert "zıplayan kare yap" in chat.calls[0] and "Oyun kaydedildi" in chat.calls[0]
+
+
+def test_the_next_edit_is_given_that_memory_even_after_a_restart(game):
+    flow(studio.create_game_flow, with_client(FakeGenerator(create=Generated(CLEAN, ["a"])),
+                                              ChatStub("Amaç: zıplayan kare")), game, "zıplayan kare yap", [])
+    same_game = library.Game(game.name, game.folder)          # the app was closed and opened again
+    second = with_client(FakeGenerator(edit=Generated(CLEAN, [])), ChatStub("Amaç: zıplayan kare\n- hızlı"))
+    flow(studio.edit_game_flow, second, same_game, "topu hızlandır", [])
+    assert second.edit_calls[0]["memory"] == "Amaç: zıplayan kare"
+    assert memory.load(memory.game_path(game)) == "Amaç: zıplayan kare\n- hızlı"
+
+
+def test_a_generation_error_is_still_written_down_and_still_raised(game):
+    chat = ChatStub("Amaç: x\n- üretilemedi")
+
+    class Broken(FakeGenerator):
+        def create(self, *a, **k):
+            raise GenerationError("boş cevap")
+
+    gen = with_client(Broken(), chat)
+    with pytest.raises(GenerationError):
+        flow(studio.create_game_flow, gen, game, "uzay oyunu", [])
+    assert "üretilemedi" in chat.calls[0] and "boş cevap" in chat.calls[0] and "uzay oyunu" in chat.calls[0]
+    assert memory.load(memory.game_path(game)) == "Amaç: x\n- üretilemedi"
+
+
+def test_a_rejected_edit_is_remembered_too(game):
+    make_game_with_v1(game)
+    chat = ChatStub("Amaç: kare\n- bozan istek denendi")
+    gen = with_client(FakeGenerator(edit=Generated("BUG1", []), fixes=["BUG1", "BUG1", "BUG1"]), chat)
+    out = flow(studio.edit_game_flow, gen, game, "bozan istek", [])
+    assert out.rejected and "çalışmadı" in chat.calls[0]
+    assert memory.load(memory.game_path(game)) == "Amaç: kare\n- bozan istek denendi"
+
+
+def test_a_client_that_cannot_summarise_never_stops_the_flow_and_the_request_is_kept_as_a_line(game):
+    out = flow(studio.create_game_flow, FakeGenerator(create=Generated(CLEAN, [])), game, "uzay oyunu", [])
+    assert out.saved
+    assert memory.load(memory.game_path(game)) == "- uzay oyunu"
+
+
+def test_the_background_hook_receives_the_exchange_instead_of_updating_inline(game):
+    seen = []
+    gen = FakeGenerator(create=Generated(CLEAN, []))
+    studio.create_game_flow(gen, game, "uzay oyunu", [], server=object(), open_url=lambda u: None,
+                            on_status=lambda s, t: None, background=lambda *args: seen.append(args))
+    assert memory.load(memory.game_path(game)) == ""            # nothing was written inline
+    assert seen[0][0] is gen and seen[0][1] == game and seen[0][2] == "uzay oyunu" and "Oyun kaydedildi" in seen[0][3]
+    assert seen[0][4] == ""

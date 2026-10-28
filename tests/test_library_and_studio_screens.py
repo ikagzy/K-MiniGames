@@ -117,14 +117,16 @@ class FakeFlows:
     def __init__(self, outcome=None, error=None):
         self.outcome, self.error, self.calls = outcome or clean_outcome(), error, []
 
-    def create(self, generator, game, description, textures, server, open_url, on_status, cancel=None, *, memory=""):
+    def create(self, generator, game, description, textures, server, open_url, on_status, cancel=None, *, memory="",
+               background=None):
         self.calls.append(("create", game.name, description, [t.file for t in textures]))
         on_status("generating", "Oyun üretiliyor…")
         if self.error:
             raise self.error
         return self.outcome
 
-    def edit(self, generator, game, request, textures, server, open_url, on_status, cancel=None, *, memory=""):
+    def edit(self, generator, game, request, textures, server, open_url, on_status, cancel=None, *, memory="",
+             background=None):
         self.calls.append(("edit", game.name, request))
         return self.outcome
 

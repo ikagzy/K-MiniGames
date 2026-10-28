@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from k_minigames import checker, library, testlist
+from k_minigames import memory as memory_notes
 from k_minigames.checker import CheckReport
 from k_minigames.generator import GenerationError
 from k_minigames.library import Game, Texture
@@ -97,36 +98,74 @@ def _with_new_tests(generator, html: str, items: list[TestItem], cancel, memory:
     return testlist.with_code(items, texts, codes)
 
 
+def remember_exchange(generator, game: Game, user_text: str, note: str, previous: str) -> None:
+    """Rewrite the game's memory (the bear's memory) after one request. It never raises: a summary that cannot be
+    made falls back to a one-line note (see memory.update)."""
+    updated = memory_notes.update(getattr(generator, "client", None), getattr(generator, "model", ""),
+                                  previous, user_text, note)
+    memory_notes.save(memory_notes.game_path(game), updated)
+
+
+def _outcome_note(outcome: Outcome) -> str:
+    counts = testlist.summary(outcome.report.items)
+    facts = (f"{counts[PASSED]} madde geçti, {counts[UNVERIFIED]} doğrulanamadı, {counts[FAILED]} kaldı; "
+             f"{outcome.attempts} otomatik düzeltme.")
+    return ("Düzenleme çalışmadı, oyunun önceki hâli korundu. " if outcome.rejected else "Oyun kaydedildi. ") + facts
+
+
 def create_game_flow(generator, game: Game, description: str, textures: list[Texture], server,
                      open_url: Callable[[str], object], on_status: OnStatus,
-                     cancel: Callable[[], bool] | None = None, *, memory: str = "") -> Outcome:
+                     cancel: Callable[[], bool] | None = None, *, memory: str = "",
+                     background: Callable | None = None) -> Outcome:
+    """`memory` overrides the game's memory file (tests); `background(generator, game, text, note, previous)`, when
+    given, does the memory update instead of the flow doing it inline (the screen runs it on its own thread)."""
+    previous = memory_notes.load(memory_notes.game_path(game))
+    memory = memory or previous
+    notify = background or remember_exchange
     on_status("generating", "Oyun üretiliyor…")
-    generated = generator.create(description, textures, cancel=cancel, memory=memory)
+    try:
+        generated = generator.create(description, textures, cancel=cancel, memory=memory)
+    except GenerationError as exc:
+        notify(generator, game, description, f"Oyun üretilemedi: {exc}", previous)
+        raise
     items = testlist.merge_checklist([], generated.checklist)
     items = _with_new_tests(generator, generated.html, items, cancel, memory)
     html, report, attempts = repair_loop(generator, game, generated.html, items, server, open_url, on_status,
                                          cancel, memory=memory)
     testlist.save(game, report.items)
     library.save_version(game, html)
-    return Outcome(html, report, attempts, saved=True, rejected=False)
+    outcome = Outcome(html, report, attempts, saved=True, rejected=False)
+    notify(generator, game, description, _outcome_note(outcome), previous)
+    return outcome
 
 
 def edit_game_flow(generator, game: Game, request: str, textures: list[Texture], server,
                    open_url: Callable[[str], object], on_status: OnStatus,
-                   cancel: Callable[[], bool] | None = None, *, memory: str = "") -> Outcome:
+                   cancel: Callable[[], bool] | None = None, *, memory: str = "",
+                   background: Callable | None = None) -> Outcome:
     """Change an existing game. The new version replaces the old one only if it runs without errors;
     otherwise the working game is left exactly as it was."""
+    previous = memory_notes.load(memory_notes.game_path(game))
+    memory = memory or previous
+    notify = background or remember_exchange
     current = game.html_path.read_text(encoding="utf-8")
     items = testlist.load(game)
     on_status("generating", "Değişiklik yapılıyor…")
-    generated = generator.edit(current, request, textures, [i.text for i in items], testlist.load_resolved(game),
-                               cancel=cancel, memory=memory)
+    try:
+        generated = generator.edit(current, request, textures, [i.text for i in items], testlist.load_resolved(game),
+                                   cancel=cancel, memory=memory)
+    except GenerationError as exc:
+        notify(generator, game, request, f"Düzenleme üretilemedi: {exc}", previous)
+        raise
     items = testlist.merge_checklist(items, generated.checklist)
     items = _with_new_tests(generator, generated.html, items, cancel, memory)
     html, report, attempts = repair_loop(generator, game, generated.html, items, server, open_url, on_status,
                                          cancel, memory=memory)
     if _hard_problems(report) or report.js_errors:
-        return Outcome(current, report, attempts, saved=False, rejected=True)
-    testlist.save(game, report.items)
-    library.save_version(game, html)
-    return Outcome(html, report, attempts, saved=True, rejected=False)
+        outcome = Outcome(current, report, attempts, saved=False, rejected=True)
+    else:
+        testlist.save(game, report.items)
+        library.save_version(game, html)
+        outcome = Outcome(html, report, attempts, saved=True, rejected=False)
+    notify(generator, game, request, _outcome_note(outcome), previous)
+    return outcome

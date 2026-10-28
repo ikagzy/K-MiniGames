@@ -3,6 +3,7 @@
 Creating asks the game's name, then what the game should be (textures can be added any time before). Editing asks
 what to change. The bear's pictures follow the work: thinking while the game is written, testing while it is tried in
 the browser, an idea when a bug is found and fixed, then success or a worried face."""
+import threading
 import tkinter as tk
 import webbrowser
 from pathlib import Path
@@ -53,6 +54,12 @@ def summary_lines(report: CheckReport, attempts: int, rejected: bool) -> list[st
     if rejected:
         lines.append("Bu düzenleme çalışmadı; oyunun önceki hâli korundu.")
     return lines
+
+
+def _in_background(generator, game, user_text: str, note: str, previous: str) -> None:
+    """The memory update runs on its own thread so the result is shown without waiting for it."""
+    threading.Thread(target=studio.remember_exchange, args=(generator, game, user_text, note, previous),
+                     daemon=True).start()
 
 
 class StudioScreen:
@@ -153,11 +160,13 @@ class StudioScreen:
 
     def _on_description(self, description: str) -> None:
         self._run(lambda game, textures, server, status, cancel: self._flows.create(
-            self._generator_factory(), game, description, textures, server, self._open_url, status, cancel), retry=self._on_description)
+            self._generator_factory(), game, description, textures, server, self._open_url, status, cancel,
+            background=_in_background), retry=self._on_description)
 
     def _on_change(self, request: str) -> None:
         self._run(lambda game, textures, server, status, cancel: self._flows.edit(
-            self._generator_factory(), game, request, textures, server, self._open_url, status, cancel), retry=self._on_change)
+            self._generator_factory(), game, request, textures, server, self._open_url, status, cancel,
+            background=_in_background), retry=self._on_change)
 
     # --- textures and versions ------------------------------------------------------------------------------
 

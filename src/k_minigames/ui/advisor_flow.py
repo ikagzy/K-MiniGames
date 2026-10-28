@@ -4,6 +4,7 @@ States: chatting -> (proposal) -> awaiting_use_installed -> awaiting_install -> 
 with `cancelled` after two noes and `error` after a failed download. Talking again starts a new round."""
 from collections.abc import Callable
 
+from k_minigames import memory as memory_notes
 from k_minigames import model_check, settings
 from k_minigames.advisor import Advisor, AdvisorReply
 from k_minigames.model_check import Recommendation
@@ -25,13 +26,23 @@ class AdvisorFlow:
 
     # --- talking ------------------------------------------------------------------------------------
 
-    def user_says(self, text: str, memory: str = "", on_token=None, cancel=None) -> AdvisorReply:
+    def user_says(self, text: str, memory: str | None = None, on_token=None, cancel=None) -> AdvisorReply:
+        """`memory=None` reads the advisor's memory file; a given text (even an empty one) is used as it is."""
         self._reset_choice()
+        if memory is None:
+            memory = memory_notes.load(memory_notes.advisor_path())
         reply = self._advisor.ask(self.history, text, memory=memory, on_token=on_token, cancel=cancel)
         self.history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply.text}]
         if reply.proposal:
             self._propose(reply.proposal)
         return reply
+
+    def remember(self, user_text: str, reply_text: str, cancel=None) -> None:
+        """Rewrite the advisor's memory after one exchange (the screen calls this in the background)."""
+        path = memory_notes.advisor_path()
+        updated = memory_notes.update(getattr(self._advisor, "client", None), getattr(self._advisor, "model", ""),
+                                      memory_notes.load(path), user_text, reply_text, cancel)
+        memory_notes.save(path, updated)
 
     def _reset_choice(self) -> None:
         self.state, self.recommendation, self.current_offer, self._offers = "chatting", None, None, []

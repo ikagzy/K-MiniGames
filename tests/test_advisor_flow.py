@@ -148,3 +148,41 @@ def test_for_game_writing_the_flow_offers_the_best_installed_model_not_the_small
     flow, _, _ = make_flow(proposal(), installed=[llama3, LLAMA8])
     flow.user_says("hazırım")
     assert flow.state == "awaiting_use_installed" and flow.current_offer.model == "llama3.1:8b"
+
+
+# --- the advisor's own memory ---------------------------------------------------------------------------
+
+from k_minigames import memory  # noqa: E402
+
+
+class ChatStub:
+    def __init__(self, answer):
+        self.answer, self.calls = answer, []
+
+    def chat(self, model, messages, on_token=None, cancel=None):
+        self.calls.append(messages)
+        return self.answer
+
+
+def test_remember_writes_the_advisor_memory_and_the_next_message_is_given_it():
+    flow, advisor, _ = make_flow(AdvisorReply("Hangi tür?", None), AdvisorReply("Tamam.", None))
+    advisor.client, advisor.model = ChatStub("Amaç: uzay oyunu"), "qwen3.5:4b"
+    flow.user_says("uzay oyunu istiyorum")
+    flow.remember("uzay oyunu istiyorum", "Hangi tür?")
+    assert memory.load(memory.advisor_path()) == "Amaç: uzay oyunu"
+    flow.user_says("zıplasın")
+    assert advisor.calls[1]["memory"] == "Amaç: uzay oyunu"
+
+
+def test_without_a_working_summariser_the_request_is_kept_as_a_line():
+    flow, advisor, _ = make_flow(AdvisorReply("Hangi tür?", None))
+    flow.user_says("uzay oyunu istiyorum")
+    flow.remember("uzay oyunu istiyorum", "Hangi tür?")
+    assert memory.load(memory.advisor_path()) == "- uzay oyunu istiyorum"
+
+
+def test_an_explicit_memory_still_wins_over_the_file():
+    memory.save(memory.advisor_path(), "dosyadaki hafıza")
+    flow, advisor, _ = make_flow(AdvisorReply("x", None))
+    flow.user_says("merhaba", memory="verilen hafıza")
+    assert advisor.calls[0]["memory"] == "verilen hafıza"

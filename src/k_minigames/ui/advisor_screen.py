@@ -27,6 +27,7 @@ class AdvisorScreen:
         self._typing_ms, self._finish_ms = typing_ms, finish_ms
         self._jobs: list[str] = []
         self._busy = False
+        self._last_user = ""
         self._progress: tuple[int, int | None] = (0, None)
 
     # --- life cycle -----------------------------------------------------------------------------------
@@ -65,9 +66,12 @@ class AdvisorScreen:
         stage.stop_asking()
         stage.say("SEN", text)
         stage.set_character("advisor", "thinking")
+        self._last_user = text
         self.s.worker.run(lambda: self._flow.user_says(text), self._on_reply, self._on_error)
 
     def _on_reply(self, reply) -> None:
+        user_text = self._last_user
+        self.s.worker.run(lambda: self._flow.remember(user_text, reply.text), lambda _: None, lambda _error: None)
         self._say_then(reply.text, "idle", self._dispatch)
 
     def _on_error(self, error: Exception) -> None:

@@ -61,7 +61,7 @@ def _without_proposals(text: str) -> str:
 
 class Advisor:
     def __init__(self, client, model: str):
-        self._client, self._model = client, model
+        self.client, self.model = client, model
 
     def ask(self, history: list[dict], user_text: str, memory: str = "", on_token: Callable | None = None,
             cancel: Callable[[], bool] | None = None) -> AdvisorReply:
@@ -70,5 +70,5 @@ class Advisor:
         if head and len(history) > LONG_HISTORY:
             history = history[-HISTORY_WITH_MEMORY:]
         messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": user_text}]
-        answer = self._client.chat(self._model, messages, on_token=on_token, cancel=cancel)
+        answer = self.client.chat(self.model, messages, on_token=on_token, cancel=cancel)
         return AdvisorReply(_without_proposals(answer), extract_proposal(answer))
