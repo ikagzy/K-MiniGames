@@ -25,7 +25,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - UI görselleri (sahne, diyalog kutusu, 9 danışman karesi, 12 ayı karesi) hazır ve repoda (CP-1..CP-3). Üretim ekranının arka planı (otel lobisi, `lobi.png`) eklendi (CP-5). Başlangıç, kütüphane ve düzenleme ekranlarının görselleri henüz yok.
 - Danışman modeli: Türkçe deneme yapıldı (aynı soru, 5 model). qwen3.5:4b en doğal, gemma3:4b akıcı, llama3/llama3.1:8b orta, qwen2.5:3b zayıf (bozuk cümleler). Varsayılan danışman qwen3.5:4b (3.4 GB) oldu; alternatif gemma3:4b. Elle doğrulanamayanlar: Görev 15 ve 18'deki gerçek üretim denemeleri (kod yazan model henüz denenmedi).
 - Bekleyen kullanıcı isteği: yazılar Undertale'ın yazı tipinde (Determination Mono) olsun. Dosya yok; Türkçe harf desteği ve lisansı dosya gelince kontrol edilecek. Kullanıcı `src/k_minigames/assets/fonts/` içine .ttf koyacak ya da indirme adresi + onay verecek. Gelene kadar Segoe UI; yükleyici Windows'ta AddFontResourceExW(FR_PRIVATE) ile yapılabilir.
-- Uygulama ilerlemesi: Görev 13/18 tamam
+- Uygulama ilerlemesi: Görev 14/18 tamam
 
 ## Kullanıcıyla çalışma
 - Türkçe konuşulur. Soru başına tek soru, seçenekli.
