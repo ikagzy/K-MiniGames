@@ -180,7 +180,8 @@ def textures(game: Game) -> list[Texture]                     # game.json
 class GenerationError(Exception): ...
 @dataclass(frozen=True) class Generated: html: str; checklist: list[str]
 def build_create_messages(description: str, textures: list[Texture]) -> list[dict]
-def build_edit_messages(html: str, request: str, textures: list[Texture], checklist: list[str]) -> list[dict]
+def build_edit_messages(html: str, request: str, textures: list[Texture], checklist: list[str],
+                        resolved: list[str] = ()) -> list[dict]   # resolved: bu oyunda daha önce çözülen hatalar
 def build_fix_messages(html: str, problems: list[str]) -> list[dict]
 def build_test_messages(html: str, checklist: list[str]) -> list[dict]
 def parse_response(text: str) -> Generated | None      # tam HTML belgesi şart; checklist: ```json {"checklist": [...]} bloğundan
@@ -188,13 +189,13 @@ def parse_tests(text: str, n: int) -> list[str | None]  # {"tests":[{"index":0,"
 class Generator:
     def __init__(self, client, model: str): ...
     def create(self, description, textures, on_token=None, cancel=None) -> Generated
-    def edit(self, html, request, textures, checklist, on_token=None, cancel=None) -> Generated
+    def edit(self, html, request, textures, checklist, resolved=(), on_token=None, cancel=None) -> Generated
     def fix(self, html, problems: list[str], on_token=None, cancel=None) -> Generated
     def write_tests(self, html, checklist, cancel=None) -> list[str | None]
 ```
 Sistem isteminde şu ifadeler bulunur (testler bunları denetler): `window.__game`, `assets/<dosya>` + boyut + açıklama, `getImageData`'yı kullanma, dış ağ adresi (`http://`, `https://`) kullanma, tek dosya `oyun.html`.
 
-- [ ] **Step 1: Testler.** Create isteminde her dokunun adı, boyutu ve açıklaması geçer; edit isteminde güncel HTML ve kullanıcı isteği geçer; `parse_response`: ```html çitli, çitsiz `<!doctype html>…</html>`, birden çok blok (sonuncu tam olan), **`</html>`'siz kesik cevap → `None`**, HTML'siz metin → `None` (Review Focus 2); checklist ayrıştırması; `Generator.create` ayrıştırma `None` ise `GenerationError` fırlatır ve **asla kısmi HTML döndürmez**; `parse_tests` eksik indeksleri `None` yapar.
+- [ ] **Step 1: Testler.** Create isteminde her dokunun adı, boyutu ve açıklaması geçer; edit isteminde güncel HTML ve kullanıcı isteği geçer, `resolved` doluysa her biri "Daha önce çözülen hatalar (bunları tekrarlama): …" başlığı altında listelenir, boşsa bu başlık hiç yer almaz; `parse_response`: ```html çitli, çitsiz `<!doctype html>…</html>`, birden çok blok (sonuncu tam olan), **`</html>`'siz kesik cevap → `None`**, HTML'siz metin → `None` (Review Focus 2); checklist ayrıştırması; `Generator.create` ayrıştırma `None` ise `GenerationError` fırlatır ve **asla kısmi HTML döndürmez**; `parse_tests` eksik indeksleri `None` yapar.
 - [ ] **Step 2–4:** başarısız → uygula → geçsin. **Step 5: CS.**
 
 ### Task 8: `htmlscan`
@@ -245,6 +246,8 @@ PENDING, PASSED, FAILED, UNVERIFIED = "pending", "passed", "failed", "unverified
 @dataclass class TestItem: id: str; text: str; code: str | None; status: str = PENDING; note: str = ""
 testlist.load(game) -> list[TestItem]; save(game, items) -> None            # testler.json (UTF-8)
 testlist.merge_checklist(items, checklist: list[str]) -> list[TestItem]      # yeni metinler "t1","t2"… kimlikle eklenir; eskiler korunur
+testlist.load_resolved(game) -> list[str]                                    # testler.json "resolved" anahtarı: bu oyunda çözülmüş hatalar
+testlist.add_resolved(game, texts: list[str], limit: int = 20) -> None       # tekrarsız eklenir, en yeni `limit` tanesi kalır; `save(items)` bu anahtarı silmez
 testlist.apply_results(items, events: list[dict]) -> list[TestItem]
 testlist.summary(items) -> dict[str, int]
 @dataclass class CheckReport: problems: list[Problem]; items: list[TestItem]; js_errors: list[str]; finished: bool
@@ -252,7 +255,7 @@ checker.run_once(game, html, items, server, open_url=webbrowser.open, timeout_s:
 ```
 Eşleme: `passed` → `PASSED`; `vacuous` → `UNVERIFIED` (not: "boş durumda da geçti"); `passed:false` ya da test hatası → `FAILED`; `code is None` → `UNVERIFIED`; `done` gelmeden zaman aşımı → `finished=False` ve sonuçsuz maddeler `UNVERIFIED` (not: "zaman aşımı").
 
-- [ ] **Step 1: Testler** (sahte sunucu hazır olayları döndürür, `open_url` çağrıyı kaydeder): `testler.json` Türkçe metinle gidiş-dönüş; `merge_checklist` eski durumları korur ve aynı metni ikinci kez eklemez; `apply_results` yukarıdaki eşlemenin her satırı için; `summary` sayıları; `run_once` önce `htmlscan` problemlerini toplar, `server.set_page` enjekte edilmiş HTML ile çağrılır, `open_url` sunucunun `page_url()`'ü ile çağrılır, `error`/`asset_error` olayları `js_errors`'a girer.
+- [ ] **Step 1: Testler** (sahte sunucu hazır olayları döndürür, `open_url` çağrıyı kaydeder): `testler.json` Türkçe metinle gidiş-dönüş; `merge_checklist` eski durumları korur ve aynı metni ikinci kez eklemez; `add_resolved` aynı hatayı ikinci kez eklemez, 25 hata eklenince en yeni 20'si kalır, `save(items)` sonrası `load_resolved` değişmemiştir; `apply_results` yukarıdaki eşlemenin her satırı için; `summary` sayıları; `run_once` önce `htmlscan` problemlerini toplar, `server.set_page` enjekte edilmiş HTML ile çağrılır, `open_url` sunucunun `page_url()`'ü ile çağrılır, `error`/`asset_error` olayları `js_errors`'a girer.
 - [ ] **Step 2–4:** başarısız → uygula → geçsin. **Step 5: CS.**
 
 ### Task 11: Onarım döngüsü ve üretim hattı (`studio`)
@@ -267,9 +270,9 @@ def repair_loop(generator, game, html, items, server, open_url, on_status: Calla
 def create_game_flow(generator, game, description, textures, server, open_url, on_status, cancel=None) -> Outcome
 def edit_game_flow(generator, game, request, textures, server, open_url, on_status, cancel=None) -> Outcome
 ```
-Kurallar: puan = hata düzeyi problem + `js_errors` + `FAILED` madde sayısı (uyarılar sayılmaz). Döngü: `run_once`; puan 0 ise biter; değilse `generator.fix(html, problem_metinleri)`; en fazla `MAX_ATTEMPTS` düzeltme; **son sürüm değil en düşük puanlı sürüm** tutulur; `GenerationError` döngüyü bitirir (en iyi sürüm kalır); döngü sonunda hâlâ `FAILED` olan maddeler `UNVERIFIED` olur (not: "otomatik düzeltilemedi"). `create_game_flow` en iyi sürümü her durumda `save_version` ile kaydeder. `edit_game_flow` yeni sürümü yalnızca sonuçta hata düzeyi problem ve `js_errors` yoksa kaydeder; aksi halde `rejected=True`, `oyun.html` **bayt bayt aynı** kalır. Düzenlemede önceden `PASSED` olan madde bozulursa fix isteminde "Daha önce geçen madde bozuldu: …" cümlesi yer alır.
+Kurallar: puan = hata düzeyi problem + `js_errors` + `FAILED` madde sayısı (uyarılar sayılmaz). Döngü: `run_once`; puan 0 ise biter; değilse `generator.fix(html, problem_metinleri)`; en fazla `MAX_ATTEMPTS` düzeltme; **son sürüm değil en düşük puanlı sürüm** tutulur; `GenerationError` döngüyü bitirir (en iyi sürüm kalır); döngü sonunda hâlâ `FAILED` olan maddeler `UNVERIFIED` olur (not: "otomatik düzeltilemedi"). `create_game_flow` en iyi sürümü her durumda `save_version` ile kaydeder. `edit_game_flow` yeni sürümü yalnızca sonuçta hata düzeyi problem ve `js_errors` yoksa kaydeder; aksi halde `rejected=True`, `oyun.html` **bayt bayt aynı** kalır. Döngüde bir `fix` sonrası ortadan kalkan her problem metni `testlist.add_resolved` ile oyunun hafızasına eklenir; `edit_game_flow` `generator.edit`'e `testlist.load_resolved(game)`'i `resolved` olarak verir. Düzenlemede önceden `PASSED` olan madde bozulursa fix isteminde "Daha önce geçen madde bozuldu: …" cümlesi yer alır.
 
-- [ ] **Step 1: Testler** (sahte `Generator` senaryolu çıktı verir, sahte sunucu/`run_once`): temiz sürümde `attempts == 0`; her zaman hatalı sürümde tam 3 `fix` çağrısı; ikinci denemenin puanı üçüncüden iyiyse ikincisi döner (Review Focus 2); `GenerationError` döngüyü durdurur, en iyi sürüm döner; `cancel()` döngüyü keser; `edit_game_flow` bozuk düzenlemeyi reddeder ve `oyun.html` baytları değişmez; düzenleme `PASSED` bir maddeyi bozarsa fix istemi o cümleyi içerir; `create_game_flow` sonunda `library.versions` ve `testler.json` güncel.
+- [ ] **Step 1: Testler** (sahte `Generator` senaryolu çıktı verir, sahte sunucu/`run_once`): temiz sürümde `attempts == 0`; her zaman hatalı sürümde tam 3 `fix` çağrısı; ikinci denemenin puanı üçüncüden iyiyse ikincisi döner (Review Focus 2); `GenerationError` döngüyü durdurur, en iyi sürüm döner; `cancel()` döngüyü keser; `edit_game_flow` bozuk düzenlemeyi reddeder ve `oyun.html` baytları değişmez; düzenleme `PASSED` bir maddeyi bozarsa fix istemi o cümleyi içerir; `create_game_flow` sonunda `library.versions` ve `testler.json` güncel; bir `fix` ile giderilen problem `load_resolved`'da görünür, hâlâ duran problem görünmez; `edit_game_flow` `generator.edit`'i `resolved=` o liste ile çağırır.
 - [ ] **Step 2–4:** başarısız → uygula → geçsin. **Step 5: CS.**
 
 ### Task 12: Maskot mantığı, çalışma görselleri, `Stage`
