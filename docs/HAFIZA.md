@@ -24,7 +24,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Brainstorming bitti, spec onaylandı (2026-10-28). Uygulama planı yazıldı: `docs/superpowers/plans/2026-10-28-k-minigames.md` (17 görev; 17. görev K-Optimizer deposunda K-Series entegrasyonu). Plana sonradan "çözülmüş hatalar" hafızası eklendi (testler.json `resolved`; düzenleme istemine verilir). Modelin oyunu "eğlenceli mi" diye değerlendirmesi kapsam dışı (kullanıcı da teyit etti). Uygulamanın kendi hafızası eklendi (Görev 18): danışman için `danisman_hafiza.md`, ayı için oyunun `hafiza.md`'si; her mesajdan sonra özetlenir, her modele giden isteğin en başına konur. Kullanıcının planı incelemesi ve yürütme yöntemini (subagent/native) seçmesi bekleniyor.
 - UI görselleri (sahne, diyalog kutusu, 9 danışman karesi, 12 ayı karesi) hazır ve repoda (CP-1..CP-3). Üretim ekranının arka planı (otel lobisi, `lobi.png`) eklendi (CP-5). Başlangıç, kütüphane ve düzenleme ekranlarının görselleri henüz yok.
 - Doğrulanamadı (Ollama çalışmıyor, indirme için kullanıcı onayı yok): Görev 3 Adım 5 (qwen2.5:3b'nin Türkçe kalitesi) ve ileride gerçek Ollama gerektiren elle doğrulamalar (Görev 15, 18). Danışman modeli şimdilik varsayılan `qwen2.5:3b`; kötü çıkarsa `data/models.json`'da `llama3.2:3b` dene.
-- Uygulama ilerlemesi: Görev 5/18 tamam
+- Uygulama ilerlemesi: Görev 6/18 tamam
 
 ## Kullanıcıyla çalışma
 - Türkçe konuşulur. Soru başına tek soru, seçenekli.
