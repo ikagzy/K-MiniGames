@@ -19,7 +19,8 @@ _EMPTY_FENCE = re.compile(r"```[a-zA-Z]*\s*```")
 def system_prompt() -> str:
     models = "\n".join(f"- {m.id} (yaklaşık {m.size_gb:g} GB)" for m in catalog.coders())
     return (
-        "Sen K-MiniGames'in danışmanısın. Kullanıcıyla Türkçe, kısa ve sıcak konuş.\n"
+        "Sen K-MiniGames'in danışmanısın. Kullanıcıyla kısa ve sıcak konuş; "
+        "kullanıcı hangi dilde yazdıysa (Türkçe ya da İngilizce) o dilde cevap ver.\n"
         "Kullanıcı bilgisayarında kendi oyununu yaptırmak istiyor. Önce oyunu anlamak için tek seferde en fazla "
         "iki kısa soru sor (oyunun türü, kontroller, görsel stil, zorluk).\n"
         "Oyunu anlayınca, oyunu yazacak bir model öner. Önerini yalnızca şu listeden seç:\n"
