@@ -31,3 +31,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-22 | 2026-10-28 | Görev 14: AdvisorFlow + AdvisorScreen (21 yeni test; gerçek qwen3.5:4b ile uçtan uca doğrulandı) | 30065bb |
 | CP-23 | 2026-10-28 | Görev 15: LibraryScreen, StudioScreen, summary_lines, daktilo yardımcısı (22 yeni test; gerçek modelle uçtan uca oyun üretimi denendi) | b71e9ff |
 | CP-24 | 2026-10-28 | Görev 16: launcher, K-MiniGames.spec, make_version, simge, README (3 yeni test; exe derlenip çalıştırıldı) | 0bfdc12 |
+| CP-25 | 2026-10-28 | Görev 17: K-Series, K-MiniGames'i algılıyor ve ana sayfada kart gösteriyor (K-Optimizer deposunda, 331 test) | K-Optimizer 581e83e |
