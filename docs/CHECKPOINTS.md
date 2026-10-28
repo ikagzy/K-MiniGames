@@ -38,3 +38,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-29 | 2026-10-28 | Bağımsız inceleme düzeltmeleri (6 Önemli + 3 yeniden derecelendirilen; 25 yeni test) | a5a4a97 |
 | CP-30 | 2026-10-28 | Ertelenen küçük bulgular düzeltildi (#8 #10 #11 #12 #13 #14, K-Optimizer'da #16); 8 yeni test | c5b8710 |
 | CP-31 | 2026-10-28 | Atıf yalnızca README'de; konuşma animasyonu 240 ms'de bir kare; aynı kare yeniden çizilmiyor; Ollama hata metni (HTTP 500); testlerde Tk çöp toplama; 6 yeni test | dbfbdc5 |
+| CP-32 | 2026-10-28 | Giriş ekranı (Başla/Ayarlar/Çıkış, kalp imleci) ve Ayarlar ekranı (Ollama ve danışman modeli kurulumu, klasör, hafızayı sil); Determination yazı tipi exe'ye eklendi (spec'te eksikti); 3 yeni test; dist/K-MiniGames.exe derlendi | e81bf5b |
