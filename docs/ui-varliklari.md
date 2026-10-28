@@ -20,11 +20,11 @@ Danışmanla konuşma ekranı: karanlık piksel sanat bir ofis sahnesi, masanın
 | `karsilama` | Mutlu, el sallıyor | Danışman ekranı ilk açıldığında selam |
 | `veda` | Hafif gülümseyen, el sallıyor | Ekran kapatılırken / sohbet bitince |
 | `dinliyor` | İri gözlü, gülümsüyor | Sıra kullanıcıda ("SEN" yazıyor): kullanıcı mesaj yazarken |
-| `yaziyor` | Gülümseyip kalemle yazıyor, ışıltılı | Sıra danışmanda ("DANIŞMAN" yazıyor): model cevap üretirken |
+| `yaziyor` | Gülümseyip kalemle yazıyor, ışıltılı | Sıra danışmanda: model cevabı henüz üretirken (bekleme); cevap gelince `konusuyor_a/b` devreye girer |
 | `oneri` | Parmak havada, ampul | Danışman bir model önerdiği an (yükleme izni sorulurken) |
-| `emin_degil` | Kafa kaşıyor | Danışman soruyu anlamadı ya da ek bilgi istiyor |
-| `hata` | Şaşkın, ağzı "o" | Bir şey ters gitti (Ollama cevap vermedi, indirme hatası) |
-| `bulamadi` | İri gözlü, omuz silkiyor | Uygun model ya da cevap bulunamadı (örneğin donanıma uygun model yok) |
+| `emin_degil` | Kafa kaşıyor | Danışman soruyu anlamadı, ek bilgi istiyor; ayrıca hata / uygun model bulunamadı durumlarında da bu kare (ayrı hata karesi yok) |
+| `konusuyor_a` | Ağzı açık, kol açık | Danışmanın mesajı ekrana yazılırken: `konusuyor_b` ile dönüşümlü gösterilir (ağız hareketi) |
+| `konusuyor_b` | Ağzı açık, kol açık | `konusuyor_a` ile aynı |
 
 ## Diyalog kutusu kuralı
 Sıra tek tarafta olur, ikisi aynı anda konuşmaz:
