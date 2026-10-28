@@ -27,3 +27,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-18 | 2026-10-28 | Görev 10: testlist + checker (16 test; rapor sunucusuna report_url/clear_events) | 5ca495c |
 | CP-19 | 2026-10-28 | Görev 11: studio (15 test; en iyi sürüm, 3 deneme, bozuk düzenleme reddi) | 25c69e5 |
 | CP-20 | 2026-10-28 | Görev 12: mascot, assets/runtime, Stage (39 test; gerçek Tk penceresinde görüntü alındı) | 9d8100d |
+| CP-21 | 2026-10-28 | Görev 13: kabuk, Worker, başlangıç ekranı, kurulu-model izin akışı, İngilizce çeviriler (49 yeni test; gerçek pencerede doğrulandı) | c9d9f1c |
