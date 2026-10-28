@@ -1,0 +1,25 @@
+# K-MiniGames hafızası
+
+Her oturumun başında okunur. Her iş bitişinde güncellenir (CHECKPOINTS.md ile birlikte).
+
+## Proje nedir
+Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptıran Windows masaüstü uygulaması. Hazır oyun yok; kullanıcı tarif eder, model tek dosyalık HTML/JS oyunu üretir, uygulama dener ve düzeltir, kütüphanede saklar. Ayrıntı: `docs/superpowers/specs/2026-10-28-k-minigames-design.md`.
+
+## Alınan kararlar (2026-10-28 brainstorming)
+- Başta "mini oyunlar" sanılmıştı; yanlış. Oyunu kullanıcının tarifiyle Ollama yapıyor.
+- Çıktı biçimi: HTML/JavaScript (oyun + `assets\` klasörü, çünkü dokular var).
+- Uygulama: Windows masaüstü penceresi, Python + tkinter + PyInstaller (K-Optimizer ile aynı yığın; seçimi kullanıcı bana bıraktı).
+- Oyunlar uygulamanın kendi kütüphanesinde; K-Series yalnızca K-MiniGames kartını gösterir.
+- Başlangıçta iki ayrı düğme: "Ollama'yı indir" ve "Danışmanı indir", boyutları yazılı. Danışman oyuna uygun ayrı bir model önerir ve yüklemek için izin ister; model adını uygulama doğrular.
+- Üret ve düzenle: oyun sonradan geliştirilebilir, eski sürümler saklanır.
+- Dokular kullanılabilir (model resmi görmez, ad/boyut/açıklama bilir).
+- Üret → dene → düzelt döngüsü: Edge'e bağımlı değil, kullanıcının varsayılan tarayıcısı + yerel rapor sunucusu. Test listesi (`testler.json`) kalıcı hafıza; düzenlemede yeniden çalışır. En fazla 3 deneme.
+- Her iş bitişinde CHECKPOINTS.md'ye kayıt; bu dosya da HAFIZA.md.
+
+## Durum
+- Brainstorming bitti, spec yazıldı; kullanıcı spec'i okuyup onaylayacak. Sonraki adım: onaydan sonra `writing-plans`.
+- Henüz uygulama kodu yok.
+
+## Kullanıcıyla çalışma
+- Türkçe konuşulur. Soru başına tek soru, seçenekli.
+- Kullanıcı "senin kolayına ne gelirse" diyerek teknik seçimleri bana bırakabilir; yine de sonucu açıklarım.
