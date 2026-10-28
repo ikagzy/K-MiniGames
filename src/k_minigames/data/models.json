@@ -1,0 +1,10 @@
+{
+  "advisor": {"id": "qwen2.5:3b", "size_gb": 1.9, "min_ram_gb": 6},
+  "coders": [
+    {"id": "qwen2.5-coder:1.5b", "size_gb": 1.0, "min_ram_gb": 4},
+    {"id": "qwen2.5-coder:3b", "size_gb": 1.9, "min_ram_gb": 6},
+    {"id": "qwen2.5-coder:7b", "size_gb": 4.7, "min_ram_gb": 10},
+    {"id": "qwen2.5-coder:14b", "size_gb": 9.0, "min_ram_gb": 18},
+    {"id": "qwen2.5-coder:32b", "size_gb": 20.0, "min_ram_gb": 36}
+  ]
+}
