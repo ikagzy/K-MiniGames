@@ -13,3 +13,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-4 | 2026-10-28 | Ayı maskotu ikinci set (12 kare, düz magenta zemin, tutarlı gövde), build_mascot.py ızgara moduna çevrildi, lobi önizlemesi | a509a28 |
 | CP-5 | 2026-10-28 | Lobi arka planı (lobi.png), diyalog kutusu alt kenar temizliği, önizleme güncellendi | c574d35 |
 | CP-6 | 2026-10-28 | Spec onaylandı, uygulama planı yazıldı (docs/superpowers/plans/2026-10-28-k-minigames.md) | 5636d7c |
+| CP-7 | 2026-10-28 | Plana "çözülmüş hatalar" hafızası eklendi (Görev 7, 10, 11) | 22ab02e |
