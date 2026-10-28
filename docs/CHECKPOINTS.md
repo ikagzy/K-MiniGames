@@ -35,3 +35,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-26 | 2026-10-28 | Görev 18: memory (danışman + oyun hafızası, yedek yol, arka plan kancası; 22 yeni test; gerçek modelle yeniden açılışta doğrulandı) | 7e2c5c4 |
 | CP-27 | 2026-10-28 | Determination yazı tipi (FontStruct, anonymous-1438277): yükleyici, tüm yazılara uygulama, atıf | f095a76 |
 | CP-28 | 2026-10-28 | Karakter adları: danışman Don, ayı Bob (konuşma etiketleri) | b34ec12 |
+| CP-29 | 2026-10-28 | Bağımsız inceleme düzeltmeleri (6 Önemli + 3 yeniden derecelendirilen; 25 yeni test) | a5a4a97 |
