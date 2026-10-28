@@ -19,3 +19,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-10 | 2026-10-28 | Görev 2: ollama_client (sohbet akışı, pull, kopma/iptal hataları; 16 test) | c44fbd0 |
 | CP-11 | 2026-10-28 | Görev 3: hardware, catalog, model_check (11 test; elle Türkçe doğrulaması yapılmadı) | afacae9 |
 | CP-12 | 2026-10-28 | Görev 4: installer (13 test; iptal/eksik/disk dolu .part bırakmaz) | a82a3a3 |
+| CP-13 | 2026-10-28 | Görev 5: advisor + memory.block (12 test) | 4b96acd |
