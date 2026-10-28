@@ -16,8 +16,12 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Üret → dene → düzelt döngüsü: Edge'e bağımlı değil, kullanıcının varsayılan tarayıcısı + yerel rapor sunucusu. Test listesi (`testler.json`) kalıcı hafıza; düzenlemede yeniden çalışır. En fazla 3 deneme.
 - Her iş bitişinde CHECKPOINTS.md'ye kayıt; bu dosya da HAFIZA.md.
 
+- Danışman ekranı: piksel sanat ofis sahnesi + masanın arkasında mor yaratık (resepsiyonist) + altta diyalog kutusu. Sıra tek tarafta: `DANIŞMAN` / `SEN` etiketi üstte, mesaj altta. Ayrıntı ve kare–durum eşleşmesi: `docs/ui-varliklari.md`.
+- Görseller damalı (sahte şeffaf) geliyor; `tools/remove_checkerboard.py` temizliyor (Pillow yalnızca bu araç için, uygulamaya girmez).
+
 ## Durum
-- Brainstorming bitti, spec yazıldı; kullanıcı spec'i okuyup onaylayacak. Sonraki adım: onaydan sonra `writing-plans`.
+- Brainstorming bitti, spec yazıldı; kullanıcı spec'i henüz onaylamadı. Onaydan sonra `writing-plans`.
+- UI görselleri (sahne, diyalog kutusu, 9 danışman karesi) hazır ve repoda (CP-1). Diğer ekranların (başlangıç, kütüphane, düzenleme) görselleri henüz yok.
 - Henüz uygulama kodu yok.
 
 ## Kullanıcıyla çalışma
