@@ -17,6 +17,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Her iş bitişinde CHECKPOINTS.md'ye kayıt; bu dosya da HAFIZA.md.
 
 - Danışman ekranı: piksel sanat ofis sahnesi + masanın arkasında mor yaratık (resepsiyonist) + altta diyalog kutusu. Sıra tek tarafta: `DANIŞMAN` / `SEN` etiketi üstte, mesaj altta. Ayrıntı ve kare–durum eşleşmesi: `docs/ui-varliklari.md`.
+- Oyun üretme ekranının maskotu ayrı: otel görevlisi ayı, 7 kare (`assets/ui/maskot/`); eşleşme `docs/ui-varliklari.md`'de. Danışman (mor yaratık) model kurulana kadar, ayı ondan sonra.
 - Görseller damalı (sahte şeffaf) geliyor; `tools/remove_checkerboard.py` temizliyor (Pillow yalnızca bu araç için, uygulamaya girmez).
 
 ## Durum

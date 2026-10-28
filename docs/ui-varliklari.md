@@ -26,6 +26,22 @@ Danışmanla konuşma ekranı: karanlık piksel sanat bir ofis sahnesi, masanın
 | `konusuyor_a` | Ağzı açık, kol açık | Danışmanın mesajı ekrana yazılırken: `konusuyor_b` ile dönüşümlü gösterilir (ağız hareketi) |
 | `konusuyor_b` | Ağzı açık, kol açık | `konusuyor_a` ile aynı |
 
+## Oyun üretme ekranının maskotu (otel görevlisi ayı)
+
+Danışman, model bulunup kurulana kadarki ekranın maskotu. Bulunan model ile oyun yapıldığı ekranda (tarif yazma, üretim, deneme, düzenleme) bu ayı görünür. Kareler `assets/ui/maskot/` altında, 278x268, hepsi aynı tuvalde (kasket ucundan ayak tabanına 200 piksel, ayaklar aynı çizgide). Kullanıcının tek sayfalık, damalı çizimi `tools/build_mascot.py` ile bölündü ve boyutları eşitlendi.
+
+| Kare | Görünüm | Kullanılacağı durum |
+|---|---|---|
+| `bosta` | Eller önde, sakin | Boşta: tarif bekleniyor, kullanıcı yazarken |
+| `selamlama` | Bavullu, el sallıyor | Ekran ilk açıldığında selam |
+| `konusuyor_a` | Parmakla gösteriyor | Maskotun mesajı ekrana yazılırken; `konusuyor_b` ile dönüşümlü |
+| `konusuyor_b` | Elinde tepsi, konuşuyor | `konusuyor_a` ile aynı |
+| `dusunuyor` | Kafasını kaşıyor, elinde tepsi | Oyun üretilirken; oyun deneniyorken; hata düzeltilirken; test maddesi doğrulanamadığında |
+| `anladim` | Parmak havada, ampul | Oyun hazır olduğunda; hata bulunup çözüldüğünde ("buldum") |
+| `veda` | El sallıyor | Ekran kapatılırken |
+
+Eksik kalanlar (şimdilik yok): ayrı bir hata karesi (hata mesajında `dusunuyor` kullanılır) ve "test ediyor" karesi (`dusunuyor` ile aynı). İstenirse sonradan eklenir.
+
 ## Diyalog kutusu kuralı
 Sıra tek tarafta olur, ikisi aynı anda konuşmaz:
 - Danışman konuşurken kutunun üstünde `DANIŞMAN` yazar, altında danışmanın mesajı gelir.
