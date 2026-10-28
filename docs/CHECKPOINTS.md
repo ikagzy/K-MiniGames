@@ -23,3 +23,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-14 | 2026-10-28 | Görev 6: library (28 test; güvenli klasör adları, sürüm geri dönüşü, doku adları) | 9b0139c |
 | CP-15 | 2026-10-28 | Görev 7: generator (20 test; yarım/boş cevap asla oyun sayılmaz) | e7d6584 |
 | CP-16 | 2026-10-28 | Görev 8: htmlscan (10 test) | d568df0 |
+| CP-17 | 2026-10-28 | Görev 9: report_server + harness (25 test; tarayıcıda elle doğrulandı) | 19f612e |
