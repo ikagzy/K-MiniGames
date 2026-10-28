@@ -46,3 +46,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-37 | 2026-10-28 | Don masanın üstüne alındı (ADVISOR_ANCHOR 529,323); exe derlendi | c5c5d4f |
 | CP-38 | 2026-10-28 | Don defterin üstünden çıkarıldı, masanın arkasına alındı (ADVISOR_ANCHOR 529,309); exe derlendi | 48cb3dc |
 | CP-39 | 2026-10-28 | Don 12 piksel daha yukarı alındı (ADVISOR_ANCHOR 529,297); exe derlendi | 21a7156 |
+| CP-40 | 2026-10-28 | Don ve Bob'un ekranları siyahtan ~1,2 sn'de açılıyor; karakterler adlarını söylüyor (Ben Don!/Ben Bob!); sığmayan mesajlar sayfalara bölünüyor (◀ ▶ ve fare tekerleği); 2 yeni test; exe derlendi | 180cfd3 |
