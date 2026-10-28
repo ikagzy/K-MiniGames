@@ -9,7 +9,9 @@ from k_minigames.startup import advisor_id, startup_state
 from k_minigames.ui.advisor_screen import AdvisorScreen
 from k_minigames.ui.library_screen import LibraryScreen
 from k_minigames.ui.services import Services
+from k_minigames.ui.settings_screen import SettingsScreen
 from k_minigames.ui.setup_screen import SetupScreen
+from k_minigames.ui.title_screen import TitleScreen
 from k_minigames.ui.stage import Stage
 from k_minigames.ui.studio_screen import StudioScreen
 from k_minigames.ui.worker import Worker
@@ -41,22 +43,25 @@ class App(tk.Tk):
             ask_text=lambda title, prompt: simpledialog.askstring(title, prompt, parent=self),
             open_path=lambda path: os.startfile(str(path)),
         )
-        self._factories = {"setup": SetupScreen, "advisor": AdvisorScreen, "library": LibraryScreen,
+        self._factories = {"title": TitleScreen, "settings": SettingsScreen, "setup": SetupScreen, "advisor": AdvisorScreen, "library": LibraryScreen,
                            "studio": StudioScreen}
         self._current = None
         self.after(100, lambda: self._begin(first_screen))
 
     def _begin(self, first_screen: str | None) -> None:
-        if first_screen:
-            self.navigate(first_screen)
-        else:
-            self.services.worker.run(lambda: next_screen(self.services.client), self.navigate, self._failed)
+        self.navigate(first_screen or "title")
+
+    def start(self) -> None:
+        """"Başla" on the title screen: pick the first real screen."""
+        self.services.worker.run(lambda: next_screen(self.services.client), self.navigate, self._failed)
 
     def _failed(self, error: Exception) -> None:
         self.services.info("K-MiniGames", str(error))
         self.navigate("setup")
 
     def navigate(self, name: str) -> None:
+        if name == "start":
+            return self.start()
         if self._current is not None:
             self._current.hide()
         self._current = self._factories[name](self.services)

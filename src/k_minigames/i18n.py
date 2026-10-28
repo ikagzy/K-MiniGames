@@ -84,6 +84,12 @@ _PAIRS = {
     "Kurulum dosyası başlatılamadı.": "The setup file could not be started.",
     "Ollama kuruldu ama çalışmadı. Birazdan 'Ollama'yı başlat' düğmesini dene.":
         "Ollama was installed but did not start. Try the 'Start Ollama' button in a moment.",
+    # title and settings
+    "Başla": "Start", "Ayarlar": "Settings", "Çıkış": "Quit", "← Geri": "← Back", "Hafızayı sil": "Forget memory",
+    "Ayarlar: Ollama, model ve klasör.": "Settings: Ollama, model and folder.",
+    "Hafıza silinsin mi?": "Delete the memory?",
+    "Don'un senin hakkında hatırladıkları silinecek.": "What Don remembers about you will be deleted.",
+    "Hafıza silindi": "Memory deleted", "Don artık seni yeniden tanıyacak.": "Don will get to know you again.",
 }
 
 

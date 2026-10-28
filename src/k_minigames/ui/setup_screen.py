@@ -30,6 +30,7 @@ class SetupScreen:
         self.s = services
         self.ollama_button = self.advisor_button = self.folder_button = None
         self.continue_button = self.cancel_button = self.bar = None
+        self.intro = INTRO
         self._widgets: list[tk.Widget] = []
         self._busy = False
         self._hidden = False
@@ -44,7 +45,7 @@ class SetupScreen:
         stage.stop_asking()
         stage.set_scene("danisman")
         stage.set_character("advisor", "greeting")
-        stage.say(ADVISOR_NAME, t(INTRO))
+        stage.say(ADVISOR_NAME, t(self.intro))
         self._hidden = False
         self._build()
         self.refresh()
@@ -84,7 +85,7 @@ class SetupScreen:
         self.folder_button = self._button(TEXT_X + 440, FOLDER_Y, 120, self._on_folder)
         self.folder_button.configure(text=t("Klasör seç"))
         self.continue_button = self._button(TEXT_X + 575, FOLDER_Y, 100, self._on_continue)
-        self.continue_button.configure(text=t("Devam →"), state="disabled")
+        self.continue_button.configure(text=t(self._continue_label()), state="disabled")
         self._show_folder()
 
     # --- what is shown --------------------------------------------------------------------------
@@ -118,6 +119,9 @@ class SetupScreen:
 
     def apply_ready(self, ready: bool) -> None:
         self.continue_button.configure(state="normal" if ready and not self._busy else "disabled")
+
+    def _continue_label(self) -> str:
+        return "Devam →"
 
     # --- finding out where things stand ------------------------------------------------------------
 

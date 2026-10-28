@@ -51,6 +51,13 @@ class Stage(tk.Canvas):
             self.tag_lower("character", "dialog")
         self.tag_lower("scene")
 
+    def clear(self) -> None:
+        """Wipe everything (a plain black stage, for the title screen)."""
+        self.stop_asking()
+        self.delete("all")
+        self._dialog_drawn = False
+        self._frame = ""
+
     def set_scene(self, name: str) -> None:
         self.delete("scene")
         self.create_image(0, 0, anchor="nw", image=self._picture(_SCENES[name]), tags="scene")
