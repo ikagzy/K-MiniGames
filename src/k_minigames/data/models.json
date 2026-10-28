@@ -1,5 +1,5 @@
 {
-  "advisor": {"id": "qwen2.5:3b", "size_gb": 1.9, "min_ram_gb": 6},
+  "advisor": {"id": "qwen3.5:4b", "size_gb": 3.4, "min_ram_gb": 8},
   "coders": [
     {"id": "qwen2.5-coder:1.5b", "size_gb": 1.0, "min_ram_gb": 4},
     {"id": "qwen2.5-coder:3b", "size_gb": 1.9, "min_ram_gb": 6},

@@ -142,3 +142,24 @@ def test_pull_is_false_when_cancelled_or_unreachable():
 def test_pull_without_a_success_line_is_false():
     c, _ = client(ndjson({"status": "downloading", "completed": 1, "total": 2}))
     assert c.pull("m", lambda *a: None) is False
+
+
+def test_installed_lists_names_sizes_in_gigabytes_and_families():
+    from k_minigames.ollama_client import InstalledModel
+
+    body = {"models": [
+        {"name": "llama3.1:8b", "size": 4920000000, "details": {"family": "llama", "parameter_size": "8.0B"}},
+        {"name": "eski:1b", "size": 1073741824},
+    ]}
+    c, opener = client(body=json.dumps(body).encode())
+    models = c.installed()
+    assert [m.name for m in models] == ["llama3.1:8b", "eski:1b"]
+    assert models[0].size_gb == pytest.approx(4.58, abs=0.01) and models[0].family == "llama"
+    assert models[1] == InstalledModel("eski:1b", 1.0, "")
+    assert opener.requests[0].full_url.endswith("/api/tags")
+
+
+def test_installed_raises_when_ollama_is_unreachable():
+    c, _ = client(error=URLError("kapalı"))
+    with pytest.raises(OllamaError):
+        c.installed()

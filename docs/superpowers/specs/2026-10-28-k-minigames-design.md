@@ -77,6 +77,15 @@ Yerel modeller uzun sohbette baştakini unutur. Bu yüzden uygulama sohbeti kend
 - Kapsam dışı (ilk sürüm): hafızayı arayüzde gösterme/düzenleme/sıfırlama; dosya düz metin olduğu için kullanıcı isterse elle düzenleyebilir.
 - `testler.json`'daki `resolved` (çözülmüş hatalar) ayrı kalır; hafıza sohbetin anlamını, `resolved` düzeltilen teknik hataları tutar.
 
+## Kurulu model varsa (kullanıcı isteği, uygulama sırasında eklendi)
+Ollama'da zaten modeller kurulu olabilir. Uygulama hem danışman modeli hem oyun yazan model için şu sırayla **izin sorar**, hiçbir şeyi sormadan indirmez ya da seçmez:
+1. Bilgisayarda iş için **yeterli ya da daha büyük** bir model varsa: "{ad} modeli zaten kurulu, bunu kullanayım mı?" Evet → o model seçilir, hiçbir şey indirilmez.
+2. Hayır ya da uygun model yoksa: önerilen modeli (danışman için katalogdaki danışman, oyun için danışmanın önerdiği ve doğrulanan model) indirme izni sorulur (adres/boyut gösterilir). Evet → indirilir.
+3. Onu da reddederse: "Model kurulmadığı için devam edemiyorum. İstediğin zaman yeniden deneyebilirsin." mesajı gösterilir, hiçbir şey indirilmez ve ayar değişmez.
+- **Yeterli** = embedding olmayan (adı `embed` içermeyen, ailesi `bert` içermeyen) kurulu bir model, dosya boyutu gereken modelin boyutunun en az %90'ı ve bu bilgisayara sığan (RAM ≥ max(boyut×2.2, 4) GB ya da VRAM ≥ boyut×1.2). Birden fazla uygunsa en küçüğü önerilir. Modelin gerçek yeteneği ölçülemez; boyut yaklaşık göstergedir.
+- Önerilen modelin **kendisi** zaten kuruluysa izin sorulmadan kullanılır (indirilecek bir şey yok).
+- Seçilen danışman modeli `settings.json` içinde `advisor_model`, oyun modeli `game_model` anahtarında saklanır.
+
 ## K-Series entegrasyonu
 K-Series `k_series/products.py` içinde K-MiniGames'i yeni bir ürün olarak algılar (çalışan süreç, kayıtlı yol `%LOCALAPPDATA%\K-MiniGames`, Programs/Program Files, masaüstü taraması; sürüm exe'den okunur). Yalnızca kart gösterir: sürüm, çalışıyor mu, "Aç". Bu değişiklik K-Optimizer deposunda ayrı bir iştir ve bu spec'in uygulama planında ayrı adım olarak yer alır.
 

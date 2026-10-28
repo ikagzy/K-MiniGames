@@ -6,6 +6,7 @@ import http.client
 import json
 import urllib.request
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 
 DEFAULT_BASE = "http://127.0.0.1:11434"
 NUM_CTX = 8192  # Ollama's default context is too short for a whole game's HTML plus the prompt
@@ -13,6 +14,13 @@ NUM_CTX = 8192  # Ollama's default context is too short for a whole game's HTML 
 
 class OllamaError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class InstalledModel:
+    name: str
+    size_gb: float   # the model file's size, a rough sign of how capable it is
+    family: str      # e.g. "llama", "qwen", "nomic-bert" (embedding models cannot chat)
 
 
 _NET_ERRORS = (OSError, http.client.HTTPException)
@@ -39,13 +47,21 @@ class OllamaClient:
         except (*_NET_ERRORS, ValueError):
             return False
 
-    def models(self) -> list[str]:
+    def _tags(self) -> list[dict]:
         try:
             with self._open("/api/tags", timeout=5) as response:
                 data = json.loads(response.read())
         except (*_NET_ERRORS, ValueError) as exc:
             raise OllamaError(f"Ollama'ya ulaşılamadı: {exc}") from exc
-        return [m["name"] for m in data.get("models", []) if isinstance(m, dict) and "name" in m]
+        return [m for m in data.get("models", []) if isinstance(m, dict) and "name" in m]
+
+    def models(self) -> list[str]:
+        return [m["name"] for m in self._tags()]
+
+    def installed(self) -> list[InstalledModel]:
+        return [InstalledModel(m["name"], float(m.get("size") or 0) / 1024 ** 3,
+                               str((m.get("details") or {}).get("family") or ""))
+                for m in self._tags()]
 
     def _events(self, response, cancel: Callable[[], bool] | None) -> Iterator[dict]:
         try:

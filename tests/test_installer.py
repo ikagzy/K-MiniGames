@@ -157,3 +157,85 @@ def test_wait_until_running_gives_up_after_the_timeout():
     clock = Clock()
     assert installer.wait_until_running(Client([]), timeout_s=5, sleep=clock.sleep, clock=clock) is False
     assert clock.now >= 5
+
+
+# --- install_ollama / ensure_running --------------------------------------------------------
+
+class Steps:
+    """Records what install_ollama did, with scripted answers for each step."""
+    def __init__(self, download=True, run=True, waits=(True,), exe=None, start=True):
+        self.log, self._download, self._run, self._waits, self._exe, self._start = [], download, run, list(waits), exe, start
+
+    def download(self, url, dest, on_progress, cancel=None):
+        self.log.append(("download", url, dest.name))
+        return self._download
+
+    def run(self, setup):
+        self.log.append(("run", setup.name))
+        return self._run
+
+    def wait(self, client, timeout_s=60):
+        self.log.append(("wait", timeout_s))
+        return self._waits.pop(0) if self._waits else False
+
+    def find_exe(self):
+        return self._exe
+
+    def start(self, exe):
+        self.log.append(("start", exe.name))
+        return self._start
+
+
+def install(steps, tmp_path):
+    return installer.install_ollama(object(), lambda d, t: None, download=steps.download, run=steps.run,
+                                    wait=steps.wait, exe=steps.find_exe, start=steps.start, folder=tmp_path)
+
+
+def test_install_ollama_downloads_runs_the_setup_and_waits_for_the_server(tmp_path):
+    steps = Steps()
+    assert install(steps, tmp_path) == "ok"
+    assert steps.log[0] == ("download", installer.OLLAMA_URL, "OllamaSetup.exe")
+    assert [entry[0] for entry in steps.log] == ["download", "run", "wait"]
+
+
+def test_install_ollama_stops_when_the_download_fails(tmp_path):
+    steps = Steps(download=False)
+    assert install(steps, tmp_path) == "download_failed"
+    assert [entry[0] for entry in steps.log] == ["download"]
+
+
+def test_install_ollama_reports_a_setup_that_could_not_start(tmp_path):
+    assert install(Steps(run=False), tmp_path) == "setup_failed"
+
+
+def test_install_ollama_starts_the_server_itself_when_the_setup_did_not(tmp_path):
+    exe = tmp_path / "ollama.exe"
+    steps = Steps(waits=(False, True), exe=exe)
+    assert install(steps, tmp_path) == "ok"
+    assert ("start", "ollama.exe") in steps.log
+
+
+def test_install_ollama_says_not_running_when_the_server_never_comes_up(tmp_path):
+    assert install(Steps(waits=(False, False), exe=tmp_path / "ollama.exe"), tmp_path) == "not_running"
+    assert install(Steps(waits=(False,), exe=None), tmp_path) == "not_running"
+
+
+def test_ensure_running_does_nothing_when_ollama_already_answers():
+    class Up:
+        def is_running(self):
+            return True
+
+    assert installer.ensure_running(Up(), exe=lambda: (_ for _ in ()).throw(AssertionError("no lookup"))) is True
+
+
+def test_ensure_running_starts_an_installed_ollama_and_waits(tmp_path):
+    class Down:
+        def is_running(self):
+            return False
+
+    started = []
+    exe = tmp_path / "ollama.exe"
+    ok = installer.ensure_running(Down(), exe=lambda: exe, start=lambda e: started.append(e) or True,
+                                  wait=lambda client, timeout_s=60: True)
+    assert ok is True and started == [exe]
+    assert installer.ensure_running(Down(), exe=lambda: None) is False

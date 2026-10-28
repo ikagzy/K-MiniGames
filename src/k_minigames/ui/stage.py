@@ -2,6 +2,7 @@
 
 Pictures are loaded from assets/runtime (prepared by tools/prepare_assets.py, so no resizing happens here).
 The dialogue box shows who is speaking (DANIŞMAN or SEN) above the message; only one side speaks at a time."""
+import base64
 import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
@@ -33,7 +34,9 @@ class Stage(tk.Canvas):
 
     def _picture(self, relative: str) -> tk.PhotoImage:
         if relative not in self._pictures:
-            self._pictures[relative] = tk.PhotoImage(master=self, file=str(RUNTIME / relative))
+            # read here and hand Tk the data: Tk's own file opening fails now and then on folder names with Turkish letters
+            data = base64.b64encode((RUNTIME / relative).read_bytes())
+            self._pictures[relative] = tk.PhotoImage(master=self, data=data)
         return self._pictures[relative]
 
     def _layer(self) -> None:

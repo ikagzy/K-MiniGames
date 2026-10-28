@@ -5,6 +5,7 @@ import http.client
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 import urllib.request
 from collections.abc import Callable
@@ -107,3 +108,37 @@ def wait_until_running(client, timeout_s: float = 60, sleep: Callable[[float], N
         if clock() >= deadline:
             return False
         sleep(1.0)
+
+
+_download, _run_setup, _start_server, _wait, _ollama_exe = download, run_setup, start_server, wait_until_running, ollama_exe
+
+
+def ensure_running(client, *, exe: Callable[[], Path | None] | None = None, start: Callable | None = None,
+                   wait: Callable | None = None, timeout_s: float = 20) -> bool:
+    """Ollama answers, starting an installed Ollama if it is not running yet."""
+    if client.is_running():
+        return True
+    found = (exe or _ollama_exe)()
+    if found is None or not (start or _start_server)(found):
+        return False
+    return (wait or _wait)(client, timeout_s=timeout_s)
+
+
+def install_ollama(client, on_progress: Callable[[int, int | None], None], cancel: Callable[[], bool] | None = None, *,
+                   download: Callable | None = None, run: Callable | None = None, wait: Callable | None = None,
+                   exe: Callable[[], Path | None] | None = None, start: Callable | None = None,
+                   folder: Path | None = None) -> str:
+    """Download Ollama's setup, run it (the user clicks through it) and wait for the server.
+    Returns "ok", "download_failed", "setup_failed" or "not_running"."""
+    setup = (folder or Path(tempfile.gettempdir())) / "OllamaSetup.exe"
+    if not (download or _download)(OLLAMA_URL, setup, on_progress, cancel):
+        return "download_failed"
+    if not (run or _run_setup)(setup):
+        return "setup_failed"
+    waiter = wait or _wait
+    if waiter(client, 300):
+        return "ok"
+    found = (exe or _ollama_exe)()
+    if found is not None and (start or _start_server)(found) and waiter(client, 30):
+        return "ok"
+    return "not_running"

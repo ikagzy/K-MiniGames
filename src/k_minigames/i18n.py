@@ -12,6 +12,36 @@ LANGUAGES = (("tr", "Türkçe"), ("en", "English"))
 _PAIRS = {
     "Oyun klasörü": "Games folder",
     "DANIŞMAN": "ADVISOR", "SEN": "YOU", "Gönder": "Send",
+    # setup screen
+    "Merhaba! Başlamak için Ollama'nın ve bir danışman modelin hazır olması lazım. Sormadan hiçbir şey indirmem.":
+        "Hello! To start, Ollama and an advisor model must be ready. I will not download anything without asking.",
+    "Ollama'yı indir": "Download Ollama", " (yaklaşık ": " (about ", "Ollama'yı başlat": "Start Ollama",
+    "Ollama hazır ✓": "Ollama ready ✓", "Danışmanı indir": "Download the advisor",
+    "Danışman modelini seç": "Choose the advisor model", "Danışman hazır ✓": "Advisor ready ✓",
+    "Klasör seç": "Choose folder", "seçilmedi": "not chosen", "Devam →": "Continue →",
+    "İptal edildi": "Cancelled", "İptal ediliyor…": "Cancelling…", "İptal": "Cancel",
+    "İndiriliyor…": "Downloading…", "Ollama başlatılıyor…": "Starting Ollama…",
+    "Ollama başlatılamadı.": "Could not start Ollama.",
+    "Model indirilemedi ya da iptal edildi.": "The model could not be downloaded or was cancelled.",
+    "Durum okunamadı": "Could not read the state", "Klasör kullanılamıyor": "Folder cannot be used",
+    "Bu klasöre yazılamıyor ya da diskte yeterli yer yok.":
+        "Cannot write to this folder, or there is not enough disk space.",
+    "Kurulu model bulundu": "Installed model found", "Danışman modeli indirilsin mi?": "Download the advisor model?",
+    "Ollama indirilsin mi?": "Download Ollama?", "bilinmiyor": "unknown",
+    "Bilgisayarında ": "On your computer, ", " modeli zaten kurulu (yaklaşık ": " model is already installed (about ",
+    ") ve bu iş için yeterli.\n\nBunu danışman olarak kullanayım mı?":
+        ") and is enough for this job.\n\nShall I use it as the advisor?",
+    " modeli Ollama üzerinden indirilecek (yaklaşık ": " model will be downloaded through Ollama (about ",
+    ").\n\nİndirilsin mi?": ").\n\nShould I download it?",
+    "Ollama'nın kurulum dosyası şu adresten indirilecek:\n": "Ollama's setup file will be downloaded from:\n",
+    "\nBoyut: ": "\nSize: ", "\n\nİndirilsin ve kurulsun mu?": "\n\nDownload and install it?",
+    "Model kurulmadığı için devam edemiyorum. İstediğin zaman yeniden deneyebilirsin.":
+        "I cannot go on without a model. You can try again whenever you like.",
+    "İndirme olmadı. İnternet bağlantını kontrol edip tekrar dene.":
+        "The download failed. Check your internet connection and try again.",
+    "Kurulum dosyası başlatılamadı.": "The setup file could not be started.",
+    "Ollama kuruldu ama çalışmadı. Birazdan 'Ollama'yı başlat' düğmesini dene.":
+        "Ollama was installed but did not start. Try the 'Start Ollama' button in a moment.",
 }
 
 

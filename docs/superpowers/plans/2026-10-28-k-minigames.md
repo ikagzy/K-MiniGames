@@ -37,6 +37,14 @@ Spec'in ima ettiği ama görev testlerinin doğal olarak yakalamayacağı, bir k
 
 ---
 
+## Plan değişikliği 1: kurulu model varsa izin iste (kullanıcı isteği, Görev 13 sırasında)
+
+Spec'teki "Kurulu model varsa" bölümü sonradan eklendi. Etkilenen görevler (Görev 2 ve 3 bitmişti; eklemeler Görev 13'ün commit'inde yapıldı):
+- **Görev 2'ye ek:** `OllamaClient.installed() -> list[InstalledModel]` (`InstalledModel(name, size_gb, family)`; `/api/tags`'ten).
+- **Görev 3'e ek:** `model_check.usable(m)` ve `model_check.installed_alternative(needed: ModelInfo, installed, ram_gb, vram_gb) -> InstalledModel | None`.
+- **Görev 13'e ek:** `startup.Offer`, `startup.build_offers(match, to_install)`, `startup.first_accepted(offers, confirm)`, `startup.CANCEL_MESSAGE`; başlangıç ekranı danışman modeli için bu sırayı izler; `startup_state` kullanıcının seçtiği `advisor_model`'e bakar.
+- **Görev 14'e ek:** `AdvisorFlow` oyun modeli için aynı sırayı izler (kurulu uygun model → önerilen model → iptal mesajı); "Başka öneri" düğmesi yerine reddedilen model yüklemesi iptal mesajıyla biter.
+
 ## File Structure
 
 ```
