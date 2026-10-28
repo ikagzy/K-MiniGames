@@ -316,3 +316,32 @@ def test_asking_whether_ollama_runs_happens_off_the_interface_thread(env):
     answer(services, pump, "uzay oyunu")
     assert pump(lambda: flows.calls != [])
     assert threads and threads[0] != threading.main_thread().name
+
+
+def test_bob_uses_what_don_learned_instead_of_asking_everything_again(env):
+    from k_minigames import memory
+    services, games, log, pump, texts = env
+    memory.save(memory.advisor_path(), "Amaç: GTA benzeri oyun\n- klavye ve fare")
+    services.session = {"mode": "create"}
+    flows = FakeFlows()
+    screen = studio(services, flows)
+    screen.show()
+    answer(services, pump, "Şehir")
+    assert pump(lambda: any("GTA benzeri" in x for x in texts()))
+    answer(services, pump, "evet")
+    assert pump(lambda: flows.calls != [])
+    assert flows.calls[0][2] == "Amaç: GTA benzeri oyun\n- klavye ve fare"
+
+
+def test_what_the_user_adds_goes_after_dons_notes(env):
+    from k_minigames import memory
+    services, games, log, pump, texts = env
+    memory.save(memory.advisor_path(), "Amaç: yarış oyunu")
+    services.session = {"mode": "create"}
+    flows = FakeFlows()
+    screen = studio(services, flows)
+    screen.show()
+    answer(services, pump, "Pist")
+    answer(services, pump, "ama arabalar kırmızı olsun")
+    assert pump(lambda: flows.calls != [])
+    assert flows.calls[0][2] == "Amaç: yarış oyunu\nama arabalar kırmızı olsun"

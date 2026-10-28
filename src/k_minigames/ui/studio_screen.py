@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from k_minigames import i18n, library, settings, studio
+from k_minigames import memory as memory_notes
 from k_minigames.checker import CheckReport
 from k_minigames.generator import Generator
 from k_minigames.htmlscan import Problem
@@ -28,6 +29,9 @@ SPEAKER = BEAR_NAME
 ASK_NAME = "Ben Bob! Oyununa ne ad verelim?"
 ASK_DESCRIPTION = ("Nasıl bir oyun istiyorsun? Anlat bakalım. İstersen önce sağ üstteki 'Doku ekle' ile resimlerini "
                    "ekleyebilirsin.")
+ASK_KNOWN = ("Don bana şunları anlattı:\n")
+ASK_KNOWN_END = "\nBunu yapayım mı? 'evet' yaz ya da eklemek istediklerini yaz."
+YES_WORDS = ("evet", "e", "tamam", "olur", "yap", "yes", "y", "ok")
 ASK_CHANGE = "Ne değiştirmek istiyorsun?"
 NOT_RUNNING = "Ollama çalışmıyor. Açıp tekrar dener misin?"
 FAILED_TEXT = "Oyunu üretemedim"
@@ -113,6 +117,7 @@ class StudioScreen:
         self._status = ("generating", "")
         self._cancel: CancelToken | None = None
         self._hidden = False
+        self._notes = ""
 
     # --- life cycle ------------------------------------------------------------------------------------
 
@@ -194,9 +199,13 @@ class StudioScreen:
             self.s.info(t("Klasör kullanılamıyor"), t("Bu klasöre yazılamıyor ya da diskte yeterli yer yok."))
             return
         self._game = library.create_game(folder, name)
-        self._ask(ASK_DESCRIPTION, self._on_description)
+        # what Don learned in the talk before is not asked again: Bob reads Don's notes and only wants a yes or more
+        self._notes = memory_notes.load(memory_notes.advisor_path()).strip()
+        self._ask(ASK_KNOWN + self._notes + ASK_KNOWN_END if self._notes else ASK_DESCRIPTION, self._on_description)
 
     def _on_description(self, description: str) -> None:
+        if self._notes:
+            description = self._notes if description.strip().lower() in YES_WORDS else f"{self._notes}\n{description}"
         self._run(lambda game, textures, server, status, cancel: self._flows.create(
             self._generator_factory(), game, description, textures, server, self._open_url, status, cancel,
             background=_in_background), retry=self._on_description)

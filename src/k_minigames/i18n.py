@@ -91,6 +91,9 @@ _PAIRS = {
     "Ben Bob! Oyunların burada, birini seç.": "I'm Bob! Your games are here, pick one.",
     "Ben Bob! Henüz oyunun yok, ilkini yapalım!": "I'm Bob! You have no games yet, let's make the first!",
     "Ben Bob! ": "I'm Bob! ",
+    "Don bana şunları anlattı:\n": "Don told me this:\n",
+    "\nBunu yapayım mı? 'evet' yaz ya da eklemek istediklerini yaz.":
+        "\nShall I make it? Type 'yes' or write what you want to add.",
     # title and settings
     "Başla": "Start", "Ayarlar": "Settings", "Çıkış": "Quit", "← Geri": "← Back", "Hafızayı sil": "Forget memory",
     "Ayarlar: Ollama, model ve klasör.": "Settings: Ollama, model and folder.",
