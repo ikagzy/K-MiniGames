@@ -22,7 +22,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 
 ## Durum
 - Brainstorming bitti, spec yazıldı; kullanıcı spec'i henüz onaylamadı. Onaydan sonra `writing-plans`.
-- UI görselleri (sahne, diyalog kutusu, 9 danışman karesi, 12 ayı karesi) hazır ve repoda (CP-1..CP-3). Üretim ekranı için ayrı arka plan kullanıcı tarafından hazırlanıyor (GPT ile). Başlangıç, kütüphane ve düzenleme ekranlarının görselleri henüz yok.
+- UI görselleri (sahne, diyalog kutusu, 9 danışman karesi, 12 ayı karesi) hazır ve repoda (CP-1..CP-3). Üretim ekranının arka planı (otel lobisi, `lobi.png`) eklendi (CP-5). Başlangıç, kütüphane ve düzenleme ekranlarının görselleri henüz yok.
 - Henüz uygulama kodu yok.
 
 ## Kullanıcıyla çalışma

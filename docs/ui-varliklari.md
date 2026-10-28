@@ -7,7 +7,8 @@ Danışmanla konuşma ekranı: karanlık piksel sanat bir ofis sahnesi, masanın
 | Dosya | Boyut | Ne |
 |---|---|---|
 | `sahne.png` | 1024x572 | Arka plan: tuğla duvar, pencere, "KAGZY" tabelası, masa, sandalye, lamba, açık kapı |
-| `diyalog.png` | 733x213 | Beyaz çerçeveli, siyah iç diyalog kutusu (şeffaf dış kenar) |
+| `diyalog.png` | 733x212 | Beyaz çerçeveli, siyah iç diyalog kutusu (şeffaf dış kenar) |
+| `lobi.png` | 1678x937 | Oyun üretme ekranının arka planı: otel lobisi (GPT ile, ilk sahneyle aynı stil). Ortası ayı için boş; zemin çizgisi yaklaşık %60 yükseklikte |
 | `danisman/*.png` | 222x199 (hepsi) | Danışmanın ifadeleri; tümü aynı tuvalde, karakter her karede aynı yerde |
 
 Üretim: kullanıcının gönderdiği damalı (sahte şeffaf) resimler `tools/remove_checkerboard.py` ile gerçek şeffaf PNG'ye çevrildi. Aracı çalıştırmak için `Pillow` gerekir (yalnızca geliştirme makinesinde; uygulama yalnızca tkinter kullanır).
@@ -47,7 +48,7 @@ Sahnede yaklaşık 0.75 ölçekle (200 piksel boy) iyi oturuyor; en yakın komş
 | `hata` | Elleri yanaklarında, ter damlası | Bir şey ters gitti (Ollama cevap vermedi, indirme hatası) |
 | `emin_degil` | Omuz silkiyor | Test maddesi doğrulanamadı; uygun model/cevap bulunamadı |
 
-Önizleme: `docs/onizleme-lobi.png` (yeni lobi arka planı + `basari` karesi + diyalog kutusu).
+Önizleme: `docs/onizleme-lobi.png` (lobi arka planı 1024x572'ye küçültülmüş + `bosta` karesi 0.75 ölçekle + diyalog kutusu). Ayı lobinin loş ışığına göre biraz parlak; sahneye koyarken hafifçe koyulaştırılacak.
 
 ## Diyalog kutusu kuralı
 Sıra tek tarafta olur, ikisi aynı anda konuşmaz:
@@ -56,7 +57,7 @@ Sıra tek tarafta olur, ikisi aynı anda konuşmaz:
 - Kutunun içi simsiyah olduğu için yazı açık renkte olmalı.
 
 ## Birleştirirken karara bağlanacaklar
-- Karakterin kendi hokkası ve tüy kalemi var; sahnede masada başka bir tüy kalem/hokka da var. Çakışırsa sahnedeki silinir ya da karakterinki kullanılır.
+- Danışman ekranındaki karakterin kendi hokkası ve tüy kalemi var; sahnede masada başka bir tüy kalem/hokka da var. Çakışırsa sahnedeki silinir ya da karakterinki kullanılır. (Ayı ekranında bu sorun yok: lobi ayrı bir sahne.)
 - Sahne ve karakterin piksel boyutları farklı olabilir; yerleştirirken karakter ölçeklenir (en yakın komşu ile, bulanıklaşmasın).
 - Yazı tipi: piksel sanata uygun bir yazı tipi gerekebilir (lisansı uygun olanı).
 - Zil, defter ve kapı gibi sahne nesnelerinin tıklanabilir bir işi olup olmayacağı ayrı bir konu (şimdilik yok sayılıyor).
