@@ -22,3 +22,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-13 | 2026-10-28 | Görev 5: advisor + memory.block (12 test) | 4b96acd |
 | CP-14 | 2026-10-28 | Görev 6: library (28 test; güvenli klasör adları, sürüm geri dönüşü, doku adları) | 9b0139c |
 | CP-15 | 2026-10-28 | Görev 7: generator (20 test; yarım/boş cevap asla oyun sayılmaz) | e7d6584 |
+| CP-16 | 2026-10-28 | Görev 8: htmlscan (10 test) | d568df0 |
