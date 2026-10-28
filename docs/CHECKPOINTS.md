@@ -29,3 +29,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-20 | 2026-10-28 | Görev 12: mascot, assets/runtime, Stage (39 test; gerçek Tk penceresinde görüntü alındı) | 9d8100d |
 | CP-21 | 2026-10-28 | Görev 13: kabuk, Worker, başlangıç ekranı, kurulu-model izin akışı, İngilizce çeviriler (49 yeni test; gerçek pencerede doğrulandı) | c9d9f1c |
 | CP-22 | 2026-10-28 | Görev 14: AdvisorFlow + AdvisorScreen (21 yeni test; gerçek qwen3.5:4b ile uçtan uca doğrulandı) | 30065bb |
+| CP-23 | 2026-10-28 | Görev 15: LibraryScreen, StudioScreen, summary_lines, daktilo yardımcısı (22 yeni test; gerçek modelle uçtan uca oyun üretimi denendi) | b71e9ff |
