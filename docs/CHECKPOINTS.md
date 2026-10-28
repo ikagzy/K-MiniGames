@@ -16,3 +16,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-7 | 2026-10-28 | Plana "çözülmüş hatalar" hafızası eklendi (Görev 7, 10, 11) | 22ab02e |
 | CP-8 | 2026-10-28 | Uygulamanın kendi hafızası: danışman (danisman_hafiza.md) ve ayı (oyunun hafiza.md); spec ve plana Görev 18 | a6e5a98 |
 | CP-9 | 2026-10-28 | Görev 1: iskelet, ayarlar, dil (9 test) | 6bf6555 |
+| CP-10 | 2026-10-28 | Görev 2: ollama_client (sohbet akışı, pull, kopma/iptal hataları; 16 test) | c44fbd0 |
