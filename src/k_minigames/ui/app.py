@@ -3,7 +3,7 @@ import tkinter as tk
 import os
 from tkinter import filedialog, messagebox, simpledialog
 
-from k_minigames import i18n, installer, settings
+from k_minigames import i18n, installer, library, settings
 from k_minigames.ollama_client import OllamaClient
 from k_minigames.startup import advisor_id, startup_state
 from k_minigames.ui.advisor_screen import AdvisorScreen
@@ -21,7 +21,12 @@ def next_screen(client) -> str:
     """Start Ollama if it is installed but not running, then decide which screen comes first."""
     installer.ensure_running(client)
     state = startup_state(client, advisor_id(), settings.get("game_model"))
-    return "setup" if settings.games_dir() is None else state
+    folder = settings.games_dir()
+    if folder is None:
+        return "setup"
+    if state == "library" and not library.list_games(folder):
+        return "advisor"   # nothing to show yet: Don first, then Bob makes the first game
+    return state
 
 
 class App(tk.Tk):

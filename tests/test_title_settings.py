@@ -117,3 +117,17 @@ def test_the_characters_tell_their_names_and_the_room_fades_in(env):
     while ticks:
         ticks.pop(0)()
     assert not stage.find_withtag("fade") and not stage._fade_hidden
+
+
+def test_start_opens_don_when_there_are_no_games_and_bob_when_there_are(tmp_path, monkeypatch):
+    from k_minigames import library, settings
+    from k_minigames.ui import app
+    monkeypatch.setattr(app.installer, "ensure_running", lambda client: True)
+    monkeypatch.setattr(app, "startup_state", lambda client, advisor, game_model: "library")
+    assert app.next_screen(object()) == "setup"   # no folder yet
+    folder = tmp_path / "oyunlar"
+    folder.mkdir()
+    settings.set_games_dir(folder)
+    assert app.next_screen(object()) == "advisor"
+    library.create_game(folder, "Uzay").html_path.write_text("<html></html>", encoding="utf-8")
+    assert app.next_screen(object()) == "library"

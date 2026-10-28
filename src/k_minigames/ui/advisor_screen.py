@@ -183,4 +183,9 @@ class AdvisorScreen:
         from k_minigames import settings
         model = settings.get("game_model") or ""
         self._say_then(t(f"Tamam! Oyunlarını {model} modeliyle yazacağız. Hadi başlayalım!"), "farewell",
-                       lambda: self._later(self._finish_ms, lambda: self.s.navigate("library")))
+                       lambda: self._later(self._finish_ms, self._hand_over))
+
+    def _hand_over(self) -> None:
+        """Don is done: Bob takes the game on (he reads Don's notes, see StudioScreen._on_name)."""
+        self.s.session = {"mode": "create"}
+        self.s.navigate("studio")

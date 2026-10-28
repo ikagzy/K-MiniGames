@@ -60,6 +60,10 @@ class AdvisorFlow:
             return []
 
     def _propose(self, proposal: str) -> None:
+        chosen = settings.get("game_model")
+        if chosen and chosen in [m.name for m in self._installed_models()]:
+            self.state = "done"   # the user already agreed to this model: a new game does not ask again
+            return
         self.recommendation = model_check.recommend(proposal, self._ram, self._vram)
         needed = self.recommendation.model
         match = model_check.installed_alternative(needed, self._installed_models(), self._ram, self._vram,

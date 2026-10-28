@@ -84,16 +84,16 @@ def test_the_library_lists_the_games_and_play_opens_the_launcher(env):
     assert log["opened"] == [first.launcher_path]
 
 
-def test_new_game_and_edit_go_to_the_studio_with_the_right_session(env):
+def test_new_game_starts_with_don_and_edit_goes_to_bob_with_the_right_session(env):
     services, games, log, pump, texts = env
     game = make_game(games, "Uzay")
     screen = LibraryScreen(services)
     screen.show()
     screen.new_game()
-    assert log["went"] == ["studio"] and services.session == {"mode": "create"}
+    assert log["went"] == ["advisor"]
     screen.listbox.selection_set(0)
     screen.edit()
-    assert log["went"] == ["studio", "studio"] and services.session == {"mode": "edit", "game": game}
+    assert log["went"] == ["advisor", "studio"] and services.session == {"mode": "edit", "game": game}
 
 
 def test_without_a_selection_play_and_edit_do_nothing(env):

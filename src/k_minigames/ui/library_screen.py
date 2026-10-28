@@ -82,5 +82,4 @@ class LibraryScreen:
             self.s.navigate("studio")
 
     def new_game(self) -> None:
-        self.s.session = {"mode": "create"}
-        self.s.navigate("studio")
+        self.s.navigate("advisor")   # a new game starts with Don; he hands over to Bob (see AdvisorScreen._finish)

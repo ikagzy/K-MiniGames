@@ -91,7 +91,7 @@ def test_a_message_is_shown_as_SEN_and_the_answer_comes_back_as_DON(env):
     assert "DON" in texts() and "SEN" not in texts()
 
 
-def test_a_proposal_that_is_accepted_downloads_the_model_and_opens_the_library(env):
+def test_a_proposal_that_is_accepted_downloads_the_model_and_hands_over_to_bob(env):
     services, state, pump, texts = env
     state["answers"].append(True)
     advisor = FakeAdvisor(AdvisorReply("Şunu öneririm.", "qwen2.5-coder:7b"))
@@ -100,7 +100,7 @@ def test_a_proposal_that_is_accepted_downloads_the_model_and_opens_the_library(e
     assert pump(lambda: services.stage.entry is not None)
     services.stage.entry.insert(0, "hazırım")
     services.stage.submit()
-    assert pump(lambda: state["went"] == ["library"])
+    assert pump(lambda: state["went"] == ["studio"])
     assert client.pulled == ["qwen2.5-coder:7b"] and settings.get("game_model") == "qwen2.5-coder:7b"
     assert "qwen2.5-coder:7b" in state["asked"][0][1] and "4.7 GB" in state["asked"][0][1]
 
