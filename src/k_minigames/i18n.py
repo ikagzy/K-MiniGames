@@ -11,6 +11,7 @@ LANGUAGES = (("tr", "Türkçe"), ("en", "English"))
 
 _PAIRS = {
     "Oyun klasörü": "Games folder",
+    "DANIŞMAN": "ADVISOR", "SEN": "YOU", "Gönder": "Send",
 }
 
 
