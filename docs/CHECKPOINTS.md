@@ -40,3 +40,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-31 | 2026-10-28 | Atıf yalnızca README'de; konuşma animasyonu 240 ms'de bir kare; aynı kare yeniden çizilmiyor; Ollama hata metni (HTTP 500); testlerde Tk çöp toplama; 6 yeni test | dbfbdc5 |
 | CP-32 | 2026-10-28 | Giriş ekranı (Başla/Ayarlar/Çıkış, kalp imleci) ve Ayarlar ekranı (Ollama ve danışman modeli kurulumu, klasör, hafızayı sil); Determination yazı tipi exe'ye eklendi (spec'te eksikti); 3 yeni test; dist/K-MiniGames.exe derlendi | e81bf5b |
 | CP-33 | 2026-10-28 | Danışman kullanıcının yazdığı dilde cevap veriyor (İngilizce yazana Türkçe cevap veriyordu); exe yeniden derlendi | 1cbc27f |
+| CP-34 | 2026-10-28 | Don sandalyeye ortalandı (ADVISOR_ANCHOR x 535); danışman dil düzeltmesi dahil exe yeniden derlendi | fff4965 |
