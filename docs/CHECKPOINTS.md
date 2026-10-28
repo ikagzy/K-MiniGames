@@ -37,3 +37,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-28 | 2026-10-28 | Karakter adları: danışman Don, ayı Bob (konuşma etiketleri) | b34ec12 |
 | CP-29 | 2026-10-28 | Bağımsız inceleme düzeltmeleri (6 Önemli + 3 yeniden derecelendirilen; 25 yeni test) | a5a4a97 |
 | CP-30 | 2026-10-28 | Ertelenen küçük bulgular düzeltildi (#8 #10 #11 #12 #13 #14, K-Optimizer'da #16); 8 yeni test | c5b8710 |
+| CP-31 | 2026-10-28 | Atıf yalnızca README'de; konuşma animasyonu 240 ms'de bir kare; aynı kare yeniden çizilmiyor; Ollama hata metni (HTTP 500); testlerde Tk çöp toplama; 6 yeni test | dbfbdc5 |
