@@ -43,3 +43,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-34 | 2026-10-28 | Don sandalyeye ortalandı (ADVISOR_ANCHOR x 535); danışman dil düzeltmesi dahil exe yeniden derlendi | fff4965 |
 | CP-35 | 2026-10-28 | Don defterin üstüne oturacak şekilde aşağı alındı ve sandalyeye ortalandı (ADVISOR_ANCHOR 529,329); exe yeniden derlendi | aa9e8ec |
 | CP-36 | 2026-10-28 | Ana menüde Başla yalnızca Ollama çalışıyor ve danışman modeli kuruluysa görünüyor; uzun mesajlar küçülerek diyalog kutusuna sığıyor; 3 yeni test; exe derlendi | 9655895 |
+| CP-37 | 2026-10-28 | Don masanın üstüne alındı (ADVISOR_ANCHOR 529,323); exe derlendi | c5c5d4f |
