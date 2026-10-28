@@ -5,13 +5,13 @@ from k_minigames import i18n, library, settings
 from k_minigames.library import Game
 from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
-from k_minigames.ui.stage import LABEL_COLOR, TEXT_COLOR, TEXT_X
+from k_minigames.ui.stage import BEAR_NAME, LABEL_COLOR, TEXT_COLOR, TEXT_X
 
 t = i18n.t
 
 INTRO = "Oyunların burada. Birini seç ya da yeni oyun yap!"
 EMPTY = "Henüz oyunun yok. Hadi ilkini yapalım!"
-SPEAKER = "GÖREVLİ"
+SPEAKER = BEAR_NAME
 LIST_Y, BUTTON_X, BUTTON_W = 440, 660, 190
 
 

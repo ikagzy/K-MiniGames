@@ -18,13 +18,13 @@ from k_minigames.report_server import ReportServer
 from k_minigames.testlist import FAILED, PASSED, UNVERIFIED
 from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
-from k_minigames.ui.stage import TEXT_COLOR, TEXT_X
+from k_minigames.ui.stage import BEAR_NAME, TEXT_COLOR, TEXT_X
 from k_minigames.ui.typewriter import type_text
 from k_minigames.ui.worker import CancelToken
 
 t = i18n.t
 
-SPEAKER = "GÖREVLİ"
+SPEAKER = BEAR_NAME
 ASK_NAME = "Oyununa ne ad verelim?"
 ASK_DESCRIPTION = ("Nasıl bir oyun istiyorsun? Anlat bakalım. İstersen önce sağ üstteki 'Doku ekle' ile resimlerini "
                    "ekleyebilirsin.")

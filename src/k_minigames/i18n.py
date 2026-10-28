@@ -11,7 +11,7 @@ LANGUAGES = (("tr", "Türkçe"), ("en", "English"))
 
 _PAIRS = {
     "Oyun klasörü": "Games folder",
-    "DANIŞMAN": "ADVISOR", "SEN": "YOU", "Gönder": "Send",
+    "SEN": "YOU", "Gönder": "Send",   # DON and BOB are names: they stay the same in every language
     # setup screen
     "Merhaba! Önce Ollama ve bir danışman model lazım.": "Hello! First we need Ollama and an advisor model.",
     "Ollama'yı indir": "Download Ollama", " (yaklaşık ": " (about ", "Ollama'yı başlat": "Start Ollama",
@@ -51,7 +51,6 @@ _PAIRS = {
     "danışman model önermedi": "the advisor proposed no model",
     "; bilgisayar zayıf, en küçük model denenebilir": "; this computer is weak, the smallest model can be tried",
     # library and studio (the bellhop)
-    "GÖREVLİ": "BELLHOP",
     "Oyunların burada. Birini seç ya da yeni oyun yap!": "Your games are here. Pick one or make a new one!",
     "Henüz oyunun yok. Hadi ilkini yapalım!": "You have no games yet. Let's make your first one!",
     "Oyna": "Play", "Düzenle": "Edit", "Klasörü aç": "Open folder", "Yeni oyun": "New game",

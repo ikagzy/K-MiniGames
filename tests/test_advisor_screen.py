@@ -74,10 +74,10 @@ def test_the_advisor_greets_and_then_waits_for_the_user_to_type(env):
     screen, _ = screen_for(services, FakeAdvisor())
     screen.show()
     assert pump(lambda: services.stage.entry is not None)
-    assert GREETING in texts() and "DANIŞMAN" in texts()
+    assert GREETING in texts() and "DON" in texts()
 
 
-def test_a_message_is_shown_as_SEN_and_the_answer_comes_back_as_DANIŞMAN(env):
+def test_a_message_is_shown_as_SEN_and_the_answer_comes_back_as_DON(env):
     services, state, pump, texts = env
     screen, _ = screen_for(services, FakeAdvisor(AdvisorReply("Hangi türde bir oyun?", None)))
     screen.show()
@@ -86,7 +86,7 @@ def test_a_message_is_shown_as_SEN_and_the_answer_comes_back_as_DANIŞMAN(env):
     services.stage.submit()
     assert pump(lambda: "SEN" in texts() and "uzay oyunu istiyorum" in texts())
     assert pump(lambda: "Hangi türde bir oyun?" in texts() and services.stage.entry is not None)
-    assert "DANIŞMAN" in texts() and "SEN" not in texts()
+    assert "DON" in texts() and "SEN" not in texts()
 
 
 def test_a_proposal_that_is_accepted_downloads_the_model_and_opens_the_library(env):

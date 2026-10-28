@@ -1,6 +1,6 @@
 """The conversation with the advisor, on the advisor's stage.
 
-Only one side speaks at a time: the label above the message says DANIŞMAN while the advisor talks (its mouth moves
+Only one side speaks at a time: the label above the message says DON while the advisor talks (its mouth moves
 as the text appears) and SEN while the user's own message is shown. When the advisor proposes a model the screen
 asks before it uses an installed one or downloads a new one (see AdvisorFlow)."""
 from k_minigames import hardware, i18n
@@ -9,6 +9,7 @@ from k_minigames.ollama_client import OllamaError
 from k_minigames.startup import advisor_id
 from k_minigames.ui.advisor_flow import AdvisorFlow
 from k_minigames.ui.services import Services
+from k_minigames.ui.stage import ADVISOR_NAME
 from k_minigames.ui.typewriter import type_text
 from k_minigames.ui.worker import CancelToken
 
@@ -54,7 +55,7 @@ class AdvisorScreen:
 
     def _say_then(self, text: str, then_state: str, then) -> None:
         """Type `text` as the advisor (mouth moving), then show `then_state` and call `then`."""
-        type_text(self.s.stage, self.s.root.after, self._jobs, "advisor", "DANIŞMAN", text, then_state, then,
+        type_text(self.s.stage, self.s.root.after, self._jobs, "advisor", ADVISOR_NAME, text, then_state, then,
                   self._typing_ms)
 
     def _ask(self) -> None:
@@ -136,7 +137,7 @@ class AdvisorScreen:
             return
         done, total = self._progress
         percent = f" %{done * 100 // total}" if total else ""
-        self.s.stage.say("DANIŞMAN", t("İndiriliyor…") + percent)
+        self.s.stage.say(ADVISOR_NAME, t("İndiriliyor…") + percent)
         self._later(250, self._poll)
 
     def _finish(self) -> None:

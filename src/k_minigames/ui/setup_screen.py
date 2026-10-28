@@ -11,7 +11,7 @@ from k_minigames.ollama_client import InstalledModel
 from k_minigames.startup import CANCEL_MESSAGE, Offer, build_offers, first_accepted, setup_buttons, SetupButtons
 from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
-from k_minigames.ui.stage import LABEL_COLOR, TEXT_COLOR, TEXT_X
+from k_minigames.ui.stage import ADVISOR_NAME, LABEL_COLOR, TEXT_COLOR, TEXT_X
 
 t = i18n.t
 
@@ -43,7 +43,7 @@ class SetupScreen:
         stage.stop_asking()
         stage.set_scene("danisman")
         stage.set_character("advisor", "greeting")
-        stage.say("DANIŞMAN", t(INTRO))
+        stage.say(ADVISOR_NAME, t(INTRO))
         self._build()
         self.refresh()
 

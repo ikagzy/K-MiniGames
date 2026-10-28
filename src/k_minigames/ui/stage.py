@@ -1,7 +1,8 @@
 """The stage every screen is drawn on: a 1024x572 scene, one character, and the dialogue box at the bottom.
 
 Pictures are loaded from assets/runtime (prepared by tools/prepare_assets.py, so no resizing happens here).
-The dialogue box shows who is speaking (DANIŞMAN or SEN) above the message; only one side speaks at a time."""
+The dialogue box shows who is speaking (DON, the advisor; BOB, the bellhop bear; or SEN, the user) above the
+message; only one side speaks at a time."""
 import base64
 import tkinter as tk
 from collections.abc import Callable
@@ -14,6 +15,7 @@ RUNTIME = Path(__file__).resolve().parent.parent / "assets" / "runtime"
 _SCENES = {"danisman": "danisman_sahne.png", "lobi": "lobi.png"}
 
 WIDTH, HEIGHT = 1024, 572
+ADVISOR_NAME, BEAR_NAME, USER_NAME = "DON", "BOB", "SEN"   # the labels above the messages
 ADVISOR_ANCHOR = (512, 322)   # bottom centre of the advisor, sitting behind the desk
 BEAR_ANCHOR = (512, 352)      # where the bear's feet stand on the lobby floor
 FOOT_PAD = 4                  # transparent margin under the feet in the prepared pictures

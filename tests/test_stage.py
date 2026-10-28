@@ -39,23 +39,23 @@ def test_both_scenes_and_all_character_poses_load_as_pictures(root):
 
 def test_say_shows_the_speaker_label_and_the_message(root):
     stage = Stage(root)
-    stage.say("DANIŞMAN", "Merhaba, ne yapalım?")
-    assert "DANIŞMAN" in texts(stage) and "Merhaba, ne yapalım?" in texts(stage)
+    stage.say("DON", "Merhaba, ne yapalım?")
+    assert "DON" in texts(stage) and "Merhaba, ne yapalım?" in texts(stage)
 
 
 def test_saying_again_replaces_the_previous_text(root):
     stage = Stage(root)
-    stage.say("DANIŞMAN", "birinci")
+    stage.say("DON", "birinci")
     stage.say("SEN", "ikinci")
     assert "birinci" not in texts(stage) and "ikinci" in texts(stage) and "SEN" in texts(stage)
-    assert "DANIŞMAN" not in texts(stage)
+    assert "DON" not in texts(stage)
 
 
-def test_the_speaker_label_follows_the_interface_language(root):
+def test_the_user_label_follows_the_interface_language_but_the_names_do_not(root):
     stage = Stage(root)
     i18n.set_language("en")
-    stage.say("DANIŞMAN", "hello")
-    assert "ADVISOR" in texts(stage)
+    stage.say("DON", "hello")
+    assert "DON" in texts(stage)
     stage.say("SEN", "hi")
     assert "YOU" in texts(stage)
 

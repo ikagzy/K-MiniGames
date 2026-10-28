@@ -52,7 +52,7 @@ Sahnede yaklaşık 0.75 ölçekle (200 piksel boy) iyi oturuyor; en yakın komş
 
 ## Diyalog kutusu kuralı
 Sıra tek tarafta olur, ikisi aynı anda konuşmaz:
-- Danışman konuşurken kutunun üstünde `DANIŞMAN` yazar, altında danışmanın mesajı gelir.
+- Danışmanın adı **Don**, ayının adı **Bob**. Danışman konuşurken kutunun üstünde `DON` yazar, altında mesajı gelir; ayı konuşurken `BOB` yazar. Adlar her dilde aynı kalır.
 - Sıra kullanıcıdayken `SEN` yazar, altına kullanıcı kendi mesajını yazar.
 - Kutunun içi simsiyah olduğu için yazı açık renkte olmalı.
 
