@@ -68,6 +68,8 @@ _PAIRS = {
     " madde geçti": " items passed", " madde doğrulanamadı": " items could not be verified",
     " madde kaldı": " items failed", " kez otomatik düzelttim": " automatic fixes made",
     "Hata kaldı: ": "Error left: ", "Sorun kaldı: ": "Problem left: ", "… ve ": "… and ", " hata daha": " more errors",
+    "Dikkat: oyun konsola ": "Warning: the game writes ", " hata mesajı yazıyor": " error messages to the console",
+    "İndirme iptal edildi.": "The download was cancelled.",
     "Oyun tarayıcıda denenemedi; çalıştığını doğrulayamadım.":
         "The game could not be tried in the browser; I could not confirm that it works.",
     "Dikkat: oyun bir dış ağ adresi kullanıyor": "Warning: the game uses an external web address",
@@ -85,7 +87,11 @@ _PAIRS = {
 
 
 def _alt(key: str) -> str:
-    return re.escape(key)
+    """The phrase as a regex; a phrase that starts or ends with a letter does not match inside a longer word
+    (so `SEN` is not found in `SENSOR.png`)."""
+    left = r"(?<!\w)" if key[0].isalnum() else ""
+    right = r"(?!\w)" if key[-1].isalnum() else ""
+    return left + re.escape(key) + right
 
 
 _PATTERN = re.compile("|".join(_alt(k) for k in sorted(_PAIRS, key=len, reverse=True)))

@@ -17,7 +17,8 @@ def fake_run_once(game, html, items, server, open_url=None, timeout_s=20):
     status = FAILED if "FAILTEST" in html else PASSED
     updated = [replace(i, status=status, note="") if i.code is not None
                else replace(i, status=UNVERIFIED, note="test yazılamadı") for i in items]
-    return CheckReport([], updated, errors, "HANG" not in html)
+    console = ["Konsol hatası: bilgi"] if "CONSOLE" in html else []
+    return CheckReport([], updated, errors, "HANG" not in html, console)
 
 
 class FakeGenerator:
@@ -289,3 +290,9 @@ def test_an_edit_whose_page_never_reports_back_is_rejected_and_the_working_game_
 def test_a_new_game_whose_page_never_reports_back_is_saved_but_the_report_says_it_did_not_finish(game):
     out = flow(studio.create_game_flow, FakeGenerator(create=Generated("HANG", [])), game, "x", [])
     assert out.saved and out.report.finished is False
+
+
+def test_an_edit_whose_game_only_writes_to_the_console_is_accepted(game):
+    make_game_with_v1(game)
+    out = flow(studio.edit_game_flow, FakeGenerator(edit=Generated("<html>CONSOLE</html>", [])), game, "x", [])
+    assert out.saved and not out.rejected

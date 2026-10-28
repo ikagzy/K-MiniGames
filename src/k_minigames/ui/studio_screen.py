@@ -65,6 +65,8 @@ def summary_lines(report: CheckReport, attempts: int, rejected: bool) -> list[st
     lines += _leftover_lines(report)
     if not report.finished:
         lines.append("Oyun tarayıcıda denenemedi; çalıştığını doğrulayamadım.")
+    if report.console_errors:
+        lines.append(f"Dikkat: oyun konsola {len(report.console_errors)} hata mesajı yazıyor")
     for problem in report.problems:
         if isinstance(problem, Problem) and problem.kind == "external_url":
             lines.append(f"Dikkat: oyun bir dış ağ adresi kullanıyor ({problem.detail})")
@@ -87,6 +89,10 @@ def _in_background(generator, game, user_text: str, note: str, previous: str) ->
     """The memory update runs on its own thread so the result is shown without waiting for it."""
     threading.Thread(target=studio.remember_exchange, args=(generator, game, user_text, note, previous),
                      daemon=True).start()
+
+
+class _NotRunning(Exception):
+    pass
 
 
 class StudioScreen:
@@ -232,9 +238,6 @@ class StudioScreen:
     def _run(self, work, retry) -> None:
         stage = self.s.stage
         stage.stop_asking()
-        if not self.s.client.is_running():
-            self._finish_with_error(t(NOT_RUNNING), retry)
-            return
         folder = settings.games_dir()
         if folder is None or not library.can_write(folder):   # before every generation, create or edit
             self._finish_with_error(t("Bu klasöre yazılamıyor ya da diskte yeterli yer yok."), retry)
@@ -249,6 +252,8 @@ class StudioScreen:
             self._status = (state, t(text))
 
         def job():
+            if not self.s.client.is_running():
+                raise _NotRunning()
             server.start()
             try:
                 return work(game, library.textures(game), server, status, self._cancel)
@@ -278,6 +283,9 @@ class StudioScreen:
     def _failed(self, error: Exception, retry) -> None:
         self._busy = False
         if self._hidden:
+            return
+        if isinstance(error, _NotRunning):
+            self._finish_with_error(t(NOT_RUNNING), retry)
             return
         self._finish_with_error(f"{t(FAILED_TEXT)}: {error}", retry)
 

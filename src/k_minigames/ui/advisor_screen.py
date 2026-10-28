@@ -3,13 +3,16 @@
 Only one side speaks at a time: the label above the message says DON while the advisor talks (its mouth moves
 as the text appears) and SEN while the user's own message is shown. When the advisor proposes a model the screen
 asks before it uses an installed one or downloads a new one (see AdvisorFlow)."""
+import tkinter as tk
+
 from k_minigames import hardware, i18n
 from k_minigames.advisor import Advisor
 from k_minigames.ollama_client import OllamaError
 from k_minigames.startup import advisor_id
 from k_minigames.ui.advisor_flow import AdvisorFlow
+from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
-from k_minigames.ui.stage import ADVISOR_NAME
+from k_minigames.ui.stage import ADVISOR_NAME, TEXT_COLOR, TEXT_X
 from k_minigames.ui.typewriter import type_text
 from k_minigames.ui.worker import CancelToken
 
@@ -18,6 +21,7 @@ t = i18n.t
 GREETING = "Merhaba! Nasıl bir oyun yapmak istiyorsun?"
 UNREACHABLE = "Ollama'ya ulaşamadım. Çalışıp çalışmadığını kontrol edip tekrar yazar mısın?"
 DOWNLOAD_FAILED = "Model indirilemedi. İstersen tekrar deneyelim."
+DOWNLOAD_CANCELLED = "İndirme iptal edildi."
 
 
 class AdvisorScreen:
@@ -29,6 +33,9 @@ class AdvisorScreen:
         self._jobs: list[str] = []
         self._busy = False
         self._last_user = ""
+        self._token: CancelToken | None = None
+        self._cancel_button: tk.Button | None = None
+        self._cancelled = False
         self._progress: tuple[int, int | None] = (0, None)
 
     # --- life cycle -----------------------------------------------------------------------------------
@@ -36,13 +43,17 @@ class AdvisorScreen:
     def show(self) -> None:
         if self._flow is None:
             client = self.s.client
-            self._flow = AdvisorFlow(Advisor(client, advisor_id()), client, hardware.ram_gb(), hardware.vram_gb(),
-                                     installed=client.installed)
+            flow = AdvisorFlow(Advisor(client, advisor_id()), client, hardware.ram_gb(), None,
+                               installed=client.installed)
+            self._flow = flow
+            # nvidia-smi can take seconds: measure the card in the background (a proposal comes much later)
+            self.s.worker.run(hardware.vram_gb, flow.set_vram, lambda _error: None)
         self.s.stage.set_scene("danisman")
         self._say_then(t(GREETING), "greeting", self._ask)
 
     def hide(self) -> None:
         self._busy = False
+        self._remove_cancel_button()
         for job in self._jobs:
             self.s.root.after_cancel(job)
         self._jobs = []
@@ -96,7 +107,8 @@ class AdvisorScreen:
         elif flow.state == "cancelled":
             self._say_then(t(flow.cancel_message), "unsure", self._ask)
         else:
-            self._say_then(t(DOWNLOAD_FAILED), "unsure", self._ask)
+            text = DOWNLOAD_CANCELLED if self._cancelled else DOWNLOAD_FAILED
+            self._say_then(t(text), "unsure", self._ask)
 
     def _question(self) -> None:
         flow, offer = self._flow, self._flow.current_offer
@@ -119,10 +131,14 @@ class AdvisorScreen:
         self._busy, self._progress = True, (0, None)
         self.s.stage.set_character("advisor", "thinking")
         self._poll()
-        token = CancelToken()
+        token = self._token = CancelToken()
+        self._cancelled = False
+        self._show_cancel_button()
 
         def finished(_result) -> None:
             self._busy = False
+            self._cancelled = token()
+            self._remove_cancel_button()
             self._dispatch()
 
         def failed(_error: Exception) -> None:
@@ -131,6 +147,27 @@ class AdvisorScreen:
 
         self.s.worker.run(lambda: flow.install(lambda status, done, total: setattr(self, "_progress", (done, total)),
                                                token), finished, failed)
+
+    def _show_cancel_button(self) -> None:
+        button = tk.Button(self.s.stage, text=t("İptal"), command=self.cancel_install, relief="flat", bg="#333333",
+                           fg=TEXT_COLOR, activebackground="#555555", activeforeground=TEXT_COLOR,
+                           font=fonts.font(self.s.stage, fonts.BUTTON))
+        self.s.stage.create_window(TEXT_X, 470, anchor="nw", window=button, width=140, height=26, tags="cancel")
+        self._cancel_button = button
+
+    def _remove_cancel_button(self) -> None:
+        self.s.stage.delete("cancel")
+        if self._cancel_button is not None:
+            self._cancel_button.destroy()
+            self._cancel_button = None
+
+    def cancel_button_visible(self) -> bool:
+        return self._cancel_button is not None
+
+    def cancel_install(self) -> None:
+        """Stop the running model download (the model is not remembered)."""
+        if self._token is not None:
+            self._token.cancel()
 
     def _poll(self) -> None:
         if not self._busy:

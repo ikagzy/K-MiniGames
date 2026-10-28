@@ -32,6 +32,7 @@ class SetupScreen:
         self.continue_button = self.cancel_button = self.bar = None
         self._widgets: list[tk.Widget] = []
         self._busy = False
+        self._hidden = False
         self._cancel = None
         self._progress: tuple[int, int | None] = (0, None)
         self._last: dict = {"models": [], "buttons": SetupButtons("download", "disabled")}
@@ -44,10 +45,12 @@ class SetupScreen:
         stage.set_scene("danisman")
         stage.set_character("advisor", "greeting")
         stage.say(ADVISOR_NAME, t(INTRO))
+        self._hidden = False
         self._build()
         self.refresh()
 
     def hide(self) -> None:
+        self._hidden = True
         self.s.stage.delete("setup")
         for widget in self._widgets:
             widget.destroy()
@@ -128,14 +131,17 @@ class SetupScreen:
         models = client.installed() if running else []
         wanted = settings.get("advisor_model") or catalog.advisor().id
         size = installer.download_size() if not installed and not running else None
-        return {"installed": installed, "running": running, "models": models,
+        has_alternative = bool(model_check.installed_alternative(   # nvidia-smi can take seconds: here, not in the UI
+            catalog.advisor(), models, hardware.ram_gb(), hardware.vram_gb()))
+        return {"installed": installed, "running": running, "models": models, "has_alternative": has_alternative,
                 "advisor_installed": wanted in [m.name for m in models], "ollama_size": size}
 
     def _apply_probe(self, probe: dict) -> None:
+        if self._hidden:
+            return   # the screen was left while the probe was running
         self._last.update(probe)
         needed = catalog.advisor()
-        has_alternative = bool(model_check.installed_alternative(
-            needed, probe["models"], hardware.ram_gb(), hardware.vram_gb()))
+        has_alternative = probe["has_alternative"]
         buttons = setup_buttons(probe["installed"], probe["running"], probe["advisor_installed"])
         size = f"{probe['ollama_size'] / 1024 ** 3:.1f} GB" if probe["ollama_size"] else None
         self.apply_buttons(buttons, size, needed.size_gb, has_alternative)
@@ -143,6 +149,8 @@ class SetupScreen:
         self._show_folder()
 
     def _probe_failed(self, error: Exception) -> None:
+        if self._hidden:
+            return
         self._status(f"{t('Durum okunamadı')}: {error}")
 
     # --- asking -----------------------------------------------------------------------------------

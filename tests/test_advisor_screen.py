@@ -1,5 +1,7 @@
+import threading
 import time
 import tkinter as tk
+import types
 
 import pytest
 
@@ -142,3 +144,44 @@ def test_an_error_from_the_advisor_is_said_politely_and_the_user_can_try_again(e
     services.stage.entry.insert(0, "selam")
     services.stage.submit()
     assert pump(lambda: any("ulaşamadım" in t for t in texts()) and services.stage.entry is not None)
+
+
+# --- review: cancelling the download, and nothing slow on the interface thread ---------------------------------------
+
+class WaitingClient(FakeClient):
+    """A download that only stops when it is cancelled."""
+    def pull(self, model, on_progress, cancel=None):
+        self.pulled.append(model)
+        end = time.monotonic() + 5
+        while not cancel() and time.monotonic() < end:
+            time.sleep(0.01)
+        return False
+
+
+def test_the_game_model_download_can_be_cancelled(env):
+    services, state, pump, texts = env
+    state["answers"].append(True)
+    screen, client = screen_for(services, FakeAdvisor(AdvisorReply("Şunu öneririm.", "qwen2.5-coder:7b")),
+                                WaitingClient())
+    screen.show()
+    assert pump(lambda: services.stage.entry is not None)
+    services.stage.entry.insert(0, "hazırım")
+    services.stage.submit()
+    assert pump(lambda: screen.cancel_button_visible())
+    screen.cancel_install()
+    assert pump(lambda: "İndirme iptal edildi." in texts() and services.stage.entry is not None)
+    assert settings.get("game_model") is None and state["went"] == [] and not screen.cancel_button_visible()
+
+
+def test_the_graphics_card_is_measured_off_the_interface_thread(env, monkeypatch):
+    from k_minigames.ui import advisor_screen
+
+    services, state, pump, texts = env
+    threads = []
+    monkeypatch.setattr(advisor_screen.hardware, "vram_gb", lambda: (threads.append(threading.current_thread().name), 8.0)[1])
+    services.client = types.SimpleNamespace(installed=lambda: [], is_running=lambda: True)
+    screen = AdvisorScreen(services, typing_ms=1)
+    screen.show()
+    assert pump(lambda: bool(threads))
+    assert threads[0] != threading.main_thread().name
+    assert pump(lambda: screen._flow.vram_gb == 8.0)

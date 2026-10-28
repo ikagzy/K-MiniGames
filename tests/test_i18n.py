@@ -72,3 +72,10 @@ def test_the_library_and_studio_texts_have_english_versions():
     assert i18n.t("Tamam, 2. sürüme döndüm.") == "Okay, I went back to version 2."
     assert i18n.t("Dikkat: oyun bir dış ağ adresi kullanıyor (https://x.y)") == (
         "Warning: the game uses an external web address (https://x.y)")
+
+
+def test_a_phrase_is_not_replaced_inside_a_longer_word_or_file_name():
+    i18n.set_language("en")
+    assert i18n.t("SENSOR.png") == "SENSOR.png" and i18n.t("Oynanış.png") == "Oynanış.png"
+    assert i18n.t("SEN") == "YOU" and i18n.t("Oyna") == "Play"
+    assert i18n.t("zemin.png bir resim değil.") == "zemin.png is not a picture."

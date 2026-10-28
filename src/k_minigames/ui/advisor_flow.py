@@ -24,6 +24,14 @@ class AdvisorFlow:
         self.cancel_message = ""
         self._offers: list[Offer] = []
 
+    @property
+    def vram_gb(self) -> float | None:
+        return self._vram
+
+    def set_vram(self, value: float | None) -> None:
+        """The graphics card memory, measured in the background after the screen opened."""
+        self._vram = value
+
     # --- talking ------------------------------------------------------------------------------------
 
     def user_says(self, text: str, memory: str | None = None, on_token=None, cancel=None) -> AdvisorReply:

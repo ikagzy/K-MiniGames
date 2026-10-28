@@ -91,6 +91,7 @@ K-Series `k_series/products.py` içinde K-MiniGames'i yeni bir ürün olarak alg
 
 ## Hata durumları
 - Ollama kurulu değil / çalışmıyor: başlangıç ekranı ilgili düğmeyi gösterir, hata değil durumdur.
+- Ollama kurulu ama çalışmıyorsa uygulama açılırken yerel sunucuyu kendisi başlatır (yalnızca `ollama serve`; hiçbir şey indirmez ya da seçmez, tıklama gerekmez). Başlamazsa başlangıç ekranında "Ollama'yı başlat" düğmesi çıkar.
 - İndirme yarıda kesildi: kaldığı yerden denenir, olmazsa yeniden başlat seçeneği.
 - Model önerisi geçersiz ya da donanıma fazla büyük: alternatif sunulur, kullanıcıya açıklanır.
 - Üretilen HTML boş / bozuk: otomatik düzeltme turuna girer, 3 turdan sonra kullanıcıya bildirilir.

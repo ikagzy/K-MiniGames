@@ -74,3 +74,12 @@ Final: fixed #7 non-UTF-8 memory file — test_a_memory_file_saved_in_an_old_cod
 Final: fixed #9 time allowed — test_the_time_allowed_grows_with_the_number_of_tests RED→GREEN, suite 357/357
 Final: fixed #15 edit mode writable check — test_editing_checks_the_games_folder_first RED→GREEN, suite 357/357
 Final: Ruling: declined-to-judge item 'num_ctx 8192 may be too small for edit/fix prompts that carry the whole HTML' — left at 8192 — a very long game could be cut by Ollama and then fail to parse (shown as an error, never saved over a working game) — cost if wrong: long games cannot be edited until num_ctx is raised
+
+## Ertelenen küçük bulguların düzeltilmesi (inceleme sonrası ikinci tur)
+Final: fixed #8 file names rewritten by i18n.t() — a phrase now matches only as a whole word (test_a_phrase_is_not_replaced_inside_a_longer_word_or_file_name), suite 365/365
+Final: fixed #10 game-model download can be cancelled from Don's screen (Cancel button, "İndirme iptal edildi." message; test_the_game_model_download_can_be_cancelled)
+Final: fixed #11 console.error messages are a warning ("Dikkat: oyun konsola N hata mesajı yazıyor"), no longer a reason to reject an edit (CheckReport.console_errors; test_an_edit_whose_game_only_writes_to_the_console_is_accepted)
+Final: Ruling: #12 starting a installed Ollama at launch stays and is now written into the spec — it starts only `ollama serve`, never downloads or chooses anything — cost if wrong: the user sees Ollama start without clicking
+Final: fixed #13 slow calls off the interface thread: is_running in the studio, nvidia-smi in the setup probe and on Don's screen (tests check the thread name)
+Final: fixed #14 a setup probe finishing after hide() is ignored (test_a_probe_that_finishes_after_hide_does_nothing)
+Final: fixed #16 (K-Optimizer repo) K-Series passes settings key minigames_path to the detection (test_a_saved_k_minigames_path_is_given_to_the_detection); the extra scan when K-MiniGames is missing is the same cost K-Optimizer already pays, left as it is

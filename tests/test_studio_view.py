@@ -71,3 +71,9 @@ def test_the_pose_is_success_only_for_a_clean_and_finished_run():
     assert result_pose(CheckReport([], [], ["JavaScript hatası: x"], True), rejected=False) == "error"
     assert result_pose(CheckReport([], [], [], False), rejected=False) == "error"
     assert result_pose(report(passed=2), rejected=True) == "error"
+
+
+def test_console_messages_are_a_warning_not_an_error():
+    r = CheckReport([], [], [], True, console_errors=["Konsol hatası: x", "Konsol hatası: y"])
+    assert summary_lines(r, 0, False) == ["Dikkat: oyun konsola 2 hata mesajı yazıyor"]
+    assert result_pose(r, rejected=False) == "success"

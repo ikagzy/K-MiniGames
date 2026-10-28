@@ -1,6 +1,7 @@
 import threading
 import time
 import tkinter as tk
+import types
 from pathlib import Path
 
 import pytest
@@ -301,3 +302,17 @@ def test_editing_checks_the_games_folder_first(env, monkeypatch):
     answer(services, pump, "topu hızlandır")
     assert pump(lambda: any("yazılamıyor" in x for x in texts()))
     assert flows.calls == []
+
+
+def test_asking_whether_ollama_runs_happens_off_the_interface_thread(env):
+    services, games, log, pump, texts = env
+    threads = []
+    services.client = types.SimpleNamespace(is_running=lambda: (threads.append(threading.current_thread().name), True)[1])
+    services.session = {"mode": "create"}
+    flows = FakeFlows()
+    screen = studio(services, flows)
+    screen.show()
+    answer(services, pump, "Uzay")
+    answer(services, pump, "uzay oyunu")
+    assert pump(lambda: flows.calls != [])
+    assert threads and threads[0] != threading.main_thread().name

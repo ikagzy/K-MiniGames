@@ -1,4 +1,7 @@
+import threading
+import time
 import tkinter as tk
+import types
 
 import pytest
 
@@ -88,3 +91,34 @@ def test_without_an_installed_model_only_the_download_is_asked(env):
     answers.extend([True])
     choice = screen.advisor_choice([SMALL], ram_gb=32, vram_gb=None)
     assert choice.kind == "install_new" and len(asked) == 1
+
+
+# --- review: nothing slow on the interface thread, nothing after hide() ---------------------------------------------
+
+def test_the_setup_probe_measures_the_graphics_card_off_the_interface_thread(env, monkeypatch):
+    from k_minigames.ui import setup_screen
+
+    screen, answers, asked, infos = env
+    threads = []
+    monkeypatch.setattr(setup_screen.hardware, "vram_gb", lambda: (threads.append(threading.current_thread().name), None)[1])
+    screen.s.client = types.SimpleNamespace(is_running=lambda: True, installed=lambda: [])
+    screen.show()
+    end = time.monotonic() + 5
+    while not threads and time.monotonic() < end:
+        screen.s.root.update()
+        time.sleep(0.005)
+    assert threads and threads[0] != threading.main_thread().name
+
+
+def test_a_probe_that_finishes_after_hide_does_nothing(env):
+    screen, answers, asked, infos = env
+    problems = []
+    screen.s.root.report_callback_exception = lambda *args: problems.append(args)
+    screen.s.client = types.SimpleNamespace(is_running=lambda: (time.sleep(0.2), True)[1], installed=lambda: [])
+    screen.show()
+    screen.hide()
+    end = time.monotonic() + 1.0
+    while time.monotonic() < end:
+        screen.s.root.update()
+        time.sleep(0.005)
+    assert problems == []

@@ -83,8 +83,8 @@ def test_browser_errors_become_readable_messages_without_repeats(game):
     assert report.js_errors == [
         "JavaScript hatası: Uncaught ReferenceError: x is not defined (satır 12)",
         "Dosya yüklenemedi: assets/a.png",
-        "Konsol hatası: oyun bozuk",
     ]
+    assert report.console_errors == ["Konsol hatası: oyun bozuk"]     # reported, but it does not make the game "broken"
 
 
 def test_test_results_set_the_item_statuses(game):

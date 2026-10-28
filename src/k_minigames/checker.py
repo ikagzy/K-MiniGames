@@ -2,7 +2,7 @@
 import re
 import webbrowser
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 from k_minigames import harness, htmlscan, testlist
 from k_minigames.htmlscan import Problem
@@ -19,6 +19,7 @@ class CheckReport:
     items: list[TestItem]      # the test list with fresh statuses
     js_errors: list[str]       # what the browser reported while the game ran
     finished: bool             # False when the page never said `done` (timeout)
+    console_errors: list[str] = field(default_factory=list)   # console.error messages: a warning only
 
 
 def _describe(event: dict) -> str | None:
@@ -46,10 +47,12 @@ def run_once(game: Game, html: str, items: list[TestItem], server, open_url: Cal
     done = server.wait_for("done", timeout_s + PER_TEST_SECONDS * len(specs))   # every test runs twice, up to 8 s
     events = server.events()
     js_errors: list[str] = []
+    console_errors: list[str] = []
     for event in events:
         text = _describe(event)
-        if text and text not in js_errors:
-            js_errors.append(text)
+        bucket = console_errors if event.get("type") == "console_error" else js_errors
+        if text and text not in bucket:
+            bucket.append(text)
     answered = {e.get("id") for e in events if e.get("type") == "test"}
     updated = []
     for item in testlist.apply_results(items, events):
@@ -57,4 +60,4 @@ def run_once(game: Game, html: str, items: list[TestItem], server, open_url: Cal
             item = replace(item, status=testlist.UNVERIFIED,
                            note="zaman aşımı" if done is None else "sonuç gelmedi")
         updated.append(item)
-    return CheckReport(problems, updated, js_errors, done is not None)
+    return CheckReport(problems, updated, js_errors, done is not None, console_errors)
