@@ -41,3 +41,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-32 | 2026-10-28 | Giriş ekranı (Başla/Ayarlar/Çıkış, kalp imleci) ve Ayarlar ekranı (Ollama ve danışman modeli kurulumu, klasör, hafızayı sil); Determination yazı tipi exe'ye eklendi (spec'te eksikti); 3 yeni test; dist/K-MiniGames.exe derlendi | e81bf5b |
 | CP-33 | 2026-10-28 | Danışman kullanıcının yazdığı dilde cevap veriyor (İngilizce yazana Türkçe cevap veriyordu); exe yeniden derlendi | 1cbc27f |
 | CP-34 | 2026-10-28 | Don sandalyeye ortalandı (ADVISOR_ANCHOR x 535); danışman dil düzeltmesi dahil exe yeniden derlendi | fff4965 |
+| CP-35 | 2026-10-28 | Don defterin üstüne oturacak şekilde aşağı alındı ve sandalyeye ortalandı (ADVISOR_ANCHOR 529,329); exe yeniden derlendi | aa9e8ec |
