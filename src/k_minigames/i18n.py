@@ -13,8 +13,7 @@ _PAIRS = {
     "Oyun klasörü": "Games folder",
     "DANIŞMAN": "ADVISOR", "SEN": "YOU", "Gönder": "Send",
     # setup screen
-    "Merhaba! Başlamak için Ollama'nın ve bir danışman modelin hazır olması lazım. Sormadan hiçbir şey indirmem.":
-        "Hello! To start, Ollama and an advisor model must be ready. I will not download anything without asking.",
+    "Merhaba! Önce Ollama ve bir danışman model lazım.": "Hello! First we need Ollama and an advisor model.",
     "Ollama'yı indir": "Download Ollama", " (yaklaşık ": " (about ", "Ollama'yı başlat": "Start Ollama",
     "Ollama hazır ✓": "Ollama ready ✓", "Danışmanı indir": "Download the advisor",
     "Danışman modelini seç": "Choose the advisor model", "Danışman hazır ✓": "Advisor ready ✓",
@@ -53,7 +52,7 @@ _PAIRS = {
     "; bilgisayar zayıf, en küçük model denenebilir": "; this computer is weak, the smallest model can be tried",
     # library and studio (the bellhop)
     "GÖREVLİ": "BELLHOP",
-    "Oyunların burada. Birini seç ya da yeni bir tane yapalım!": "Your games are here. Pick one or let's make a new one!",
+    "Oyunların burada. Birini seç ya da yeni oyun yap!": "Your games are here. Pick one or make a new one!",
     "Henüz oyunun yok. Hadi ilkini yapalım!": "You have no games yet. Let's make your first one!",
     "Oyna": "Play", "Düzenle": "Edit", "Klasörü aç": "Open folder", "Yeni oyun": "New game",
     "Kütüphane": "Library", "Tekrar dene": "Try again", "Doku ekle": "Add texture",

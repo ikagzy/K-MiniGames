@@ -8,6 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from k_minigames import i18n, mascot
+from k_minigames.ui import fonts
 
 RUNTIME = Path(__file__).resolve().parent.parent / "assets" / "runtime"
 _SCENES = {"danisman": "danisman_sahne.png", "lobi": "lobi.png"}
@@ -31,6 +32,8 @@ class Stage(tk.Canvas):
         self.entry: tk.Entry | None = None
         self._send_button: tk.Button | None = None
         self._dialog_drawn = False
+        self.create_text(8, 4, anchor="nw", text=fonts.ATTRIBUTION, fill="#9a9ab0",
+                         font=fonts.font(self, fonts.SMALL), tags="credit")
 
     def _picture(self, relative: str) -> tk.PhotoImage:
         if relative not in self._pictures:
@@ -41,6 +44,7 @@ class Stage(tk.Canvas):
 
     def _layer(self) -> None:
         """scene at the bottom, then the character, then the dialogue box and its widgets."""
+        self.tag_raise("credit")
         for tag in ("dialog", "dialogtext", "input"):
             self.tag_raise(tag)
         if self.find_withtag("dialog"):
@@ -65,9 +69,9 @@ class Stage(tk.Canvas):
             self._dialog_drawn = True
         self.delete("dialogtext")
         self.create_text(TEXT_X, LABEL_Y, anchor="nw", text=i18n.t(speaker), fill=LABEL_COLOR,
-                         font=("Segoe UI", 12, "bold"), tags="dialogtext")
+                         font=fonts.font(self, fonts.LABEL), tags="dialogtext")
         self.create_text(TEXT_X, MESSAGE_Y, anchor="nw", text=text, fill=TEXT_COLOR, width=MESSAGE_WIDTH,
-                         font=("Segoe UI", 13), tags="dialogtext")
+                         font=fonts.font(self, fonts.MESSAGE), tags="dialogtext")
         self._layer()
 
     def ask(self, on_submit: Callable[[str], None]) -> None:
@@ -75,11 +79,11 @@ class Stage(tk.Canvas):
         self.stop_asking()
         self._on_submit = on_submit
         self.entry = tk.Entry(self, bg="black", fg=TEXT_COLOR, insertbackground=TEXT_COLOR, relief="flat",
-                              font=("Segoe UI", 13), highlightthickness=1, highlightbackground="#666666",
+                              font=fonts.font(self, fonts.INPUT), highlightthickness=1, highlightbackground="#666666",
                               highlightcolor=LABEL_COLOR)
         self._send_button = tk.Button(self, text=i18n.t("Gönder"), command=self.submit, relief="flat",
                                       bg="#333333", fg=TEXT_COLOR, activebackground="#555555",
-                                      activeforeground=TEXT_COLOR)
+                                      activeforeground=TEXT_COLOR, font=fonts.font(self, fonts.BUTTON))
         self.create_window(TEXT_X, INPUT_Y, anchor="nw", window=self.entry, width=590, height=30, tags="input")
         self.create_window(TEXT_X + 600, INPUT_Y, anchor="nw", window=self._send_button, width=80, height=30,
                            tags="input")

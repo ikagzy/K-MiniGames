@@ -25,3 +25,7 @@ python -m PyInstaller K-MiniGames.spec     # dist/K-MiniGames.exe
 ```
 
 Görsel araçları (`tools/`: damalı arka planı temizleme, ayı karelerini bölme, çalışma görsellerini hazırlama, simge) Pillow ister: `pip install -r requirements-tools.txt`. Uygulamanın kendisi yalnızca standart kütüphaneyi kullanır.
+
+## Atıflar
+
+- Yazı tipi: The FontStruction “Determination” (https://fontstruct.com/fontstructions/show/2368299) by “anonymous-1438277”. Lisansı o sayfada yazılıdır; atıf uygulamanın penceresinde gösterilir ve yazı tipiyle birlikte `src/k_minigames/assets/fonts/LICENSE.txt` içinde durur.

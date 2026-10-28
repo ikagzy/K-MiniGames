@@ -3,12 +3,13 @@ import tkinter as tk
 
 from k_minigames import i18n, library, settings
 from k_minigames.library import Game
+from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
 from k_minigames.ui.stage import LABEL_COLOR, TEXT_COLOR, TEXT_X
 
 t = i18n.t
 
-INTRO = "Oyunların burada. Birini seç ya da yeni bir tane yapalım!"
+INTRO = "Oyunların burada. Birini seç ya da yeni oyun yap!"
 EMPTY = "Henüz oyunun yok. Hadi ilkini yapalım!"
 SPEAKER = "GÖREVLİ"
 LIST_Y, BUTTON_X, BUTTON_W = 440, 660, 190
@@ -43,13 +44,14 @@ class LibraryScreen:
 
     def _button(self, text: str, y: int, command) -> None:
         button = tk.Button(self.s.stage, text=t(text), command=command, relief="flat", bg="#333333", fg=TEXT_COLOR,
-                           activebackground="#555555", activeforeground=TEXT_COLOR)
+                           activebackground="#555555", activeforeground=TEXT_COLOR,
+                           font=fonts.font(self.s.stage, fonts.BUTTON))
         self._place(button, BUTTON_X, y, BUTTON_W, 26)
 
     def _build(self) -> None:
         self.listbox = tk.Listbox(self.s.stage, bg="black", fg=TEXT_COLOR, selectbackground=LABEL_COLOR,
                                   selectforeground="black", relief="flat", highlightthickness=1,
-                                  highlightbackground="#666666", font=("Segoe UI", 12), activestyle="none",
+                                  highlightbackground="#666666", font=fonts.font(self.s.stage, fonts.LIST), activestyle="none",
                                   exportselection=False)
         for game in self._games:
             self.listbox.insert("end", game.name)

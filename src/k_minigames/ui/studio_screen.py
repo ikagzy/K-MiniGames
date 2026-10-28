@@ -16,6 +16,7 @@ from k_minigames.htmlscan import Problem
 from k_minigames.library import Game
 from k_minigames.report_server import ReportServer
 from k_minigames.testlist import FAILED, PASSED, UNVERIFIED
+from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
 from k_minigames.ui.stage import TEXT_COLOR, TEXT_X
 from k_minigames.ui.typewriter import type_text
@@ -115,7 +116,7 @@ class StudioScreen:
 
     def _small_button(self, text: str, x: int, y: int, width: int, command, tag: str = "studio") -> tk.Button:
         button = tk.Button(self.s.stage, text=t(text), command=command, relief="flat", bg="#333333", fg=TEXT_COLOR,
-                           activebackground="#555555", activeforeground=TEXT_COLOR, font=("Segoe UI", 9))
+                           activebackground="#555555", activeforeground=TEXT_COLOR, font=fonts.font(self.s.stage, fonts.BUTTON))
         self.s.stage.create_window(x, y, anchor="nw", window=button, width=width, height=24, tags=tag)
         return button
 

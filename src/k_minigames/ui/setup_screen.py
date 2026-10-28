@@ -9,13 +9,14 @@ from tkinter import ttk
 from k_minigames import catalog, hardware, i18n, installer, library, model_check, settings
 from k_minigames.ollama_client import InstalledModel
 from k_minigames.startup import CANCEL_MESSAGE, Offer, build_offers, first_accepted, setup_buttons, SetupButtons
+from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
 from k_minigames.ui.stage import LABEL_COLOR, TEXT_COLOR, TEXT_X
 
 t = i18n.t
 
-INTRO = "Merhaba! Başlamak için Ollama'nın ve bir danışman modelin hazır olması lazım. Sormadan hiçbir şey indirmem."
-BUTTON_Y, PROGRESS_Y, STATUS_Y, FOLDER_Y = 458, 492, 510, 534
+INTRO = "Merhaba! Önce Ollama ve bir danışman model lazım."
+BUTTON_Y, PROGRESS_Y, STATUS_Y, FOLDER_Y = 448, 484, 500, 532
 _MEASURE = object()
 _INSTALL_RESULT = {
     "download_failed": "İndirme olmadı. İnternet bağlantını kontrol edip tekrar dene.",
@@ -54,7 +55,8 @@ class SetupScreen:
 
     def _button(self, x: int, y: int, width: int, command) -> tk.Button:
         button = tk.Button(self.s.stage, relief="flat", bg="#333333", fg=TEXT_COLOR, activebackground="#555555",
-                           activeforeground=TEXT_COLOR, disabledforeground="#777777", command=command)
+                           activeforeground=TEXT_COLOR, disabledforeground="#777777", command=command,
+                           font=fonts.font(self.s.stage, fonts.BUTTON))
         self.s.stage.create_window(x, y, anchor="nw", window=button, width=width, height=26, tags="setup")
         self._widgets.append(button)
         return button
@@ -72,9 +74,9 @@ class SetupScreen:
         self._widgets.append(self.bar)
         self.cancel_button = self._button(TEXT_X + 535, PROGRESS_Y - 6, 140, self._on_cancel)
         self.cancel_button.configure(text=t("İptal"), state="disabled")
-        stage.create_text(TEXT_X, STATUS_Y, anchor="nw", text="", fill=LABEL_COLOR, font=("Segoe UI", 10),
+        stage.create_text(TEXT_X, STATUS_Y, anchor="nw", text="", fill=LABEL_COLOR, font=fonts.font(stage, fonts.BUTTON),
                           tags=("setup", "status"))
-        stage.create_text(TEXT_X, FOLDER_Y + 5, anchor="nw", text="", fill=TEXT_COLOR, font=("Segoe UI", 10),
+        stage.create_text(TEXT_X, FOLDER_Y + 5, anchor="nw", text="", fill=TEXT_COLOR, font=fonts.font(stage, fonts.BUTTON),
                           tags=("setup", "folder"))
         self.folder_button = self._button(TEXT_X + 440, FOLDER_Y, 120, self._on_folder)
         self.folder_button.configure(text=t("Klasör seç"))
@@ -90,8 +92,8 @@ class SetupScreen:
     def _show_folder(self) -> None:
         folder = settings.games_dir()
         shown = str(folder) if folder else t("seçilmedi")
-        if len(shown) > 52:
-            shown = "…" + shown[-51:]
+        if len(shown) > 40:
+            shown = "…" + shown[-39:]
         self.s.stage.itemconfigure("folder", text=f"{t('Oyun klasörü')}: {shown}")
 
     def apply_buttons(self, buttons: SetupButtons, ollama_size: str | None, advisor_gb: float,
