@@ -32,6 +32,8 @@ _RULES = (
     "- Cevabında önce tam oyunu ```html bloğu içinde ver: <!doctype html> ile başlayıp </html> ile biten, eksiksiz bir belge.\n"
     "- Sonra bir ```json bloğunda oyunun neye benzemesi gerektiğini 3-8 kısa Türkçe maddeyle yaz: "
     '{"checklist": ["...", "..."]}\n'
+    "  Maddeler oyunun nasıl oynandığını anlatsın (örneğin 'boşluk tuşuna basınca kare zıplar', 'engele çarpınca oyun "
+    "biter'); bu kuralları ya da başka teknik kuralları (dokular, window.__game, canvas) madde yapma.\n"
     "- Oyun durumunu (skor, konum, can gibi) window.__game nesnesinde tut; uygulama testleri bu nesneyi okuyarak yapar.\n"
     "- Dokuları yalnızca assets/<dosya adı> yoluyla kullan; listedekilerden başka dosya uydurma. Canvas'ta drawImage ile "
     "çiz; getImageData kullanma.\n"
@@ -43,7 +45,9 @@ _TESTER_RULES = (
     "Gövde `game` parametresini (= window.__game) alır ve maddenin doğru olup olmadığını true/false döndürür; gerekirse "
     "`await` kullanabilir, oyuna document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight'})) ile tuş "
     "gönderip kısa bekleyebilir (await new Promise(r => setTimeout(r, 300))).\n"
-    'Cevap yalnızca şu biçimde bir ```json bloğu olsun: {"tests": [{"index": 0, "code": "return true;"}]}'
+    'Cevap yalnızca şu biçimde bir ```json bloğu olsun: {"tests": [{"index": 0, "code": "return true;"}]}\n'
+    "Kod, JSON'da çift tırnaklı tek satır bir dizge olsun (satır sonu için \\n yaz); ters tırnak (`) ya da gerçek satır "
+    "sonu kullanma."
 )
 
 
@@ -115,6 +119,27 @@ def parse_response(text: str) -> Generated | None:
     return Generated(html, checklist)
 
 
+_LENIENT_TEST = re.compile(r'"index"\s*:\s*(\d+)\s*,\s*"code"\s*:\s*(?:`(.*?)`|"((?:[^"\\]|\\.)*)")', re.S)
+
+
+def _lenient_tests(text: str, count: int) -> list[str | None]:
+    """Small models often write the code as a JavaScript template literal (backticks) inside the JSON, which is not
+    valid JSON. Read the index/code pairs directly."""
+    result: list[str | None] = [None] * count
+    for match in _LENIENT_TEST.finditer(text or ""):
+        index = int(match.group(1))
+        if match.group(2) is not None:
+            code = match.group(2)
+        else:
+            try:
+                code = json.loads('"' + match.group(3) + '"')
+            except ValueError:
+                code = match.group(3)
+        if 0 <= index < count and code.strip():
+            result[index] = code.strip()
+    return result
+
+
 def parse_tests(text: str, count: int) -> list[str | None]:
     """The test code per checklist index; items the model skipped stay None."""
     candidates = [body for lang, body in _FENCE.findall(text or "") if lang.lower() == "json"] + [text or ""]
@@ -132,8 +157,8 @@ def parse_tests(text: str, count: int) -> list[str | None]:
                 if isinstance(item, dict) and isinstance(item.get("index"), int) and 0 <= item["index"] < count \
                         and isinstance(item.get("code"), str) and item["code"].strip():
                     result[item["index"]] = item["code"]
-            break
-    return result
+            return result
+    return _lenient_tests(text, count)
 
 
 class Generator:

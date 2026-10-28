@@ -61,3 +61,14 @@ def test_the_advisor_screen_texts_have_english_versions():
     assert i18n.t("(qwen2.5-coder:32b bu bilgisayara sığmıyor)") == "(qwen2.5-coder:32b does not fit this computer)"
     assert i18n.t("Bilgisayarında x modeli zaten kurulu (yaklaşık 4.6 GB) ve bu iş için yeterli.\n\n"
                   "Bunu oyunları yazmak için kullanayım mı?").endswith("Shall I use it to write your games?")
+
+
+def test_the_library_and_studio_texts_have_english_versions():
+    i18n.set_language("en")
+    assert i18n.t("4 madde geçti\n1 madde doğrulanamadı\n2 kez otomatik düzelttim") == (
+        "4 items passed\n1 items could not be verified\n2 automatic fixes made")
+    assert i18n.t("Hata buldum, düzeltiyorum (2/3)") == "I found a bug, fixing it (2/3)"
+    assert i18n.t("GÖREVLİ") == "BELLHOP" and i18n.t("Yeni oyun") == "New game"
+    assert i18n.t("Tamam, 2. sürüme döndüm.") == "Okay, I went back to version 2."
+    assert i18n.t("Dikkat: oyun bir dış ağ adresi kullanıyor (https://x.y)") == (
+        "Warning: the game uses an external web address (https://x.y)")

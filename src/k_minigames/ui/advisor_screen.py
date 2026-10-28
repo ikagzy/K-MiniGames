@@ -9,6 +9,7 @@ from k_minigames.ollama_client import OllamaError
 from k_minigames.startup import advisor_id
 from k_minigames.ui.advisor_flow import AdvisorFlow
 from k_minigames.ui.services import Services
+from k_minigames.ui.typewriter import type_text
 from k_minigames.ui.worker import CancelToken
 
 t = i18n.t
@@ -16,7 +17,6 @@ t = i18n.t
 GREETING = "Merhaba! Nasıl bir oyun yapmak istiyorsun?"
 UNREACHABLE = "Ollama'ya ulaşamadım. Çalışıp çalışmadığını kontrol edip tekrar yazar mısın?"
 DOWNLOAD_FAILED = "Model indirilemedi. İstersen tekrar deneyelim."
-CHARS_PER_STEP = 3
 
 
 class AdvisorScreen:
@@ -53,22 +53,8 @@ class AdvisorScreen:
 
     def _say_then(self, text: str, then_state: str, then) -> None:
         """Type `text` as the advisor (mouth moving), then show `then_state` and call `then`."""
-        stage = self.s.stage
-        stage.stop_asking()
-        shown = 0
-
-        def step():
-            nonlocal shown
-            shown += CHARS_PER_STEP
-            stage.say("DANIŞMAN", text[:shown])
-            if shown >= len(text):
-                stage.set_character("advisor", then_state)
-                then()
-                return
-            stage.set_character("advisor", "talking", shown // CHARS_PER_STEP)
-            self._later(self._typing_ms, step)
-
-        step()
+        type_text(self.s.stage, self.s.root.after, self._jobs, "advisor", "DANIŞMAN", text, then_state, then,
+                  self._typing_ms)
 
     def _ask(self) -> None:
         self.s.stage.set_character("advisor", "listening")

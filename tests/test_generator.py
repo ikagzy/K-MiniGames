@@ -148,3 +148,27 @@ def test_write_tests_returns_one_code_or_none_per_checklist_item():
 
 def test_module_exposes_the_error_type():
     assert issubclass(generator.GenerationError, Exception)
+
+
+# --- found in a real run with llama3.1:8b ---------------------------------------------------------------
+
+def test_parse_tests_reads_code_written_as_a_template_literal_across_several_lines():
+    reply = ("Aşağıdaki JSON bloğu:\n```json\n{\n  \"tests\": [\n    {\n      \"index\": 0,\n      \"code\": `\n"
+             "        return game.score === 0;\n      `\n    },\n    {\"index\": 1, \"code\": \"return true;\"}\n  ]\n}\n```")
+    out = parse_tests(reply, 3)
+    assert out[0].strip() == "return game.score === 0;" and out[1] == "return true;" and out[2] is None
+
+
+def test_parse_tests_keeps_the_good_entries_of_a_json_with_one_broken_one():
+    reply = '{"tests": [{"index": 0, "code": "return 1;"}, {"index": 1, "code": `return 2;`}]}'
+    assert parse_tests(reply, 2) == ["return 1;", "return 2;"]
+
+
+def test_the_rules_ask_for_checklist_items_about_the_users_game_and_not_about_technical_rules():
+    system = build_create_messages("x", [])[0]["content"]
+    assert "oyunun nasıl oynandığını" in system and "teknik kuralları" in system
+
+
+def test_the_tester_rules_ask_for_plain_json_strings_without_backticks():
+    system = build_test_messages(DOC, ["a"])[0]["content"]
+    assert "ters tırnak" in system and "tek satır" in system

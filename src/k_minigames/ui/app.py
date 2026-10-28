@@ -1,14 +1,17 @@
 """The window: one stage, and the screen that is shown on it."""
 import tkinter as tk
-from tkinter import filedialog, messagebox
+import os
+from tkinter import filedialog, messagebox, simpledialog
 
 from k_minigames import i18n, installer, settings
 from k_minigames.ollama_client import OllamaClient
 from k_minigames.startup import advisor_id, startup_state
 from k_minigames.ui.advisor_screen import AdvisorScreen
+from k_minigames.ui.library_screen import LibraryScreen
 from k_minigames.ui.services import Services
 from k_minigames.ui.setup_screen import SetupScreen
 from k_minigames.ui.stage import Stage
+from k_minigames.ui.studio_screen import StudioScreen
 from k_minigames.ui.worker import Worker
 
 
@@ -32,8 +35,14 @@ class App(tk.Tk):
             confirm=lambda title, message: messagebox.askyesno(title, message, parent=self),
             info=lambda title, message: messagebox.showinfo(title, message, parent=self),
             choose_folder=lambda: filedialog.askdirectory(parent=self, title=i18n.t("Oyun klasörü")),
+            choose_files=lambda: list(filedialog.askopenfilenames(
+                parent=self, title=i18n.t("Doku ekle"),
+                filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.webp *.bmp")])),
+            ask_text=lambda title, prompt: simpledialog.askstring(title, prompt, parent=self),
+            open_path=lambda path: os.startfile(str(path)),
         )
-        self._factories = {"setup": SetupScreen, "advisor": AdvisorScreen}
+        self._factories = {"setup": SetupScreen, "advisor": AdvisorScreen, "library": LibraryScreen,
+                           "studio": StudioScreen}
         self._current = None
         self.after(100, lambda: self._begin(first_screen))
 
