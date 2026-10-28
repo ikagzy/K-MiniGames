@@ -51,14 +51,23 @@ def usable(model: InstalledModel) -> bool:
     return "embed" not in model.name.lower() and "bert" not in model.family.lower()
 
 
+def _is_code_model(model: InstalledModel) -> bool:
+    return "code" in model.name.lower()
+
+
 def installed_alternative(needed: ModelInfo, installed: list[InstalledModel], ram_gb: float,
-                          vram_gb: float | None) -> InstalledModel | None:
-    """An already installed model that is big enough for the job and runs on this computer (the smallest one),
-    or None. The file size is only a rough sign of capability."""
+                          vram_gb: float | None, prefer: str = "smallest") -> InstalledModel | None:
+    """An already installed model that is big enough for the job and runs on this computer, or None.
+
+    prefer="smallest" (the advisor, which only chats): the cheapest one that is enough.
+    prefer="best" (writing games): a code model first, otherwise the biggest one.
+    The file size is only a rough sign of capability."""
     candidates = [
         m for m in installed
         if usable(m) and m.size_gb >= needed.size_gb * ADEQUATE_SHARE
         and (ram_gb >= max(m.size_gb * RAM_PER_GB, 4)
              or (vram_gb is not None and vram_gb >= m.size_gb * VRAM_HEADROOM))
     ]
+    if prefer == "best":
+        return min(candidates, key=lambda m: (not _is_code_model(m), -m.size_gb), default=None)
     return min(candidates, key=lambda m: m.size_gb, default=None)

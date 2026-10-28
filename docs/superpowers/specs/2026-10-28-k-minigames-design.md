@@ -82,7 +82,7 @@ Ollama'da zaten modeller kurulu olabilir. Uygulama hem danışman modeli hem oyu
 1. Bilgisayarda iş için **yeterli ya da daha büyük** bir model varsa: "{ad} modeli zaten kurulu, bunu kullanayım mı?" Evet → o model seçilir, hiçbir şey indirilmez.
 2. Hayır ya da uygun model yoksa: önerilen modeli (danışman için katalogdaki danışman, oyun için danışmanın önerdiği ve doğrulanan model) indirme izni sorulur (adres/boyut gösterilir). Evet → indirilir.
 3. Onu da reddederse: "Model kurulmadığı için devam edemiyorum. İstediğin zaman yeniden deneyebilirsin." mesajı gösterilir, hiçbir şey indirilmez ve ayar değişmez.
-- **Yeterli** = embedding olmayan (adı `embed` içermeyen, ailesi `bert` içermeyen) kurulu bir model, dosya boyutu gereken modelin boyutunun en az %90'ı ve bu bilgisayara sığan (RAM ≥ max(boyut×2.2, 4) GB ya da VRAM ≥ boyut×1.2). Birden fazla uygunsa en küçüğü önerilir. Modelin gerçek yeteneği ölçülemez; boyut yaklaşık göstergedir.
+- **Yeterli** = embedding olmayan (adı `embed` içermeyen, ailesi `bert` içermeyen) kurulu bir model, dosya boyutu gereken modelin boyutunun en az %90'ı ve bu bilgisayara sığan (RAM ≥ max(boyut×2.2, 4) GB ya da VRAM ≥ boyut×1.2). Birden fazla uygunsa: danışman için (yalnızca sohbet eder) en küçüğü; oyun yazan model için adında "code" geçen model, yoksa en büyüğü önerilir (gerçek denemede genel amaçlı eski bir model seçilmesin diye). Modelin gerçek yeteneği ölçülemez; boyut yaklaşık göstergedir.
 - Önerilen modelin **kendisi** zaten kuruluysa izin sorulmadan kullanılır (indirilecek bir şey yok).
 - Seçilen danışman modeli `settings.json` içinde `advisor_model`, oyun modeli `game_model` anahtarında saklanır.
 

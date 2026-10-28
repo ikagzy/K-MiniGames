@@ -2,18 +2,14 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from k_minigames import catalog, i18n, installer, settings
+from k_minigames import i18n, installer, settings
 from k_minigames.ollama_client import OllamaClient
-from k_minigames.startup import startup_state
+from k_minigames.startup import advisor_id, startup_state
+from k_minigames.ui.advisor_screen import AdvisorScreen
 from k_minigames.ui.services import Services
 from k_minigames.ui.setup_screen import SetupScreen
 from k_minigames.ui.stage import Stage
 from k_minigames.ui.worker import Worker
-
-
-def advisor_id() -> str:
-    """The advisor model the user chose, else the catalog's."""
-    return settings.get("advisor_model") or catalog.advisor().id
 
 
 def next_screen(client) -> str:
@@ -37,7 +33,7 @@ class App(tk.Tk):
             info=lambda title, message: messagebox.showinfo(title, message, parent=self),
             choose_folder=lambda: filedialog.askdirectory(parent=self, title=i18n.t("Oyun klasörü")),
         )
-        self._factories = {"setup": SetupScreen}
+        self._factories = {"setup": SetupScreen, "advisor": AdvisorScreen}
         self._current = None
         self.after(100, lambda: self._begin(first_screen))
 

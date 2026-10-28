@@ -50,3 +50,14 @@ def test_the_cancel_message_has_an_english_version():
     from k_minigames.startup import CANCEL_MESSAGE
     i18n.set_language("en")
     assert i18n.t(CANCEL_MESSAGE) == "I cannot go on without a model. You can try again whenever you like."
+
+
+def test_the_advisor_screen_texts_have_english_versions():
+    i18n.set_language("en")
+    assert i18n.t("Merhaba! Nasıl bir oyun yapmak istiyorsun?") == "Hello! What kind of game do you want to make?"
+    assert i18n.t("Tamam! Oyunlarını qwen2.5-coder:7b modeliyle yazacağız. Hadi başlayalım!") == (
+        "Okay! We will write your games with qwen2.5-coder:7b model. Let's start!")
+    assert i18n.t("(uydurma:9b katalogda yok)") == "(uydurma:9b is not in the catalog)"
+    assert i18n.t("(qwen2.5-coder:32b bu bilgisayara sığmıyor)") == "(qwen2.5-coder:32b does not fit this computer)"
+    assert i18n.t("Bilgisayarında x modeli zaten kurulu (yaklaşık 4.6 GB) ve bu iş için yeterli.\n\n"
+                  "Bunu oyunları yazmak için kullanayım mı?").endswith("Shall I use it to write your games?")

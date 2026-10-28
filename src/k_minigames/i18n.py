@@ -39,6 +39,18 @@ _PAIRS = {
         "I cannot go on without a model. You can try again whenever you like.",
     "İndirme olmadı. İnternet bağlantını kontrol edip tekrar dene.":
         "The download failed. Check your internet connection and try again.",
+    # advisor screen
+    "Merhaba! Nasıl bir oyun yapmak istiyorsun?": "Hello! What kind of game do you want to make?",
+    "Ollama'ya ulaşamadım. Çalışıp çalışmadığını kontrol edip tekrar yazar mısın?":
+        "I could not reach Ollama. Could you check that it is running and write again?",
+    "Model indirilemedi. İstersen tekrar deneyelim.": "The model could not be downloaded. We can try again if you like.",
+    "Oyun modeli indirilsin mi?": "Download the game model?",
+    ") ve bu iş için yeterli.\n\nBunu oyunları yazmak için kullanayım mı?":
+        ") and is enough for this job.\n\nShall I use it to write your games?",
+    "Tamam! Oyunlarını ": "Okay! We will write your games with ", " modeliyle yazacağız. Hadi başlayalım!": " model. Let's start!",
+    " katalogda yok": " is not in the catalog", " bu bilgisayara sığmıyor": " does not fit this computer",
+    "danışman model önermedi": "the advisor proposed no model",
+    "; bilgisayar zayıf, en küçük model denenebilir": "; this computer is weak, the smallest model can be tried",
     "Kurulum dosyası başlatılamadı.": "The setup file could not be started.",
     "Ollama kuruldu ama çalışmadı. Birazdan 'Ollama'yı başlat' düğmesini dene.":
         "Ollama was installed but did not start. Try the 'Start Ollama' button in a moment.",

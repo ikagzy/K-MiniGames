@@ -4,13 +4,19 @@ Nothing is downloaded or chosen without a yes: an installed model that is enough
 recommended model, and two noes mean cancel."""
 from dataclasses import dataclass
 
+from k_minigames import catalog, settings
 from k_minigames.catalog import ModelInfo
 from k_minigames.ollama_client import InstalledModel, OllamaError
 
 CANCEL_MESSAGE = "Model kurulmadığı için devam edemiyorum. İstediğin zaman yeniden deneyebilirsin."
 
 
-def startup_state(client, advisor_id: str, game_model: str | None) -> str:
+def advisor_id() -> str:
+    """The advisor model the user chose (an installed one they accepted), else the catalog's."""
+    return settings.get("advisor_model") or catalog.advisor().id
+
+
+def startup_state(client, advisor_model: str, game_model: str | None) -> str:
     """Which screen to open: "setup", "advisor" or "library"."""
     if not client.is_running():
         return "setup"
@@ -18,7 +24,7 @@ def startup_state(client, advisor_id: str, game_model: str | None) -> str:
         models = client.models()
     except OllamaError:
         return "setup"
-    if advisor_id not in models:
+    if advisor_model not in models:
         return "setup"
     if not game_model or game_model not in models:
         return "advisor"

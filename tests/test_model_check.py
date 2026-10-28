@@ -79,3 +79,27 @@ def test_an_installed_model_this_computer_cannot_run_is_not_offered():
 def test_embedding_models_and_an_empty_list_give_nothing():
     assert model_check.installed_alternative(catalog.advisor(), [EMBED], ram_gb=64, vram_gb=None) is None
     assert model_check.installed_alternative(catalog.advisor(), [], ram_gb=64, vram_gb=None) is None
+
+
+# --- which adequate model is offered ------------------------------------------------------------------
+
+LLAMA3 = InstalledModel("llama3:latest", 4.3, "llama")
+CODER = InstalledModel("deepseek-coder:6.7b", 3.8, "llama")
+BIG_CODER = InstalledModel("qwen2.5-coder:14b", 9.0, "qwen2")
+
+
+def test_for_game_writing_a_code_model_is_preferred_over_a_bigger_general_one():
+    needed = next(m for m in catalog.coders() if m.id == "qwen2.5-coder:3b")      # 1.9 GB
+    offered = model_check.installed_alternative(needed, [LLAMA8, CODER], ram_gb=32, vram_gb=None, prefer="best")
+    assert offered == CODER
+
+
+def test_among_code_models_and_among_general_ones_the_biggest_is_preferred():
+    needed = next(m for m in catalog.coders() if m.id == "qwen2.5-coder:3b")
+    assert model_check.installed_alternative(needed, [CODER, BIG_CODER], 64, None, prefer="best") == BIG_CODER
+    assert model_check.installed_alternative(needed, [LLAMA3, LLAMA8], 32, None, prefer="best") == LLAMA8
+
+
+def test_the_default_is_still_the_smallest_adequate_model():
+    needed = next(m for m in catalog.coders() if m.id == "qwen2.5-coder:3b")
+    assert model_check.installed_alternative(needed, [LLAMA8, CODER, LLAMA3], 32, None) == CODER
