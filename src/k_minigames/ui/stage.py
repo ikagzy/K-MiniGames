@@ -23,6 +23,8 @@ DIALOG_ORIGIN = (145, 360)   # 733x212 box, bottom centre of the stage
 TEXT_X = 170
 LABEL_Y, MESSAGE_Y, INPUT_Y = 380, 410, 520
 MESSAGE_WIDTH = 680
+MESSAGE_BOTTOM = 512          # the message ends above the text box (INPUT_Y)
+MESSAGE_SIZES = (fonts.MESSAGE, 20, 17, 15)
 LABEL_COLOR, TEXT_COLOR = "#ffcc66", "#f2f2f2"
 
 
@@ -80,8 +82,12 @@ class Stage(tk.Canvas):
         self.delete("dialogtext")
         self.create_text(TEXT_X, LABEL_Y, anchor="nw", text=i18n.t(speaker), fill=LABEL_COLOR,
                          font=fonts.font(self, fonts.LABEL), tags="dialogtext")
-        self.create_text(TEXT_X, MESSAGE_Y, anchor="nw", text=text, fill=TEXT_COLOR, width=MESSAGE_WIDTH,
-                         font=fonts.font(self, fonts.MESSAGE), tags="dialogtext")
+        for size in MESSAGE_SIZES:   # a long message gets a smaller type instead of running out of the box
+            self.delete("message")
+            self.create_text(TEXT_X, MESSAGE_Y, anchor="nw", text=text, fill=TEXT_COLOR, width=MESSAGE_WIDTH,
+                             font=fonts.font(self, size), tags=("dialogtext", "message"))
+            if self.bbox("message")[3] <= MESSAGE_BOTTOM:
+                break
         self._layer()
 
     def ask(self, on_submit: Callable[[str], None]) -> None:

@@ -100,3 +100,14 @@ def test_showing_the_same_picture_again_does_not_redraw_it(root):
     assert stage.find_withtag("character") == first
     stage.set_character("bear", "success")
     assert stage.find_withtag("character") != first
+
+
+def test_a_long_message_gets_a_smaller_type_and_stays_in_the_box(root):
+    from k_minigames.ui.stage import MESSAGE_BOTTOM
+    stage = Stage(root)
+    stage.say("DON", "kısa")
+    short = stage.bbox("message")[3]
+    stage.say("DON", "Merhaba! Özel bir oyun yapmak istemene sevindim. Başlamak için hangi türü düşündüğünü söyler misin? "
+                     "Ayrıca kontrollerin nasıl çalışmasını hayal ediyorsun? Zorluk ve görsel stil de önemli.")
+    assert stage.bbox("message")[3] <= MESSAGE_BOTTOM
+    assert len(stage.find_withtag("message")) == 1 and short < MESSAGE_BOTTOM

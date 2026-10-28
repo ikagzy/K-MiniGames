@@ -6,7 +6,8 @@ from k_minigames import memory
 from k_minigames.ui.services import Services
 from k_minigames.ui.settings_screen import SettingsScreen
 from k_minigames.ui.stage import Stage
-from k_minigames.ui.title_screen import ITEMS, TitleScreen
+from k_minigames.ui import title_screen
+from k_minigames.ui.title_screen import TitleScreen
 from k_minigames.ui.worker import Worker
 
 
@@ -25,18 +26,51 @@ def env():
     root.destroy()
 
 
-def test_the_menu_moves_with_arrows_and_chooses(env):
+def test_start_only_appears_when_ollama_and_the_model_are_ready(env, monkeypatch):
     services, went, *_ = env
+    monkeypatch.setattr(title_screen, "ready_to_play", lambda client: False)
     screen = TitleScreen(services)
     screen.show()
+    assert [action for _, action in screen.items] == ["settings", "exit"]
+    screen._probed(True)
+    assert [action for _, action in screen.items] == ["start", "settings", "exit"]
+    screen._probed(False)
+    assert [action for _, action in screen.items] == ["settings", "exit"]
+    screen.hide()
+    screen._probed(True)   # a probe that finishes after the screen was left changes nothing
+    assert len(screen.items) == 2
+
+
+def test_the_menu_moves_with_arrows_and_chooses(env, monkeypatch):
+    services, went, *_ = env
+    monkeypatch.setattr(title_screen, "ready_to_play", lambda client: False)
+    screen = TitleScreen(services)
+    screen.show()
+    screen._probed(True)
+    screen.choose(screen.index)
     screen.move(1)
     screen.choose(screen.index)
+    assert went == ["start", "settings"]
     screen.move(-1)
-    screen.choose(screen.index)
-    assert went == ["settings", "start"]
     screen.move(-1)
-    assert screen.index == len(ITEMS) - 1   # wraps round
+    assert screen.index == 2   # wraps round
     screen.hide()
+
+
+def test_ready_to_play_needs_a_running_ollama_and_the_advisor_model(monkeypatch):
+    class Client:
+        def __init__(self, models):
+            self._models = models
+
+        def models(self):
+            return self._models
+
+    monkeypatch.setattr(title_screen.installer, "ensure_running", lambda client: True)
+    monkeypatch.setattr(title_screen, "advisor_id", lambda: "don:1b")
+    assert title_screen.ready_to_play(Client(["don:1b"])) is True
+    assert title_screen.ready_to_play(Client(["other"])) is False
+    monkeypatch.setattr(title_screen.installer, "ensure_running", lambda client: False)
+    assert title_screen.ready_to_play(Client(["don:1b"])) is False
 
 
 def test_settings_has_back_and_both_install_buttons(env):
