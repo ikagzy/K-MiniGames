@@ -16,7 +16,7 @@ _SCENES = {"danisman": "danisman_sahne.png", "lobi": "lobi.png"}
 
 WIDTH, HEIGHT = 1024, 572
 ADVISOR_NAME, BEAR_NAME, USER_NAME = "DON", "BOB", "SEN"   # the labels above the messages
-ADVISOR_ANCHOR = (529, 323)   # bottom centre of the advisor, sitting behind the desk
+ADVISOR_ANCHOR = (529, 309)   # bottom centre of the advisor, sitting behind the desk
 BEAR_ANCHOR = (512, 352)      # where the bear's feet stand on the lobby floor
 FOOT_PAD = 4                  # transparent margin under the feet in the prepared pictures
 DIALOG_ORIGIN = (145, 360)   # 733x212 box, bottom centre of the stage
