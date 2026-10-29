@@ -177,3 +177,13 @@ def test_the_tester_rules_ask_for_plain_json_strings_without_backticks():
 def test_texture_names_are_given_to_the_model_in_their_url_form():
     text = text_of(build_create_messages("x", [Texture("uzay gemisi.png", "gemi", 8, 8)]))
     assert "assets/uzay%20gemisi.png" in text and "assets/uzay gemisi.png" not in text
+
+
+def test_a_reference_error_gets_a_hint_about_where_the_name_is_declared_and_used():
+    from k_minigames.generator import build_fix_messages, scope_hints
+    html = "<script>\nfunction update() {\n  const game = window.__game;\n  game.x++;\n}\nfunction render() {\n  draw(game.x);\n}\n</script>"
+    hints = scope_hints(html, ["JavaScript hatası: Uncaught ReferenceError: game is not defined (satır 7)", "başka bir şey"])
+    assert len(hints) == 1 and "'game'" in hints[0] and "update" in hints[0] and "render" in hints[0]
+    assert scope_hints(html, ["Uncaught TypeError: x"]) == []
+    user = build_fix_messages(html, ["ReferenceError: game is not defined"])[1]["content"]
+    assert "tanımsız" in user and "tanımlı" in user

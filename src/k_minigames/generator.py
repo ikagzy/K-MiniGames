@@ -82,7 +82,53 @@ def build_edit_messages(html: str, request: str, textures: list[Texture], checkl
     return [_system(_RULES, memory), {"role": "user", "content": "\n\n".join(parts)}]
 
 
+_UNDEFINED = re.compile(r"ReferenceError: ([A-Za-z_$][\w$]*)")
+
+
+_FUNCTION = re.compile(r"function\s+([A-Za-z_$][\w$]*)|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>")
+
+
+def _function_at(lines: list[str], number: int) -> str:
+    """The name of the function a line (1-based) is in, as far as the page's layout shows it ("" at the top level).
+    Only a declaration indented like a top-level one of a script (up to 8 spaces) counts as the enclosing function."""
+    for i in range(number - 1, -1, -1):
+        match = _FUNCTION.search(lines[i])
+        if match and len(lines[i]) - len(lines[i].lstrip()) <= 8:
+            return match.group(1) or match.group(2)
+    return ""
+
+
+def scope_hints(html: str, problems: list[str]) -> list[str]:
+    """For `ReferenceError: x` say in which function x is declared and in which others it is used without a
+    declaration: the usual cause is a variable declared inside one function and used in another, which a small model
+    does not see in a long page."""
+    hints, seen = [], set()
+    lines = html.splitlines()
+    for problem in problems:
+        match = _UNDEFINED.search(problem)
+        if not match or match.group(1) in seen:
+            continue
+        name = match.group(1)
+        seen.add(name)
+        word = re.compile(rf"(?<![\w$.]){re.escape(name)}(?![\w$])")
+        declared = [i for i, line in enumerate(lines, 1)
+                    if re.search(rf"\b(?:const|let|var)\s+{re.escape(name)}\b", line)]
+        homes = {_function_at(lines, i) for i in declared}
+        others = []
+        for i, line in enumerate(lines, 1):
+            if word.search(line) and i not in declared:
+                home = _function_at(lines, i)
+                if home not in homes and home not in others:
+                    others.append(home)
+        where = ", ".join(sorted(h or "en üst düzey" for h in homes)) or "hiçbir yerde"
+        users = ", ".join(h or "en üst düzey" for h in others) or "?"
+        hints.append(f"'{name}' {where} içinde tanımlı ama {users} içinde de kullanılıyor; orada tanımsız. "
+                     f"Her birinin başına '{name}' tanımını ekle ya da tanımı dosyanın en üstüne (fonksiyonların dışına) taşı.")
+    return hints
+
+
 def build_fix_messages(html: str, problems: list[str], *, memory: str = "") -> list[dict]:
+    problems = list(problems) + scope_hints(html, problems)
     user = ("Oyunda şu sorunlar bulundu. Hepsini düzelt, oyunun geri kalanını bozma ve oyunun tamamını yeniden ver:\n"
             + "\n".join(f"- {p}" for p in problems) + f"\n\nOyun:\n```html\n{html}\n```")
     return [_system(_RULES, memory), {"role": "user", "content": user}]

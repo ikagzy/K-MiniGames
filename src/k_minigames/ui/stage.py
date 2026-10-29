@@ -24,7 +24,8 @@ DIALOG_ORIGIN = (145, 360)   # 733x212 box, bottom centre of the stage
 TEXT_X = 170
 LABEL_Y, MESSAGE_Y, INPUT_Y = 380, 410, 520
 MESSAGE_WIDTH = 680
-MESSAGE_BOTTOM = 512          # the message ends above the text box (INPUT_Y)
+PAGER_RIGHT = TEXT_X + 430    # the page arrows sit left of the studio's top-right buttons (x 640 and on)
+MESSAGE_BOTTOM = 512         # the message ends above the text box (INPUT_Y)
 FADE_STIPPLES = ("", "gray75", "gray50", "gray25", "gray12")   # black, then thinner and thinner
 FADE_MS = 240
 MESSAGE_SIZES = (fonts.MESSAGE, 20)   # a long message first gets a smaller type, then pages (click ◀ ▶ or the wheel)
@@ -163,7 +164,7 @@ class Stage(tk.Canvas):
         self._draw_message(self._pages[self._page])
         self.delete("pager")
         if len(self._pages) > 1:
-            font, right, y = fonts.font(self, fonts.BUTTON), TEXT_X + MESSAGE_WIDTH, LABEL_Y + 4
+            font, right, y = fonts.font(self, fonts.BUTTON), PAGER_RIGHT, LABEL_Y + 4
             prev = self.create_text(right - 100, y, anchor="ne", text="◀", fill=LABEL_COLOR, font=font,
                                     tags=("dialogtext", "pager"))
             self.create_text(right - 50, y, anchor="n", text=f"{self._page + 1}/{len(self._pages)}", fill=TEXT_COLOR,
