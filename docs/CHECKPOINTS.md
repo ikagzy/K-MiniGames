@@ -49,3 +49,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-40 | 2026-10-28 | Don ve Bob'un ekranları siyahtan ~1,2 sn'de açılıyor; karakterler adlarını söylüyor (Ben Don!/Ben Bob!); sığmayan mesajlar sayfalara bölünüyor (◀ ▶ ve fare tekerleği); 2 yeni test; exe derlendi | 180cfd3 |
 | CP-41 | 2026-10-28 | Bob, Don'un hafıza notlarını okuyor: ad sorulduktan sonra 'Don bana şunları anlattı...' diyor, 'evet' ya da ekleme bekliyor; tarif baştan sorulmuyor; 2 yeni test; exe derlendi | 10892d7 |
 | CP-42 | 2026-10-28 | Başla: oyun yoksa Don, varsa Bob'un kütüphanesi; Yeni oyun Don'la başlar, Don bitirince Bob'a geçer; model zaten seçildiyse Don tekrar sormaz; testler güncellendi; exe derlendi | f3c5344 |
+| CP-43 | 2026-10-28 | Sayfa okları sola alındı (sağ üstteki Doku ekle/Kütüphane düğmelerine basılamıyordu); düzeltme istemine ReferenceError kapsam ipucu eklendi (gerçek voleybol oyununda 'game' hatası çözüldü); 1 yeni test; exe derlendi | 339eb71 |
