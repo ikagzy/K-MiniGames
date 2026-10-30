@@ -74,6 +74,6 @@ test('pong: the player moves only up and down and a point can be won', () => {
   assert.strictEqual(me.x, 20);
   assert.ok(me.y > 185);
   ball.x = 790; ball.y = 20; ball.vx = 300; ball.vy = 0;
-  g.step(1 / 60);
+  for (let i = 0; i < 3; i++) g.step(1 / 60);   // the edge is checked at the start of a step
   assert.strictEqual(rules.scoreLeft, 1);
 });
