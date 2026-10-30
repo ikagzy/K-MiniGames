@@ -94,3 +94,24 @@ test('an entity with a floor line stands on it, and jump only works from the flo
   run(g, 2);
   assert.strictEqual(e.y + e.h, 400);
 });
+
+test('xmin and xmax keep an entity in its half of the court', () => {
+  const K2 = load('kgame.js');
+  const g = K2.game({ headless: true });
+  const e = g.add({ shape: 'rect', x: 100, y: 10, w: 20, h: 20, vx: 500, xmin: 50, xmax: 200 });
+  run(g, 1);
+  assert.strictEqual(e.x, 200);
+  e.vx = -500;
+  run(g, 1);
+  assert.strictEqual(e.x, 50);
+});
+
+test('controls with axis y move only up and down', () => {
+  const K2 = load('kgame.js');
+  const g = K2.game({ headless: true });
+  const e = g.add({ shape: 'rect', x: 100, y: 100, w: 10, h: 40, controls: 'wasd', axis: 'y', speed: 100 });
+  K2.press('d'); K2.press('s');
+  run(g, 0.5);
+  assert.strictEqual(e.x, 100);
+  assert.ok(e.y > 130);
+});

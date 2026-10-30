@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pong</title></head>
+<body style="margin:0;background:#222"><canvas></canvas>
+<script>
+const CONFIG = {"to": 5, "botLevel": "normal", "paddleSpeed": 320};
+const g = K.game({ width: 800, height: 450 });
+const court = K.sports.court(g, { type: 'pong' });
+const ball = K.sports.ball(g, court, { radius: 8 });
+const me = g.add({ shape: 'rect', x: 20, y: 185, w: 10, h: 80, tag: 'paddle', controls: 'wasd', axis: 'y',
+                   speed: CONFIG.paddleSpeed, bounds: true });
+const cpu = g.add({ shape: 'rect', x: 770, y: 185, w: 10, h: 80, tag: 'paddle', bounds: true });
+K.ai.paddle(cpu, ball, { level: CONFIG.botLevel, axis: 'y' });
+const rules = K.sports.rules.pong(g, court, { to: CONFIG.to });
+g.ui.text('score', '0 - 0', 365, 30);
+g.scene('play', { update: () => g.ui.text('score', rules.scoreLeft + ' - ' + rules.scoreRight, 365, 30) });
+g.scene('over', { draw: (g, c) => { c.fillStyle = '#fff'; c.font = '40px sans-serif';
+                                    c.fillText(rules.winner === 'left' ? 'Kazandın!' : 'Kaybettin', 300, 200); } });
+K.expose({ g, ball, me, cpu, rules });
+g.run();
+</script></body></html>

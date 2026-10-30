@@ -105,3 +105,16 @@ test('collideTiles pushes an entity out of a wall and stops it', () => {
   assert.ok(e.x + e.w <= 128 + 0.001, 'stopped at the wall');
   assert.strictEqual(e.vx, 0);
 });
+
+test('a tilemap can make its solid tiles into entities, and landing on one sets onFloor', () => {
+  const K = fresh();
+  const g = K.game({ headless: true, gravity: 900, width: 128, height: 128 });
+  const map = K.tilemap(['....', '....', '....', '####'], { '#': 'wall' }, 32);
+  const tiles = map.addTo(g, { color: '#654' });
+  assert.strictEqual(tiles.length, 4);
+  assert.ok(tiles.every((t) => t.tag === 'tile' && t.w === 32));
+  const e = g.add({ shape: 'rect', x: 40, y: 0, w: 20, h: 20, gravity: true });
+  for (let i = 0; i < 120; i++) { g.step(1 / 60); g.collideTiles(e, map); }
+  assert.strictEqual(e.y + e.h, 96);
+  assert.ok(e.onFloor);
+});

@@ -81,6 +81,15 @@
         var ch = map.charAt(Math.floor(px / tile), Math.floor(py / tile));
         return !!ch && SOLID[legend[ch]] === true;
       },
+      addTo: function (g, o) {   // every solid tile as an entity (tag "tile") so it is drawn
+        var made = [];
+        rows.forEach(function (row, ty) {
+          for (var tx = 0; tx < row.length; tx++) {
+            if (SOLID[legend[row.charAt(tx)]] === true) made.push(g.add({ shape: "rect", x: tx * tile, y: ty * tile, w: tile, h: tile, color: (o && o.color) || "#765", tag: "tile", texture: o && o.texture }));
+          }
+        });
+        return made;
+      },
       spawn: function (ch) {
         var found = [];
         rows.forEach(function (row, ty) {
@@ -305,8 +314,9 @@
     else if (e.controls === "arrows") { left = K.key("ArrowLeft"); right = K.key("ArrowRight"); up = K.key("ArrowUp"); down = K.key("ArrowDown"); }
     else return;
     var speed = e.speed === undefined ? 200 : e.speed;
-    e.vx = ((right ? 1 : 0) - (left ? 1 : 0)) * speed;
-    if (!e.gravity) e.vy = ((down ? 1 : 0) - (up ? 1 : 0)) * speed;
+    e.vx = e.axis === "y" ? 0 : ((right ? 1 : 0) - (left ? 1 : 0)) * speed;
+    if (e.axis === "x") { if (e.jump && e.gravity && up && e.onFloor) e.vy = -e.jump; }
+    else if (!e.gravity) e.vy = ((down ? 1 : 0) - (up ? 1 : 0)) * speed;
     else if (e.jump && up && e.onFloor) e.vy = -e.jump;   // jump: from the floor only
   }
 
@@ -318,6 +328,8 @@
     if (e.friction) { var f = Math.min(1, e.friction * dt); e.vx -= e.vx * f; if (!e.gravity) e.vy -= e.vy * f; }
     e.x += e.vx * dt;
     e.y += e.vy * dt;
+    if (e.xmin !== undefined && e.x < e.xmin) e.x = e.xmin;
+    if (e.xmax !== undefined && e.x > e.xmax) e.x = e.xmax;
     e.onFloor = false;   // set again below when it is standing; control() reads the value of the step before
     if (e.bounds) {
       var circle = isCircle(e), ox = circle ? e.r : 0, oy = ox;
@@ -414,6 +426,7 @@
         } else {
           var offY = e.cy < ty * t + t / 2 ? -py : py;
           e.y += offY; e.vy = 0;
+          if (offY < 0) e.onFloor = true;
         }
       }
     }

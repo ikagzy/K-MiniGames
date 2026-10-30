@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Platform</title></head>
+<body style="margin:0;background:#222"><canvas></canvas>
+<script>
+const CONFIG = {"gravity": 900, "jump": 440, "speed": 180};
+const g = K.game({ width: 640, height: 352, gravity: CONFIG.gravity, background: '#7cf' });
+const map = K.tilemap([
+  '....................',
+  '....................',
+  '...........o........',
+  '........####........',
+  '..o.................',
+  '......###......o....',
+  '....................',
+  '.......o.......E....',
+  '....................',
+  'P...................',
+  '####################'], { '#': 'wall' }, 32);
+map.addTo(g, { color: '#654' });
+const start = map.spawn('P')[0];
+const me = g.add({ shape: 'rect', x: start.x, y: start.y, w: 22, h: 30, color: '#e33', controls: 'wasd', axis: 'x',
+                   speed: CONFIG.speed, gravity: true, jump: CONFIG.jump, bounds: true });
+const coins = map.spawn('o').map((p) => g.add({ shape: 'circle', x: p.x + 16, y: p.y + 16, r: 7, color: '#fd0', tag: 'coin' }));
+const enemy = map.spawn('E').map((p) => g.add({ shape: 'rect', x: p.x, y: p.y + 4, w: 28, h: 28, color: '#383', tag: 'enemy' }))[0];
+K.ai.patrol(enemy, [[360, enemy.y], [560, enemy.y]], { speed: 60 });
+g.onCollide(me, 'coin', (a, c) => { c.dead = true; g.addScore('coins'); K.sfx('coin'); });
+g.onCollide(me, 'enemy', () => g.go('over'));
+g.ui.text('coins', 'Altın: 0', 10, 24);
+g.scene('play', { update: () => {
+  g.collideTiles(me, map);
+  g.ui.text('coins', 'Altın: ' + g.score('coins') + '/' + coins.length, 10, 24);
+  if (g.score('coins') === coins.length) g.go('win');
+} });
+g.scene('over', { draw: (g, c) => { c.fillStyle = '#fff'; c.font = '40px sans-serif'; c.fillText('Yandın!', 250, 180); } });
+g.scene('win', { draw: (g, c) => { c.fillStyle = '#fff'; c.font = '40px sans-serif'; c.fillText('Hepsini topladın!', 180, 180); } });
+K.expose({ g, me, enemy, coins });
+g.run();
+</script></body></html>

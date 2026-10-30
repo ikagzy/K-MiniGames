@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Voleybol</title></head>
+<body style="margin:0;background:#222"><canvas></canvas>
+<script>
+const CONFIG = {"gravity": 700, "hitPower": 650, "to": 15, "botLevel": "easy"};
+const g = K.game({ width: 800, height: 450, gravity: CONFIG.gravity });
+const court = K.sports.court(g, { type: 'volleyball', net: true });
+const ball = K.sports.ball(g, court, { radius: 12, bounce: 0.85 });
+const me = g.add({ shape: 'rect', x: 150, y: 300, w: 30, h: 50, color: '#4af', controls: 'wasd', axis: 'x',
+                   speed: 220, gravity: true, floor: court.floorY, jump: 420, xmin: 0, xmax: court.netX - 33 });
+const cpu = g.add({ shape: 'rect', x: 620, y: 300, w: 30, h: 50, color: '#f64', floor: court.floorY,
+                    xmin: court.netX + 3, xmax: 770 });
+K.ai.paddle(cpu, ball, { level: CONFIG.botLevel, axis: 'x' });
+K.sports.autoHit(g, ball, cpu, { level: CONFIG.botLevel });
+K.sports.hitOnClick(g, ball, me, { power: CONFIG.hitPower });
+const rules = K.sports.rules.volleyball(g, court, { to: CONFIG.to });
+g.ui.text('score', '0 - 0', 360, 30);
+g.scene('play', { update: () => g.ui.text('score', rules.scoreLeft + ' - ' + rules.scoreRight, 360, 30) });
+g.scene('over', { draw: (g, c) => { c.fillStyle = '#fff'; c.font = '40px sans-serif';
+                                    c.fillText(rules.winner === 'left' ? 'Kazandın!' : 'Kaybettin', 300, 200); } });
+K.expose({ g, ball, me, cpu, court, rules });
+g.run();
+</script></body></html>
