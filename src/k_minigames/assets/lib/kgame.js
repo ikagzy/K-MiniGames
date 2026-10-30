@@ -169,6 +169,7 @@
   }
   var SFX = { jump: [380, 620, 0.12, "square"], hit: [220, 110, 0.1, "sawtooth"], coin: [880, 1320, 0.12, "square"],
               boom: [160, 40, 0.35, "sawtooth"], click: [600, 600, 0.04, "square"] };
+  K.sfxTable = SFX;   // modules add sounds here (K.sfxTable.stomp = [from Hz, to Hz, seconds, wave])
   K.sfx = function (name) {
     var ctx = audioContext(), p = SFX[name] || SFX.click;
     if (!ctx) return;
@@ -225,6 +226,9 @@
     g.camera = { x: 0, y: 0, zoom: 1 };
     g.ui = { items: {}, text: null, bar: null };
     g.running = false;
+    g.layers = [];            // backgrounds: {speed, draw(ctx, game, offsetX, offsetY)}, drawn behind the world
+    g.cameraBounds = null;    // {x0, y0, x1, y1}: the camera never shows outside it
+    g._fade = null;
     K.timer.reset();   // a new game starts without the timers of an earlier one
     g._follow = null;
     g._shake = { power: 0, left: 0, x: 0, y: 0 };
@@ -292,6 +296,12 @@
   Game.prototype.addScore = function (name, n) { this.scores[name] = this.score(name) + (n === undefined ? 1 : n); return this.scores[name]; };
   Game.prototype.follow = function (e, lerp) { this._follow = { e: e, lerp: lerp === undefined ? 0.1 : lerp }; };
   Game.prototype.shake = function (power, ms) { this._shake.power = power; this._shake.left = ms; };
+  // A fade of a colour over the whole screen: from an opacity to another in `ms`, then onDone (once).
+  Game.prototype.fade = function (o) {
+    this._fade = { color: o.color || "#000", from: o.from === undefined ? 0 : o.from, to: o.to === undefined ? 1 : o.to,
+                   ms: Math.max(1, o.ms || 500), t: 0, onDone: o.onDone, done: false, alpha: o.from === undefined ? 0 : o.from };
+  };
+  Game.prototype.fadeAlpha = function () { return this._fade ? this._fade.alpha : 0; };
   Game.prototype.shakeOffset = function () { return { x: this._shake.x, y: this._shake.y }; };
 
   function members(g, who) {
@@ -366,6 +376,20 @@
       g.camera.x += (f.e.cx - g.width / z / 2 - g.camera.x) * f.lerp;
       g.camera.y += (f.e.cy - g.height / z / 2 - g.camera.y) * f.lerp;
     }
+    var b = g.cameraBounds;
+    if (b) {
+      var zoom = g.camera.zoom;
+      g.camera.x = Math.max(b.x0, Math.min(g.camera.x, b.x1 - g.width / zoom));
+      g.camera.y = Math.max(b.y0, Math.min(g.camera.y, b.y1 - g.height / zoom));
+    }
+    var f = g._fade;
+    if (f && !f.done) {
+      f.t += dt * 1000;
+      var p = Math.min(1, f.t / f.ms);
+      f.alpha = f.from + (f.to - f.from) * p;
+      if (p >= 1) { f.done = true; if (f.onDone) f.onDone(); }
+    }
+    if (f && f.done && f.alpha === 0) g._fade = null;
     var s = g._shake;
     if (s.left > 0) {
       s.left -= dt * 1000;
@@ -379,6 +403,7 @@
     if (!c) return;
     c.save();
     c.fillStyle = g.background; c.fillRect(0, 0, g.width, g.height);
+    g.layers.forEach(function (layer) { layer.draw(c, g, g.camera.x * layer.speed, g.camera.y * layer.speed); });
     c.scale(g.camera.zoom, g.camera.zoom);
     c.translate(-g.camera.x + g._shake.x, -g.camera.y + g._shake.y);
     g.entities.forEach(function (e) {
@@ -386,7 +411,11 @@
       c.fillStyle = e.color;
       if (e.shape === "circle") { c.beginPath(); c.arc(e.x, e.y, e.r, 0, Math.PI * 2); c.fill(); }
       else if (e.shape === "text") { c.font = (e.size || 20) + "px sans-serif"; c.fillText(e.text || "", e.x, e.y); }
-      else if (e.texture && e.texture.canvas) c.drawImage(e.texture.canvas, e.x, e.y, e.w, e.h);
+      else if (e.texture && typeof e.texture.draw === "function") e.texture.draw(c, e.x, e.y, e.w, e.h, e.flip);
+      else if (e.texture && e.texture.canvas) {
+        if (e.flip) { c.save(); c.translate(e.x + e.w, e.y); c.scale(-1, 1); c.drawImage(e.texture.canvas, 0, 0, e.w, e.h); c.restore(); }
+        else c.drawImage(e.texture.canvas, e.x, e.y, e.w, e.h);
+      }
       else c.fillRect(e.x, e.y, e.w, e.h);
     });
     c.restore();
@@ -397,6 +426,9 @@
       c.fillStyle = it.color;
       if (it.kind === "text") { c.font = it.size + "px sans-serif"; c.fillText(it.text, it.x, it.y); }
       else { c.strokeStyle = "#fff"; c.strokeRect(it.x, it.y, it.w, 10); c.fillRect(it.x, it.y, it.w * Math.max(0, Math.min(1, it.value / it.max)), 10); }
+    }
+    if (g._fade && g._fade.alpha > 0) {   // over everything
+      c.save(); c.globalAlpha = g._fade.alpha; c.fillStyle = g._fade.color; c.fillRect(0, 0, g.width, g.height); c.restore();
     }
   };
 
