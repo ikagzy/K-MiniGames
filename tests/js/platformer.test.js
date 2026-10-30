@@ -315,3 +315,35 @@ test('the hero can be another character; an unknown one makes the spec invalid',
   run(s, 0.3);
   assert.ok(K.sprites.has('runner.run1') && K.sprites.has('runner.die'));
 });
+
+// ---- campaign: many levels from a few numbers ----
+test('a campaign gives that many levels, the difficulty climbs and each level can be finished', () => {
+  const K = fresh();
+  const list = K.levels.campaign({ count: 12, from: 1, to: 5, width: 50, seed: 7 });
+  assert.strictEqual(list.length, 12);
+  assert.strictEqual(list[0].difficulty, 1);
+  assert.strictEqual(list[11].difficulty, 5);
+  for (let i = 1; i < list.length; i++) assert.ok(list[i].difficulty >= list[i - 1].difficulty, 'never gets easier');
+  assert.ok(list[11].width > list[0].width, 'later levels are longer');
+  assert.strictEqual(new Set(list.map((o) => o.seed)).size, 12, 'every level is different');
+  const spec = { kit: 'platformer', campaign: { count: 12, from: 1, to: 5, width: 50, seed: 7 } };
+  assert.deepStrictEqual(K.kit.check(spec), []);
+  assert.deepStrictEqual(K.levels.campaign({ count: 12, from: 1, to: 5, width: 50, seed: 7 }), list, 'the same numbers, the same campaign');
+});
+
+test('a campaign is played level by level and the HUD says which one', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'platformer', campaign: { count: 3, from: 1, to: 2, width: 30, seed: 3 }, time: 100, generate: [{ seed: 1 }] });
+  assert.strictEqual(s.levels.count, 3);
+  run(s, 0.1);
+  assert.ok(s.g.ui.items['hud.world'].text.includes('1/3'), s.g.ui.items['hud.world'].text);
+  const out = K.levels.campaign({ count: 99, from: 9, to: -4 });
+  assert.strictEqual(out.length, 20, 'the count is capped');
+  assert.ok(out.every((o) => o.difficulty >= 1 && o.difficulty <= 5));
+});
+
+test('a campaign beats generate but custom level rows beat both', () => {
+  const K = fresh();
+  assert.strictEqual(K.levels.fromSpec({ campaign: { count: 4 }, generate: [{ seed: 1 }] }).length, 4);
+  assert.strictEqual(K.levels.fromSpec({ campaign: { count: 4 }, levels: [FLAT] }).length, 1);
+});

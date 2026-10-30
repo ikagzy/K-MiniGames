@@ -153,9 +153,24 @@
     return grid.map(function (row) { return row.join(""); });
   };
 
-  // The level rows of a spec: custom rows if given, else one generated level per `generate` entry, else the default level.
+  // A campaign of many levels from a few numbers (a small model writes these, not twenty levels): `count` 2-20, the difficulty
+  // climbs from `from` to `to`, the levels grow up to half as long and the enemies, pits and flyers grow with it.
+  L.campaign = function (c) {
+    c = c || {};
+    var n = Math.round(clamp(c.count, 2, 20, 6)), from = Math.round(clamp(c.from, 1, 5, 1)), to = Math.round(clamp(c.to, 1, 5, 4));
+    var width = clamp(c.width, 24, 160, 60), seed = Math.floor(clamp(c.seed, 0, 9999, 1)), out = [];
+    for (var i = 0; i < n; i++) {
+      var t = i / (n - 1);
+      out.push({ seed: (seed + i * 37) % 10000, difficulty: Math.round(from + (to - from) * t), width: Math.round(Math.min(160, width * (1 + 0.5 * t))),
+                 enemies: 1 + Math.round(t * 3), pits: 1 + Math.round(t * 3), flyers: Math.round(t * 3), coins: 3, blocks: 2, pipes: 2 });
+    }
+    return out;
+  };
+
+  // The level rows of a spec: custom rows if given, else a campaign, else one generated level per `generate` entry, else the default level.
   L.fromSpec = function (spec) {
     if (spec.levels && spec.levels.length) return spec.levels;
+    if (spec.campaign) return L.campaign(spec.campaign).map(function (o) { return L.generate(o); });
     if (spec.generate && spec.generate.length) return spec.generate.map(function (o) { return L.generate(o); });
     return [L.defaultLevel];
   };

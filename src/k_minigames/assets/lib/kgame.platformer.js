@@ -58,6 +58,7 @@
         g.all().forEach(function (e) { if (e.tag !== "_hud") e.dead = true; });
         state.level = lv; state.map = lv.map; state.tiles = {}; state.frozen = false; state.invuln = 0; state.star = 0;
         hud.time = spec.time; hud.timeUp = false;
+        if (levels.count > 1) hud.world = (lv.index + 1) + "/" + levels.count;   // which level of how many
         // a level shorter than the window sits at the bottom of it (the sky shows above); a taller one scrolls
         g.cameraBounds = { x0: 0, y0: Math.min(0, lv.height - g.height), x1: Math.max(lv.width, g.width), y1: lv.height };
         lv.cells.forEach(function (c) {
