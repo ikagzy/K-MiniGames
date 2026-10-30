@@ -2,5 +2,5 @@
 (function (root) {
   var K = root.K = root.K || {};
   K.version = "1";
-  if (typeof module !== "undefined" \&\& module \&\& module.exports) module.exports = K;
+  if (typeof module !== "undefined" && module && module.exports) module.exports = K;
 })(globalThis);
