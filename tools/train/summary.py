@@ -2,6 +2,7 @@
 
   python tools/train/summary.py
   python tools/train/summary.py --compare k-ai-v1-yeni-set k-ai-v2      (two reports side by side, by field and by hand-written prompt)
+  python tools/train/summary.py --added   k-ai-v1-yeni-set k-ai-v2      (only what the second round added: new features, fox, campaign, music style)
 
 Columns: valid = share of answers that are usable specs; accuracy = share of the asked-for fields the answer got right on the
 generated set; hand = the hand-written prompts (all = prompts fully right, fields = single expectations right)."""
@@ -43,10 +44,51 @@ def compare(a_name, b_name) -> int:
     return 0
 
 
+NEW_FEATURES = {"spring", "dashPad", "rings", "checkpoint", "ice", "movingPlatforms"}
+
+
+def added(a_name, b_name) -> int:
+    """The things added in the second round (new features, the fox, the campaign, the music style), judged on the examples that
+    ask for them, for two reports on the same evaluation set (eval.jsonl)."""
+    truth = {}
+    for line in (DATA / "eval.jsonl").read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            e = json.loads(line)
+            truth[e["id"]] = e
+    groups = {
+        "new feature (spring, dashPad, rings, checkpoint, ice, movingPlatforms)": ("features", lambda s: NEW_FEATURES & set(s.get("features", []))),
+        "the fox character (hero.character)": ("hero", lambda s: s.get("hero", {}).get("character")),
+        "campaign (5-20 levels)": ("campaign", lambda s: "campaign" in s),
+        "music style (mood, tempo)": ("musicStyle", lambda s: "musicStyle" in s),
+    }
+    reports = [json.loads((DATA / f"report_{n}.json").read_text(encoding="utf-8")) for n in (a_name, b_name)]
+    print(f"{'what was added':72} {a_name[:14]:>14} {b_name[:14]:>14}")
+    for label, (field, has) in groups.items():
+        cells = []
+        for r in reports:
+            hit = total = 0
+            for item in r["details"]["generated"]:
+                e = truth.get(item["id"])
+                if e and e["kind"] == "create" and has(e["spec"]) and field in item["fields"]:
+                    total += 1
+                    hit += bool(item["fields"][field])
+            cells.append(f"{hit}/{total} {100 * hit // total}%" if total else "-")
+        print(f"{label:72} {cells[0]:>14} {cells[1]:>14}")
+    news = [h for h in reports[1]["details"]["hand"]][24:]
+    olds = [h for h in reports[0]["details"]["hand"]][24:]
+    print(f"\nhand-written prompts for the new things (the last {len(news)}): {a_name}: {sum(h['all'] for h in olds)}/{len(olds)} right   {b_name}: {sum(h['all'] for h in news)}/{len(news)} right")
+    for h in news:
+        print(f"  {'ok  ' if h['all'] else 'MISS'} {h['prompt'][:78]}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--compare", nargs=2, metavar=("A", "B"))
+    parser.add_argument("--added", nargs=2, metavar=("A", "B"), help="judge only the things added in the second round")
     args = parser.parse_args()
+    if args.added:
+        return added(*args.added)
     if args.compare:
         return compare(*args.compare)
     reports = sorted(DATA.glob("report_*.json"), key=lambda p: p.stat().st_mtime)
