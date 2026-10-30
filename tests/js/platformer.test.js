@@ -225,3 +225,9 @@ test('many generated levels with everything switched on are valid specs', () => 
     assert.deepStrictEqual(K.kit.check(spec), [], 'seed ' + seed);
   }
 });
+
+test('a feature listed twice is applied once', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'platformer', features: ['doubleJump', 'doubleJump', { name: 'doubleJump' }] });
+  assert.strictEqual(s.jumpHooks.length, 1);
+});

@@ -25,8 +25,10 @@
   K.feature.define = function (name, def) { features[name] = def; };
   K.feature.list = function (kit) { return Object.keys(features).filter(function (n) { return !kit || (features[n].kits || []).indexOf(kit) >= 0; }); };
 
-  function featureEntries(spec) {
-    return (spec.features || []).map(function (f) { return typeof f === "string" ? { name: f } : f; });
+  function featureEntries(spec) {   // each feature once, even if the spec lists it twice
+    var seen = {};
+    return (spec.features || []).map(function (f) { return typeof f === "string" ? { name: f } : f; })
+      .filter(function (f) { if (seen[f.name]) return false; seen[f.name] = true; return true; });
   }
 
   // A list of what is wrong with a spec (an empty list: it can run).

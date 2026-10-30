@@ -145,3 +145,12 @@
 **spec** düzeltmelere giden sorunlar: yok
 **spec** maddeler: unverified: Oyun açılır ve kahraman sahnededir. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'me')) | unverified: Seviyede bir başlangıç ve bir bayrak vardır. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'level')) | unverified: Kahraman zemine basar ve yerçekimiyle düşmez. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'me')) | unverified: Seviyede altın ya da düşman bulunur. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'g')) | unverified: Kahraman sağa yürüyebilir. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'me'))
 **spec** uyarılar: Klavye dinleniyor ama W A S D, ok tuşları ve boşluk hiçbir şeyi değiştirmedi.
+
+## 2026-10-30 14:15 — qwen2.5:3b, tarif: mario
+
+| yöntem | geçti | doğrulanamadı | kaldı | düzeltme | JS hatası | sorunlar | süre (sn) |
+|---|---|---|---|---|---|---|---|
+| spec | 5 | 0 | 0 | 0 | 0 | - | 13 |
+
+**spec** düzeltmelere giden sorunlar: yok
+**spec** maddeler: passed: Oyun açılır ve kahraman sahnededir. () | passed: Seviyede bir başlangıç ve bir bayrak vardır. () | passed: Kahraman zemine basar ve yerçekimiyle düşmez. () | passed: Seviyede altın ya da düşman bulunur. () | passed: Kahraman sağa yürüyebilir. ()
