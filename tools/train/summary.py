@@ -1,16 +1,54 @@
 """Prints the evaluation reports side by side (no GPU, no model; it only reads tools/train/data/report_*.json).
 
   python tools/train/summary.py
+  python tools/train/summary.py --compare k-ai-v1-yeni-set k-ai-v2      (two reports side by side, by field and by hand-written prompt)
 
 Columns: valid = share of answers that are usable specs; accuracy = share of the asked-for fields the answer got right on the
 generated set; hand = the hand-written prompts (all = prompts fully right, fields = single expectations right)."""
+import argparse
 import json
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parent / "data"
 
 
+def by_field(report):
+    out = {}
+    for item in report["details"]["generated"]:
+        for field, ok in item["fields"].items():
+            out.setdefault(field, [0, 0])
+            out[field][0] += bool(ok)
+            out[field][1] += 1
+    return out
+
+
+def compare(a_name, b_name) -> int:
+    a, b = (json.loads((DATA / f"report_{n}.json").read_text(encoding="utf-8")) for n in (a_name, b_name))
+    fa, fb = by_field(a), by_field(b)
+    print(f"{'field':14} {a_name[:18]:>18} {b_name[:18]:>18}   change")
+    for field in sorted(set(fa) | set(fb), key=lambda f: (fb.get(f, [0, 1])[0] / fb.get(f, [0, 1])[1]) - (fa.get(f, [0, 1])[0] / fa.get(f, [0, 1])[1])):
+        x, y = fa.get(field), fb.get(field)
+        px = f"{x[0]}/{x[1]} {100 * x[0] // x[1]}%" if x else "-"
+        py = f"{y[0]}/{y[1]} {100 * y[0] // y[1]}%" if y else "-"
+        delta = f"{100 * y[0] / y[1] - 100 * x[0] / x[1]:+.0f}" if x and y else ""
+        print(f"{field:14} {px:>18} {py:>18}   {delta}")
+    print(f"\nhand-written prompts:{a_name} all {a['hand']['all_met']}, fields {a['hand']['fields_met']}  |  {b_name} all {b['hand']['all_met']}, fields {b['hand']['fields_met']}")
+    ha, hb = a["details"]["hand"], b["details"]["hand"]
+    for i, (x, y) in enumerate(zip(ha, hb)):
+        if x["prompt"] == y["prompt"] and x["all"] != y["all"]:
+            print(f"  {'now right' if y['all'] else 'now WRONG'}: {y['prompt'][:70]}")
+    only_b = [y for y in hb[len(ha):]]
+    if only_b:
+        print(f"  ({len(only_b)} hand prompts exist only in {b_name}: {sum(y['all'] for y in only_b)} fully right)")
+    return 0
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--compare", nargs=2, metavar=("A", "B"))
+    args = parser.parse_args()
+    if args.compare:
+        return compare(*args.compare)
     reports = sorted(DATA.glob("report_*.json"), key=lambda p: p.stat().st_mtime)
     if not reports:
         print("no reports yet in", DATA)
