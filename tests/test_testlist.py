@@ -62,7 +62,7 @@ def test_results_map_to_statuses():
     assert out["t1"].status == PASSED
     assert out["t2"].status == UNVERIFIED and "boş" in out["t2"].note
     assert out["t3"].status == FAILED
-    assert out["t4"].status == FAILED and "TypeError: x" in out["t4"].note
+    assert out["t4"].status == UNVERIFIED and "TypeError: x" in out["t4"].note   # the test crashed: not the game's fault
     assert out["t5"].status == UNVERIFIED and "yazılamadı" in out["t5"].note
 
 
@@ -92,3 +92,18 @@ def test_saving_the_items_does_not_erase_the_resolved_errors(game):
     testlist.add_resolved(game, ["yeni hata"])
     assert testlist.load(game) == [item("t1")]
     assert json.loads(game.tests_path.read_text(encoding="utf-8"))["resolved"] == ["eski hata", "yeni hata"]
+
+
+def test_a_test_that_crashes_on_its_own_code_is_unverified_not_failed_but_a_false_result_still_fails():
+    items = [item("a"), item("b"), item("c"), item("d")]
+    events = [
+        {"type": "test", "id": "a", "passed": False, "vacuous": False, "error": "TypeError: game.score is not a function"},
+        {"type": "test", "id": "b", "passed": False, "vacuous": False, "error": "ReferenceError: KGame is not defined"},
+        {"type": "test", "id": "c", "passed": False, "vacuous": False, "error": "zaman aşımı"},
+        {"type": "test", "id": "d", "passed": False, "vacuous": False, "error": ""},
+    ]
+    out = {i.id: i for i in testlist.apply_results(items, events)}
+    assert out["a"].status == UNVERIFIED and "test kodu" in out["a"].note
+    assert out["b"].status == UNVERIFIED
+    assert out["c"].status == FAILED   # a timeout can be the game hanging
+    assert out["d"].status == FAILED

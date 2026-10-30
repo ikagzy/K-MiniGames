@@ -4,9 +4,12 @@ The model writes the checklist and a small test for each item; the list is kept 
 tests again and a regression is noticed."""
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, replace
 
 from k_minigames.library import Game
+
+_TEST_CRASH = re.compile(r"^(?:TypeError|ReferenceError|SyntaxError|RangeError)")
 
 PENDING, PASSED, FAILED, UNVERIFIED = "pending", "passed", "failed", "unverified"
 RESOLVED_LIMIT = 20
@@ -84,7 +87,11 @@ def apply_results(items: list[TestItem], events: list[dict]) -> list[TestItem]:
             elif result.get("passed"):
                 item = replace(item, status=PASSED, note="")
             else:
-                item = replace(item, status=FAILED, note=str(result.get("error") or "test geçmedi"))
+                error = str(result.get("error") or "")
+                if _TEST_CRASH.match(error):   # the test's own code broke (a function it made up): that says nothing about the game
+                    item = replace(item, status=UNVERIFIED, note=f"test kodu çalışmadı (oyunun hatası olmayabilir): {error[:120]}")
+                else:
+                    item = replace(item, status=FAILED, note=error or "test geçmedi")
         elif item.code is None:
             item = replace(item, status=UNVERIFIED, note="test yazılamadı")
         out.append(item)

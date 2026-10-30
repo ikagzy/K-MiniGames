@@ -38,7 +38,9 @@ def _technical(report: CheckReport) -> list[str]:
 
 
 def _fix_texts(report: CheckReport, previous: list[TestItem]) -> list[str]:
-    texts = [p.as_text() for p in report.problems] + list(report.js_errors)
+    # a probe warning (the mouse did nothing) is shown to the user but is no reason to rewrite the game
+    texts = [p.as_text() for p in report.problems if not (p.kind.startswith("probe_") and p.severity == "warning")]
+    texts += list(report.js_errors)
     before = {i.id: i for i in previous}
     for item in report.items:
         if item.status != FAILED:
@@ -92,13 +94,14 @@ def _with_scripts(html: str, modules) -> str:
     return kgamelib.ensure_scripts(html, list(modules)) if modules else html
 
 
-def _with_new_tests(generator, html: str, items: list[TestItem], cancel, memory: str) -> list[TestItem]:
+def _with_new_tests(generator, html: str, items: list[TestItem], cancel, memory: str, modules=()) -> list[TestItem]:
     """Ask the model for test code for the items that have none; if it fails they stay without code."""
     texts = [i.text for i in items if i.code is None]
     if not texts:
         return items
     try:
-        codes = generator.write_tests(html, texts, cancel=cancel, memory=memory)
+        codes = generator.write_tests(html, texts, cancel=cancel, memory=memory,
+                                      **({"modules": modules} if modules else {}))
     except GenerationError:
         return items
     return testlist.with_code(items, texts, codes)
@@ -141,7 +144,7 @@ def create_game_flow(generator, game: Game, description: str, textures: list[Tex
         raise
     page = _with_scripts(generated.html, modules)
     items = testlist.merge_checklist([], generated.checklist)
-    items = _with_new_tests(generator, page, items, cancel, memory)
+    items = _with_new_tests(generator, page, items, cancel, memory, modules)
     html, report, attempts = repair_loop(generator, game, page, items, server, open_url, on_status,
                                          cancel, memory=memory, modules=modules)
     testlist.save(game, report.items)
@@ -174,7 +177,7 @@ def edit_game_flow(generator, game: Game, request: str, textures: list[Texture],
         raise
     page = _with_scripts(generated.html, modules)
     items = testlist.merge_checklist(items, generated.checklist)
-    items = _with_new_tests(generator, page, items, cancel, memory)
+    items = _with_new_tests(generator, page, items, cancel, memory, modules)
     html, report, attempts = repair_loop(generator, game, page, items, server, open_url, on_status,
                                          cancel, memory=memory, modules=modules)
     if _hard_problems(report) or report.js_errors or not report.finished:

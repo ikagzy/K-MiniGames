@@ -238,3 +238,27 @@ def test_the_generator_passes_the_modules_to_the_prompt():
     gen.edit("<html></html>", "r", [], [], modules=["core"])
     gen.fix("<html></html>", ["p"], modules=["core"])
     assert len(seen) == 3 and all("kgame.js" in text for text in seen)
+
+
+def test_the_test_writer_gets_the_library_hints_only_in_library_mode():
+    from k_minigames import generator as g
+    plain = g.build_test_messages("<html></html>", ["a", "b"])
+    assert plain[0]["content"] == g._TESTER_RULES
+    lib = g.build_test_messages("<html></html>", ["a", "b"], modules=["core", "sports"])
+    system = lib[0]["content"]
+    assert system.startswith(g._TESTER_RULES) and "K.expose" in system and "game.g" in system
+    assert "uydurma" in system   # do not invent functions
+
+
+def test_write_tests_passes_the_modules_on():
+    from k_minigames.generator import Generator
+    seen = []
+
+    class Client:
+        def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
+            seen.append(messages[0]["content"])
+            return '{"tests": [{"index": 0, "code": "return true;"}]}'
+
+    Generator(Client(), "m").write_tests("<html></html>", ["a"], modules=["core"])
+    Generator(Client(), "m").write_tests("<html></html>", ["a"])
+    assert "K.expose" in seen[0] and "K.expose" not in seen[1]

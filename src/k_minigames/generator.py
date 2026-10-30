@@ -78,6 +78,15 @@ _PATCH_RULES = (
 )
 
 
+_TESTER_LIB = (
+    "Oyun K-MiniGames kütüphanesiyle yazıldı. `game` parametresi, oyunun `K.expose({...})` ile açtığı nesnedir: oyunun "
+    "HTML'inde K.expose içinde adı geçen alanları kullan (örneğin `game.g` oyundur: `game.g.score('left')`, "
+    "`game.g.current` ('play' ya da 'over'), `game.g.all('etiket')`; `game.ball`, `game.me` gibi varlıkların x, y, vx, vy "
+    "alanları vardır). Oyunu `game.g.step(1/60)` ile ilerletebilirsin. HTML'de görmediğin işlev ya da ad uydurma "
+    "(KGame, game.score() gibi); emin değilsen basit bir koşul yaz."
+)
+
+
 def _system(rules: str, memory: str, modules=()) -> dict:
     """The system message. With library modules the rules are the library rules followed by the modules' guides;
     without them it is exactly what it always was."""
@@ -188,10 +197,11 @@ def build_fix_messages(html: str, problems: list[str], *, memory: str = "", modu
     return [_system(_RULES, memory, modules), {"role": "user", "content": user}]
 
 
-def build_test_messages(html: str, checklist: list[str], *, memory: str = "") -> list[dict]:
+def build_test_messages(html: str, checklist: list[str], *, memory: str = "", modules=()) -> list[dict]:
     items = "\n".join(f"{i}: {text}" for i, text in enumerate(checklist))
     user = f"Oyun:\n```html\n{html}\n```\n\nKontrol listesi:\n{items}"
-    return [_system(_TESTER_RULES, memory), {"role": "user", "content": user}]
+    rules = f"{_TESTER_RULES}\n{_TESTER_LIB}" if modules else _TESTER_RULES
+    return [_system(rules, memory), {"role": "user", "content": user}]
 
 
 def parse_response(text: str) -> Generated | None:
@@ -299,6 +309,6 @@ class Generator:
         return self._game(build_fix_messages(html, problems, memory=memory, modules=modules), on_token, cancel)
 
     def write_tests(self, html: str, checklist: list[str], cancel: Callable[[], bool] | None = None,
-                    *, memory: str = "") -> list[str | None]:
-        answer = self._chat(build_test_messages(html, checklist, memory=memory), None, cancel)
+                    *, memory: str = "", modules=()) -> list[str | None]:
+        answer = self._chat(build_test_messages(html, checklist, memory=memory, modules=modules), None, cancel)
         return parse_tests(answer, len(checklist))

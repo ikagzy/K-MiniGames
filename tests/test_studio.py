@@ -304,6 +304,10 @@ class LibGenerator(FakeGenerator):
         self.kwargs.append(("create", memory, tuple(modules)))
         return self._create
 
+    def write_tests(self, html, checklist, cancel=None, *, memory="", modules=()):
+        self.kwargs.append(("tests", tuple(modules)))
+        return super().write_tests(html, checklist, cancel, memory=memory)
+
     def fix(self, html, problems, on_token=None, cancel=None, *, memory="", modules=()):
         self.kwargs.append(("fix", tuple(modules)))
         return super().fix(html, problems, memory=memory)
@@ -323,6 +327,7 @@ def test_a_game_with_library_modules_gets_the_files_and_the_script_tags(game):
     assert outcome.html.count('<script src="kgame.js"></script>') == 1
     assert outcome.html.index("kgame.js") < outcome.html.index("const g = K.game()")
     assert ("create", "", ("core", "ai")) in gen.kwargs
+    assert ("tests", ("core", "ai")) in gen.kwargs   # the test writer knows the library too
     assert game.html_path.read_text(encoding="utf-8") == outcome.html
 
 
@@ -339,3 +344,14 @@ def test_a_game_without_modules_goes_the_old_way_and_copies_nothing(game):
     outcome = flow(studio.create_game_flow, gen, game, "tarif", [], memory="")
     assert not (game.folder / "kgame.js").exists()
     assert "kgame" not in outcome.html
+
+
+def test_the_fix_prompt_leaves_out_probe_warnings_but_keeps_real_problems():
+    from k_minigames.htmlscan import Problem
+    report = CheckReport([Problem("probe_mouse", "Fare dinleniyor ama hiçbir şey olmadı.", "warning"),
+                          Problem("probe_blank", "Ekran boş.", "error"),
+                          Problem("external_url", "http://x.test/a.js", "warning")], [], ["hata:BUG1"], True, [])
+    texts = studio._fix_texts(report, [])
+    assert not any("Fare dinleniyor" in t for t in texts)
+    assert any("Ekran boş" in t for t in texts) and any("hata:BUG1" in t for t in texts)
+    assert any("x.test" in t for t in texts)   # the old behaviour for the other warnings stays
