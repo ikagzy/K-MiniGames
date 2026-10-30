@@ -65,3 +65,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-56 | 2026-10-28 | Platform kitine Sonic özellikleri: spring, dashPad, rings (130 JS testi, tarayıcıda denendi); k-ai henüz bilmiyor, yeniden eğitim gerekli | b8cdf2d |
 | CP-57 | 2026-10-28 | hero.character ve özgün runner karakteri (turuncu tilki); Hız Koşusu demosu yeniden kuruldu; Mario benzeri tasarımlar bekliyor | 70641fe |
 | CP-58 | 2026-10-28 | Özgün varsayılan tasarımlar (kâşif, yaratık, mücevher blok, iksir, taş sütun), marka adları temizlendi, campaign (2-20 seviye, kademeli zorluk), 134 JS testi | 82ce684 |
+| CP-59 | 2026-10-28 | Platform çeşitliliği: checkpoint, ice (buz), movingPlatforms; floorHooks/slip/checkpoint kancaları; 139 JS testi; boss yapılmadı | c64f2b7 |
