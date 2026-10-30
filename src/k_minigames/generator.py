@@ -7,7 +7,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from k_minigames import kgamelib
+from k_minigames import kgamelib, patching
 from k_minigames import memory as memory_notes
 from k_minigames.library import Texture
 from k_minigames.ollama_client import OllamaError
@@ -65,6 +65,16 @@ _TESTER_RULES = (
     'Cevap yalnızca şu biçimde bir ```json bloğu olsun: {"tests": [{"index": 0, "code": "return true;"}]}\n'
     "Kod, JSON'da çift tırnaklı tek satır bir dizge olsun (satır sonu için \\n yaz); ters tırnak (`) ya da gerçek satır "
     "sonu kullanma."
+)
+
+
+PATCH_MIN_CHARS = 1500   # a shorter game is simply written again; patches pay off on a longer one
+_PATCH_RULES = (
+    "Oyunun mevcut hâlini ve kullanıcının isteğini göreceksin. Oyunu YENİDEN YAZMA; yalnızca değişen yerleri şu "
+    "biçimde ver (her değişiklik için bir blok):\n"
+    "<<<<<<< BUL\n(oyunda AYNEN geçen, değişecek satırlar)\n=======\n(yerine gelecek satırlar)\n>>>>>>> DEĞİŞTİR\n"
+    "BUL kısmı oyunda TAM BİR kez geçmeli (yeterince benzersiz olsun) ve karakteri karakterine aynı olmalı. "
+    "Sonra bir ```json bloğunda güncel kontrol listesini ver: {\"checklist\": [\"...\"]}"
 )
 
 
@@ -146,6 +156,29 @@ def scope_hints(html: str, problems: list[str]) -> list[str]:
         hints.append(f"'{name}' {where} içinde tanımlı ama {users} içinde de kullanılıyor; orada tanımsız. "
                      f"Her birinin başına '{name}' tanımını ekle ya da tanımı dosyanın en üstüne (fonksiyonların dışına) taşı.")
     return hints
+
+
+def build_patch_messages(html: str, request: str, textures: list[Texture], checklist: list[str],
+                         resolved: list[str] = (), *, memory: str = "", modules=()) -> list[dict]:
+    """Like the edit messages, but the answer is find/replace blocks (see patching.py)."""
+    messages = build_edit_messages(html, request, textures, checklist, resolved, memory=memory, modules=modules)
+    messages[0]["content"] += "\n\n" + _PATCH_RULES
+    user = messages[1]["content"].replace("İsteği uygula ve oyunun tamamını yeniden ver; yeni ya da değişen kontrol "
+                                           "listesini de yaz.", "İsteği değişiklik blokları olarak uygula.")
+    messages[1]["content"] = user
+    return messages
+
+
+def _checklist_of(text: str) -> list[str]:
+    for lang, body in _FENCE.findall(text or ""):
+        if lang.lower() == "json":
+            try:
+                data = json.loads(body)
+            except ValueError:
+                continue
+            if isinstance(data, dict) and isinstance(data.get("checklist"), list):
+                return [str(x).strip() for x in data["checklist"] if str(x).strip()]
+    return []
 
 
 def build_fix_messages(html: str, problems: list[str], *, memory: str = "", modules=()) -> list[dict]:
@@ -252,6 +285,12 @@ class Generator:
     def edit(self, html: str, request: str, textures: list[Texture], checklist: list[str],
              resolved: list[str] = (), on_token: Callable | None = None, cancel: Callable[[], bool] | None = None,
              *, memory: str = "", modules=()) -> Generated:
+        if modules and len(html) >= PATCH_MIN_CHARS:   # library games are edited with patches, whole file as a fallback
+            answer = self._chat(build_patch_messages(html, request, textures, checklist, resolved, memory=memory,
+                                                     modules=modules), None, cancel)
+            patched = patching.apply_patches(html, patching.parse_patches(answer))
+            if patched is not None:
+                return Generated(patched, _checklist_of(answer))
         return self._game(build_edit_messages(html, request, textures, checklist, resolved, memory=memory,
                                               modules=modules), on_token, cancel)
 
