@@ -74,7 +74,66 @@ EN = {
 TR_HEADS = ["Bir platform oyunu yap:", "Bana bir platform oyunu hazırla:", "Platform oyunu istiyorum:", "Mario gibi bir oyun olsun:",
             "Şunlara sahip bir platform oyunu:", "Bir koşup zıplama oyunu yapar mısın?"]
 EVAL_HEADS = ["Kahramanımızın macerası:", "Bir oyun tasarla:", "Oynamak için şöyle bir platform oyunu lazım:"]
-EN_HEADS = ["Make a platformer:", "I want a platform game:", "Build me a platformer game:"]
+EN_HEADS = ["Make a platformer:", "I want a platform game:", "Build me a platformer game:", "Can you make me a platformer?",
+            "Hey, I need a platform game:"]
+
+# more ways of saying the same things (real people do not write like the first list): suffixed forms, longer wordings, "no X" forms
+MORE_TR = {
+    "theme": {"sky": ["gündüz vakti", "mavi gökyüzü", "güneşli ve açık hava"], "cave": ["yer altında", "mağaranın içinde", "karanlık tüneller"],
+              "castle": ["şatoda geçen", "kale"], "night": ["gecenin karanlığında", "ay ışığında", "gece"],
+              "underwater": ["su altında", "denizde", "sualtı"], "space": ["uzay", "uzayda", "yıldızlararası"],
+              "forest": ["ormanda", "orman", "ağaçlık bir yer"]},
+    "difficulty": {1: ["çocuk oyuncağı", "tamamen rahat"], 2: ["kolayca geçilebilir", "fazla zor olmayan"],
+                   3: ["ortalama zorlukta", "orta seviye"], 4: ["zorlayıcı", "oldukça zor"],
+                   5: ["çok çok zor", "kabus gibi zor", "çıldırtıcı derecede zor"]},
+    "width": {"short": ["minik bir seviye", "kısacık bir bölüm"], "medium": ["ortalama uzunlukta bir bölüm"],
+              "long": ["epey uzun bir yol", "uzun uzun giden bir seviye"], "huge": ["dev gibi uzun bir seviye", "bitmeyen bir bölüm"]},
+    "enemies": {0: ["düşmansız olsun", "kimse saldırmasın"], 1: ["az düşmanlı", "tek tük düşman"], 3: ["bol düşmanlı", "epey düşman"],
+                4: ["çok düşmanlı", "düşman çok olsun"], 5: ["düşman yağmuru", "düşmanlarla dolu"]},
+    "coins": {0: ["altınsız olsun", "altın toplanmasın"], 1: ["birkaç altın", "az altınlı"], 3: ["bol altınlı", "epey altın"],
+              4: ["çok altınlı", "bir sürü altın"], 5: ["altınlarla dolu", "altın içinde yüzsün"]},
+    "pits": {0: ["çukursuz olsun", "hiç çukur olmasın"], 1: ["birkaç çukur", "az çukurlu"], 3: ["bol çukurlu"], 4: ["çok çukurlu"],
+             5: ["çukurlarla dolu"]},
+    "pipes": {0: ["borusuz", "hiç boru olmasın"], 1: ["birkaç boru"], 3: ["bol borulu"], 4: ["çok borulu"], 5: ["borularla dolu"]},
+    "blocks": {0: ["bloksuz"], 1: ["birkaç blok"], 3: ["bol bloklu", "tuğla ve blok bol"], 4: ["çok bloklu"], 5: ["bloklarla dolu"]},
+    "flyers": {0: ["uçan düşman olmasın", "uçan düşmansız"], 1: ["az uçan düşman"], 2: ["uçan düşmanlar da olsun"],
+               3: ["epey uçan düşman"], 4: ["bir sürü uçan düşman"], 5: ["uçan düşmanlarla dolu"]},
+    "spikes": {0: ["diken olmasın", "dikensiz"], 1: ["az diken"], 2: ["dikenli yerler olsun"], 3: ["epey diken"],
+               4: ["bir sürü diken"], 5: ["dikenlerle dolu"]},
+    "levels": {2: ["iki bölüm", "2 seviye"], 3: ["üç bölüm", "3 seviye"], 4: ["dört bölüm", "4 bölüm"]},
+    "music": {"boss": ["boss müziği", "heyecanlı müzik"], "underground": ["yeraltı müziği"], "castle": ["kale müziği"],
+              "overworld": ["gündüz müziği", "şen müzik"]},
+}
+MORE_TR_LISTS = {
+    "features": ["çift zıplama özelliği", "havada ikinci zıplama", "iki defa zıplayabilsin"],
+}
+MORE_TR_NESTED = {
+    "speed": {"slow": ["ağır yürüyen kahraman"], "fast": ["ışık hızında koşan", "hızlı bir kahraman"]},
+    "jump": {"low": ["kısa zıplayan"], "high": ["uçarcasına zıplayan"]},
+    "qblocks": {"mushroom": ["bloktan mantar çıksın", "soru bloklarında mantar olsun"],
+                "star": ["soru bloğundan yıldız çıksın", "yıldız veren bloklar"]},
+}
+for _field, _table in MORE_TR.items():
+    for _value, _phrases in _table.items():
+        TR.setdefault(_field, {}).setdefault(_value, []).extend(_phrases)
+for _field, _table in MORE_TR_NESTED.items():
+    for _value, _phrases in _table.items():
+        TR[_field][_value].extend(_phrases)
+TR["features"].extend(MORE_TR_LISTS["features"])
+EN["spikes"] = {0: ["no spikes"], 1: ["a few spikes"], 3: ["lots of spikes"], 5: ["spikes everywhere"]}
+EN["flyers"] = {0: ["no flying enemies"], 1: ["a few flying enemies"], 3: ["lots of flying enemies"], 5: ["flying enemies everywhere"]}
+EN["blocks"] = {1: ["few blocks"], 3: ["lots of blocks"], 5: ["blocks everywhere"]}
+PREFIXES = ["Şöyle bir oyun düşünüyorum:", "Bir oyun yapabilir misin?", "Hey Bob,", "Arkadaşlarla oynayacağız,", "Merhaba, bir oyun lazım:",
+            "Yeni bir oyun istiyorum,", "Platform oyunu yapalım:"]
+SUFFIXES = ["", "", "", " olsun", " lütfen", " Yapabilir misin?", " Teşekkürler!"]
+ASCII_FOLD = str.maketrans("ıİşŞçÇğĞöÖüÜ", "iissccggoouu")
+
+
+ASCII_FOLD_KEEP_CASE = str.maketrans("ıİşŞçÇğĞöÖüÜ", "iIsScCgGoOuU")
+
+
+def fold(text: str) -> str:
+    return text.lower().translate(ASCII_FOLD)
 
 
 def _width_class(width: int) -> str:
@@ -123,26 +182,26 @@ def _values(field: str, spec: dict):
 
 def mentions(text: str, field: str, spec: dict) -> bool:
     """Does the text say what the spec holds for this field? (a check on the data itself, in both languages)"""
-    text = text.lower()
+    text = fold(text)
     v = _values(field, spec)
     if field == "title":
-        return bool(v) and v.lower() in text
+        return bool(v) and fold(v) in text
     if field == "time":
         return str(v) in text
     if field == "hero":
         parts = []
         if v["lives"] is not None:
             parts.append(f"{v['lives']} can" in text or f"{v['lives']} lives" in text or v["lives"] in (1,) and ("tek can" in text or "bir can" in text)
-                         or f"{_NUM_WORDS.get(v['lives'], '#')} can" in text)
+                         or f"{fold(_NUM_WORDS.get(v['lives'], '#'))} can" in text)
         if v["speed"] in ("slow", "fast"):
-            parts.append(any(p.lower() in text for p in TR["speed"][v["speed"]]))
+            parts.append(any(fold(p) in text for p in TR["speed"][v["speed"]]))
         if v["jump"] in ("low", "high"):
-            parts.append(any(p.lower() in text for p in TR["jump"][v["jump"]]))
+            parts.append(any(fold(p) in text for p in TR["jump"][v["jump"]]))
         return bool(parts) and all(parts)
     if field == "features":
-        return bool(v) and any(p.lower() in text for p in TR["features"] + EVAL_EXTRA["features"] + EN["features"])
+        return bool(v) and any(fold(p) in text for p in TR["features"] + EVAL_EXTRA["features"] + EN["features"])
     if field == "qblocks":
-        return all(any(p.lower() in text for p in TR["qblocks"][k]) for k in v)
+        return all(any(fold(p) in text for p in TR["qblocks"][k]) for k in v)
     table = {"theme": TR["theme"], "difficulty": TR["difficulty"], "width": TR["width"], "levels": TR["levels"], "music": TR["music"]}
     if field in DENSITIES:
         table = {field: TR[field]}
@@ -151,7 +210,7 @@ def mentions(text: str, field: str, spec: dict) -> bool:
         entry = source.get(field)
         if isinstance(entry, dict) and v in entry:
             phrases += entry[v]
-    return any(p.lower() in text for p in phrases)
+    return any(fold(p) in text for p in phrases)
 
 
 _NUM_WORDS = {5: "beş", 3: "üç", 2: "iki", 7: "yedi", 9: "dokuz"}
@@ -160,7 +219,7 @@ _NUM_WORDS = {5: "beş", 3: "üç", 2: "iki", 7: "yedi", 9: "dokuz"}
 # ---- sampling a spec ----
 def _sample_fields(rng: random.Random, lang: str) -> set:
     probs = {"theme": 0.7, "difficulty": 0.5, "width": 0.35, "features": 0.3, "lives": 0.2, "speed": 0.15, "jump": 0.15,
-             "levels": 0.25, "title": 0.25, "time": 0.15, "music": 0.1, "qblocks": 0.1}
+             "levels": 0.25, "title": 0.25, "time": 0.15, "music": 0.15, "qblocks": 0.2}
     probs.update({d: 0.3 for d in DENSITIES})
     allowed = {"theme", "difficulty", "width", "features", "levels", "title", "enemies", "coins", "pits", "lives"} if lang == "en" else set(probs)
     chosen = {f for f in allowed if rng.random() < probs[f]}
@@ -210,8 +269,10 @@ def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=Non
         base["width"] = rng.randint(lo, hi)
     for d in DENSITIES:
         if d in fields:
-            pool = (1, 2, 3, 4, 5) if d in ("flyers", "spikes") else (0, 1, 3, 4, 5)
-            base[d] = rng.choice(pool)
+            pool = (0, 1, 2, 3, 4, 5) if d in ("flyers", "spikes") else (0, 1, 3, 4, 5)
+            value = rng.choice(pool)
+            if value or d not in ("flyers", "spikes"):
+                base[d] = value   # no flyers or spikes is the default: left out
     levels = []
     for _ in range(count):
         level = {"seed": rng.randint(0, 9999)}
@@ -245,7 +306,9 @@ def _phrase(rng: random.Random, field: str, spec: dict, lang: str, eval_mode: bo
         parts = []
         if v["lives"] is not None:
             n = v["lives"]
-            parts.append(f"{n} lives" if lang == "en" else rng.choice([f"{n} can", f"{n} canla başlasın"]) if n != 1 else
+            word = _NUM_WORDS.get(n, str(n)) if rng.random() < 0.3 else str(n)
+            parts.append(f"{n} lives" if lang == "en" else rng.choice([f"{word} can", f"{word} canla başlasın", f"{word} canı olsun",
+                                                                         f"{word} can hakkı olsun"]) if n != 1 else
                          rng.choice(["tek canlı", "bir can", "1 can"]))
         for key in ("speed", "jump"):
             if v[key] in ("slow", "fast", "low", "high"):
@@ -266,8 +329,25 @@ def _describe(rng: random.Random, fields: list, spec: dict, lang: str, eval_mode
     if not clauses:
         return rng.choice(["Bir platform oyunu yap.", "Mario gibi bir oyun olsun.", "Basit bir platform oyunu istiyorum."]) if lang == "tr" \
             else rng.choice(["Make a platformer.", "A simple platform game please."])
-    text = f"{rng.choice(heads)} {', '.join(clauses)}."
-    return text[0].lower() + text[1:] if rng.random() < 0.1 else text
+    if lang == "en":
+        text = f"{rng.choice(heads)} {', '.join(clauses)}."
+        return text[0].lower() + text[1:] if rng.random() < 0.1 else text
+    style = rng.random()
+    if style < 0.4:
+        text = f"{rng.choice(heads)} {', '.join(clauses)}."
+    elif style < 0.7:   # a chatty request: joined with "ve", maybe a greeting first and a polite ending
+        body = clauses[0] if len(clauses) == 1 else f"{', '.join(clauses[:-1])} ve {clauses[-1]}"
+        text = f"{rng.choice(PREFIXES)} {body}{rng.choice(SUFFIXES)}"
+        text = text if text.endswith(("?", "!")) else text + "."
+    elif style < 0.85:   # no greeting, only the wishes
+        text = ", ".join(clauses) + rng.choice(["", " olsun", " istiyorum"]) + "."
+    else:   # a list
+        text = "\n".join(f"- {c}" for c in clauses)
+    if rng.random() < 0.1:
+        text = text[0].lower() + text[1:]
+    if rng.random() < 0.12:   # written on a keyboard without Turkish letters
+        text = text.translate(ASCII_FOLD_KEEP_CASE)
+    return text
 
 
 # ---- messages exactly as the app builds them ----

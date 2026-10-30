@@ -63,6 +63,9 @@ Kullanıcı "ölçümü genişlet, gerekirse eğit" dedi. Yorumum ve yöntem:
 - **Model adı: `k-ai`** (yalnızca Bob; Don ayrı model). Sürümler: `k-ai:1.5b`, `k-ai:1.5b-v2`... Ollama'ya alma: LoRA için Modelfile `ADAPTER` (Qwen2 desteği denenmedi) ya da birleştirilmiş GGUF. Yayından önce Qwen lisansı ve Anthropic kullanım koşulları kontrol edilecek.
 - **Sıradaki:** (1) tarif ifadelerini çeşitlendirmek (günlük dil, yazım hataları, kısa/uzun; CPU), (2) 800 örnekle tam eğitim (~42 dk), (3) Ollama'ya alma denemesi, (4) SONRA (kullanıcı 'daha sonrası için' dedi): Bob'un konuşma tarzı sürümü; kullanıcıyla Bob'un karakteri belirlenip Claude'un yazacağı diyaloglarla (cümle + özet JSON) eğitilir, her sürümde özet ölçümü tekrarlanır.
 
+- **Tarif çeşitlendirme yapıldı (2026-10-30):** `specdata.py` içinde çok daha fazla ifade (ekli biçimler, olumsuz biçimler, `diken/uçan düşman olmasın` değerleri), 5 cümle biçimi (başlıklı, sohbet, ve ile bağlı, liste), selam/nezaket ekleri, aksansız yazım (`fold`), sayıların yazıyla yazımı. Elle yazılmış tarifler eğitime sızmıyor (kontrol edildi). Eğitim `k-ai-v1`: 800 örnek, 2 tur, çıktı `tools/train/out/k-ai-v1`.
+- **Karar (kullanıcı):** 3D, ilk paylaşımda yalnızca hazır kitlerle, mini olarak yapılacak; zamanla geliştirilecek.
+
 ## 6. Dikkat edilecek tuzaklar
 - **Türkçe karakterli klasör yolu** (`klasörler\lazım olabilecek...`). Tk `PhotoImage(file=)` bu yüzden `data=` ile yüklenir. Komut satırı betiklerinde Türkçe harf ve ters eğik çizgi (`\n`) bozulabiliyor: dosya yazarken Write/Edit aracı kullan, `python - <<EOF` içinde `\n` yazma (gerçek satır sonuna dönüşebilir).
 - Dosyalarda **CRLF** var (Windows); betikle düzenlerken satır sonunu koru.
