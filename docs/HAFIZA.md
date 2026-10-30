@@ -28,7 +28,7 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Yazı tipi: Determination (FontStruct, anonymous-1438277) eklendi ve bütün yazılara uygulandı (`ui/fonts.py`); atıf pencerede ve `assets/fonts/LICENSE.txt` içinde. Türkçe harflerin hepsi destekleniyor; `✓ → ₺` yok ama Tk yedek yazı tipiyle çiziyor. Lisans metnini kullanıcının verdiği atıf şartından başka doğrulayamadım (yayından önce FontStruct sayfasındaki lisansı okumak gerekir).
 - Karakter adları: danışman (mor resepsiyonist) **Don**, ayı (otel görevlisi) **Bob**; konuşma etiketleri DON / BOB / SEN (kullanıcı), adlar çevrilmez.
 - Kod modeli denemesi (qwen2.5-coder:14b, kullanıcı yükledi; indirme yapılmadı): aynı tarifle (zıplayan kare) hat ~6,5 dakikada bitti: 3 madde geçti, 1 doğrulanamadı, 3 otomatik düzeltme; oyun gerçekten oynanıyor (zıplama, engel, skor). Karşılaştırma: llama3.1:8b ~3 dakika, hiçbir madde geçmedi, oyun zayıf. Kod modeli kesin daha iyi; varsayılan öneri qwen2.5-coder serisi olarak kalıyor.
-- Uygulama ilerlemesi: CP-55, k-ai-v1 3B'yi geçti, sırada form modu ve kademeli model, 482 test
+- Uygulama ilerlemesi: CP-56, Sonic özellikleri eklendi, k-ai yeniden eğitilecek, sırada form modu ve kademeli model, 482 test
 
 ## Oyun kütüphanesi (2026-10-30)
 - Model oyunu sıfırdan yazmaz; `src/k_minigames/assets/lib/` altındaki JS kütüphanesini (`kgame.js` çekirdek, `kgame.ai.js` bot, `kgame.sports.js` spor) kullanır, yalnızca kuralları yazar. Dosyalar oyun klasörüne kopyalanır, `<script>` etiketlerini uygulama ekler (`kgamelib.ensure_scripts`). Don konuşmadan modül seçer (`Advisor.choose_modules`), oyunun `game.json`'unda `modules` tutulur; Bob bunları kullanır ve Don'un hafıza notunu okur.
