@@ -50,7 +50,7 @@ _quiet("kits", ("core",), "oyun kiti kayıt sistemi (oyunu özet olarak yazma)")
 MODULES["platformer"] = Module(
     "platformer", ("kgame.platformer.js",), "platformer.guide.md",
     ("core", "sprites", "animation", "themes", "levels", "hud", "audio2", "items", "enemies", "kits"),
-    "platform oyunu KİTİ (Mario türü): seviye, zıplama, düşman ezme, altın, bayrak, kamera, ses hazır; model yalnızca özet yazar")
+    "platform oyunu KİTİ (klasik platform türü): seviye, zıplama, düşman ezme, altın, bayrak, kamera, ses hazır; model yalnızca özet yazar")
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
 _TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
 _FIRST_SCRIPT = re.compile(r"<script\b", re.I)

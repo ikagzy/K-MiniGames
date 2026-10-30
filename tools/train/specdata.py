@@ -71,7 +71,7 @@ EN = {
     "features": ["double jump", "can jump twice"],
     "levels": {2: ["two levels"], 3: ["three levels"], 4: ["four levels"]},
 }
-TR_HEADS = ["Bir platform oyunu yap:", "Bana bir platform oyunu hazırla:", "Platform oyunu istiyorum:", "Mario gibi bir oyun olsun:",
+TR_HEADS = ["Bir platform oyunu yap:", "Bana bir platform oyunu hazırla:", "Platform oyunu istiyorum:", "Klasik bir platform oyunu olsun:",
             "Şunlara sahip bir platform oyunu:", "Bir koşup zıplama oyunu yapar mısın?"]
 EVAL_HEADS = ["Kahramanımızın macerası:", "Bir oyun tasarla:", "Oynamak için şöyle bir platform oyunu lazım:"]
 EN_HEADS = ["Make a platformer:", "I want a platform game:", "Build me a platformer game:", "Can you make me a platformer?",
@@ -327,7 +327,7 @@ def _describe(rng: random.Random, fields: list, spec: dict, lang: str, eval_mode
     rng.shuffle(clauses)
     heads = EN_HEADS if lang == "en" else TR_HEADS + (EVAL_HEADS if eval_mode else [])
     if not clauses:
-        return rng.choice(["Bir platform oyunu yap.", "Mario gibi bir oyun olsun.", "Basit bir platform oyunu istiyorum."]) if lang == "tr" \
+        return rng.choice(["Bir platform oyunu yap.", "Klasik bir oyun olsun.", "Basit bir platform oyunu istiyorum."]) if lang == "tr" \
             else rng.choice(["Make a platformer.", "A simple platform game please."])
     if lang == "en":
         text = f"{rng.choice(heads)} {', '.join(clauses)}."
@@ -499,7 +499,7 @@ HAND_EVAL = [
     {"prompt": "Üç bölümlü, her bölümü kısa olan bir oyun", "expect": {"levels": 3, "width_class": "short"}},
     {"prompt": "Gökyüzünde, bol boru ve çok blok olan, rahat zorlukta bir oyun", "expect": {"theme": "sky", "pipes": "high", "blocks": "high"}},
     {"prompt": "Çukurlarla dolu, zorlu bir mağara", "expect": {"theme": "cave", "pits": "high", "difficulty": 4}},
-    {"prompt": "Mario gibi bir oyun yap", "expect": {}},
+    {"prompt": "Klasik bir platform oyunu yap", "expect": {}},
     {"prompt": "Kısa, kolay, çocuklar için bir platform oyunu; çift zıplama olsun", "expect": {"width_class": "short", "difficulty": 1, "features": ["doubleJump"]}},
     {"prompt": "Dört seviyeli bir orman macerası, giderek bol düşman çıksın", "expect": {"theme": "forest", "levels": 4}},
     {"prompt": "A night platformer with many enemies and double jump", "expect": {"theme": "night", "enemies": "high", "features": ["doubleJump"]}},

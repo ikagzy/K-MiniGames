@@ -1,4 +1,4 @@
-/* kgame.platformer.js: platform oyunu kiti (Mario türü). Model yalnızca bir özet yazar:
+/* kgame.platformer.js: platform oyunu kiti (klasik platform türü). Model yalnızca bir özet yazar:
    K.kit.run({ kit:'platformer', title:'Kagzy', theme:'sky', music:'overworld', hero:{speed:170, jump:420, lives:3},
                levels:[ ['....', 'P..F', '####'] ], features:['doubleJump'] })
    Kit; seviyeyi (ASCII, bkz. kgame.levels.js), kahramanı (koşma, zıplama, kaçırma payı, kısa/uzun zıplama), düşmanları (ezme),
@@ -211,7 +211,7 @@
     }
   });
 
-  // ---- speed features (Sonic style): springs, dash pads, rings ----
+  // ---- speed features (speed run style): springs, dash pads, rings ----
   K.sprites.define("spring", ["rrrrrrrrrr", "RRRRRRRRRR", "..L.ll.L..", "..ll..ll..", "..L.ll.L..", "LLLLLLLLLL"]);
   K.sprites.define("dashpad", ["oooooooooo", "oyyoyyoyyo", "oooooooooo", "LLLLLLLLLL"]);
 
