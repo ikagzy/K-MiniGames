@@ -5,7 +5,7 @@ Kullanıcı onayı: 2026-10-30 ("tamam bunları ekle"). Üst tasarım: `docs/sup
 ## Dalgalar ve durum
 | Dalga | Modüller | Durum |
 |---|---|---|
-| 1 (Mario yolu) | sprites, animation, camera2, themes, levels, hud, audio2, input2, progress(save2), items, enemies, platformer, kits | yapılıyor |
+| 1 (Mario yolu) | sprites, animation, themes, levels(+üreteç), hud, audio2, items, enemies, platformer, kits | **bitti** (camera2/input2/progress çekirdeğe ve platformer'a katıldı, ayrı modül olarak sonra) |
 | 2 | particles2, physics2, combat, ui-kit, dialogue, lighting2d, weather, postfx, minimap | bekliyor |
 | 3 | topdown, shooter, puzzle, racing, fighting, towerdefense, procgen, idle, cards, boards, rhythm, stealth, survival, sim, strategy, quests, economy, narrative | bekliyor |
 | 4 | editor, replay, local-multi, accessibility, physics-sandbox, pathfinding2, testbot, assets | bekliyor |
