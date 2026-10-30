@@ -73,6 +73,8 @@ Kullanıcı "ölçümü genişlet, gerekirse eğit" dedi. Yorumum ve yöntem:
 
 - **Özgün karakter (2026-10-30):** `hero.character` (`hero` varsayılan, `runner` = turuncu tilki, mor atkı, sarı bot; sprite'lar `kgame.sprites.js`). Şemada `character` enum'u, kit kontrolü bilinmeyen karakteri reddeder. **Bekleyen:** varsayılan `hero` çizimi, yürüyen düşman, soru bloğu, borular, `DÜNYA 1-1` yazısı Mario'ya fazla benziyor: özgün tasarıma çevrilecek; eğitim verisindeki 'Mario gibi' başlıkları çıkarılacak. İlk karede kahraman kısa süre kırmızı kare görünüyor (sprite hazır olmadan çiziliyor), düzeltilecek. Telifli karakter (Sonic vb.) yapılmaz, özgün karakter yapılır (kullanıcıya açıklandı). **Plan:** (1) özgün tasarımlar, (2) `campaign` alanı (N seviye, kademeli zorluk, dünya başına tema), (3) çeşitlilik: hareketli/düşen platform, buz, kontrol noktası, boss, (4) hepsini öğreten TEK `k-ai` eğitimi.
 
+- **Müzik üreteci (kullanıcı kararı, sonra):** model notaları yazmaz; ayarları seçer (tempo, gam: majör/minör/pentatonik, ruh hali, enstrümanlar, ritim kalıbı, yapı, `seed`) ve özgün bir üreteç (tanınmış melodi yok) müziği kurar. `music` alanı hazır 4 parçadan bu ayarlara genişler, tarif cümleleri veri üretecine eklenir, tek yeniden eğitimde öğretilir. Tahmin: üreteç 2-3 saat; kulakla ayar gerektirir (ses kullanıcı tarafından dinlenecek).
+
 ## 6. Dikkat edilecek tuzaklar
 - **Türkçe karakterli klasör yolu** (`klasörler\lazım olabilecek...`). Tk `PhotoImage(file=)` bu yüzden `data=` ile yüklenir. Komut satırı betiklerinde Türkçe harf ve ters eğik çizgi (`\n`) bozulabiliyor: dosya yazarken Write/Edit aracı kullan, `python - <<EOF` içinde `\n` yazma (gerçek satır sonuna dönüşebilir).
 - Dosyalarda **CRLF** var (Windows); betikle düzenlerken satır sonunu koru.
