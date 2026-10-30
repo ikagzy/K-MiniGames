@@ -58,13 +58,13 @@
       var cur = queue.shift();
       far = Math.min(far, Math.abs(cur[0] - gx));
       if (Math.abs(cur[0] - gx) <= 1 && Math.abs(cur[1] - gy) <= 1) return { ok: true, reason: "" };
-      for (var c = cur[0] - gap - 1; c <= cur[0] + gap + 1; c++) {
+      for (var c = cur[0] - gap - 2; c <= cur[0] + gap + 2; c++) {
         for (var y = 0; y < level.rowsCount; y++) {
           if (!standable(c, y) || seen[key(c, y)]) continue;
           var dx = Math.abs(c - cur[0]), up = cur[1] - y;
           if (up > jump) continue;                  // too high to jump up to
-          if (up >= 0 && dx > gap) continue;        // a gap that is too wide to jump over
-          if (up < 0 && dx > gap + 1) continue;     // when falling a little more is allowed
+          if (up >= 0 && dx > gap + 1) continue;    // `gap` empty tiles between two edges means a jump of gap + 1 tiles
+          if (up < 0 && dx > gap + 2) continue;     // when falling a little more is allowed
           seen[key(c, y)] = true;
           queue.push([c, y]);
         }

@@ -31,6 +31,26 @@ MODULES: dict[str, Module] = {
     "sports": Module("sports", ("kgame.sports.js",), "sports.guide.md", ("core", "ai"),
                      "voleybol, futbol, basketbol, pong"),
 }
+
+
+def _quiet(name: str, needs: tuple[str, ...], summary: str) -> None:
+    """A building block of the kits: it loads with them, but its guide is only shown when it is chosen on its own."""
+    MODULES[name] = Module(name, (f"kgame.{name}.js",), f"{name}.guide.md", needs, summary, quiet=True)
+
+
+_quiet("sprites", ("core",), "kodla çizilen piksel sanat karakter, düşman, eşya, karo")
+_quiet("animation", ("core", "sprites"), "kare animasyonu ve durum makinesi")
+_quiet("themes", ("core",), "hazır dünyalar: gökyüzü, mağara, kale, gece, su altı, uzay, orman")
+_quiet("levels", ("core",), "ASCII seviye yazımı, bitirilebilirlik doğrulaması, çoklu seviye")
+_quiet("hud", ("core",), "skor, can, süre arayüzü, başlık ve oyun bitti ekranları")
+_quiet("audio2", ("core",), "chiptune müzik ve oyun sesleri")
+_quiet("items", ("core", "sprites", "animation"), "altın, soru bloğu, tuğla, mantar, yıldız")
+_quiet("enemies", ("core", "sprites", "animation"), "yürüyen, uçan, borudan çıkan düşman; ezme")
+_quiet("kits", ("core",), "oyun kiti kayıt sistemi (oyunu özet olarak yazma)")
+MODULES["platformer"] = Module(
+    "platformer", ("kgame.platformer.js",), "platformer.guide.md",
+    ("core", "sprites", "animation", "themes", "levels", "hud", "audio2", "items", "enemies", "kits"),
+    "platform oyunu KİTİ (Mario türü): seviye, zıplama, düşman ezme, altın, bayrak, kamera, ses hazır; model yalnızca özet yazar")
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
 _TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
 _FIRST_SCRIPT = re.compile(r"<script\b", re.I)
