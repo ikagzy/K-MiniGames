@@ -69,7 +69,7 @@ def main(argv=None) -> int:
     trainer = Trainer(
         model=model, train_dataset=examples, data_collator=collate,
         args=TrainingArguments(output_dir=args.out, per_device_train_batch_size=1, gradient_accumulation_steps=args.accum,
-                               num_train_epochs=args.epochs, learning_rate=args.lr, lr_scheduler_type="cosine", warmup_ratio=0.05,
+                               num_train_epochs=args.epochs, learning_rate=args.lr, lr_scheduler_type="cosine", warmup_steps=0.05,
                                bf16=True, logging_steps=5, save_strategy="no", report_to=[], remove_unused_columns=False,
                                seed=args.seed, optim="adamw_torch"))
     trainer.train()

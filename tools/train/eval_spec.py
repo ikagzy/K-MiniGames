@@ -42,7 +42,7 @@ def hf_answer(model: str, adapter: str | None):
 
     def ask(text):
         messages = specdata._messages("create", text, {"kit": "platformer"}, None)[:-1]
-        ids = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to("cuda")
+        ids = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt", return_dict=True)["input_ids"].to("cuda")
         with torch.no_grad():
             out = net.generate(ids, max_new_tokens=900, do_sample=False)
         answer = tokenizer.decode(out[0][ids.shape[1]:], skip_special_tokens=True)
