@@ -11,6 +11,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+from k_minigames import kgamelib
+
 MAX_BODY = 64 * 1024
 _DRAIN_LIMIT = 1024 * 1024
 _PLAY = re.compile(r"^/play/([^/]+)/(.*)$")
@@ -51,7 +53,22 @@ class _Handler(BaseHTTPRequestHandler):
             return self._send(200, self.owner.page().encode("utf-8"), "text/html; charset=utf-8")
         if rest.startswith("assets/"):
             return self._asset(unquote(rest[len("assets/"):]))
+        if rest in kgamelib.all_files():   # the game library's scripts, copied into the game's folder
+            return self._library_script(rest)
         self._send(404)
+
+    def _library_script(self, name: str) -> None:
+        game_dir = self.owner.game_dir
+        if game_dir is None:
+            return self._send(404)
+        try:
+            target = (game_dir / name).resolve()
+            if target.parent != game_dir.resolve() or not target.is_file():
+                return self._send(404)
+            data = target.read_bytes()
+        except (OSError, ValueError):
+            return self._send(404)
+        self._send(200, data, "application/javascript; charset=utf-8")
 
     def _asset(self, name: str) -> None:
         game_dir = self.owner.game_dir

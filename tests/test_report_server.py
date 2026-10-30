@@ -145,3 +145,21 @@ def test_events_from_a_tab_of_an_earlier_run_are_ignored(server):
 def test_a_report_without_a_run_number_is_still_accepted(server):
     assert request(server, "POST", f"/report/{server.token}", b'{"type": "done"}')[0] == 204
     assert server.events() == [{"type": "done"}]
+
+
+def test_library_scripts_are_served_from_the_game_folder(server, game_dir):
+    (game_dir / "kgame.js").write_text("var K = 1;", encoding="utf-8")
+    status, ctype, data = request(server, "GET", f"/play/{server.token}/kgame.js")
+    assert status == 200 and ctype.startswith("application/javascript") and data == b"var K = 1;"
+
+
+def test_other_files_in_the_game_folder_are_not_served_and_a_missing_library_file_is_404(server):
+    assert request(server, "GET", f"/play/{server.token}/gizli-oyun.txt")[0] == 404
+    assert request(server, "GET", f"/play/{server.token}/kgame.sports.js")[0] == 404   # known name, not copied
+
+
+@pytest.mark.parametrize("path", ["..%2fkgame.js", "%2e%2e/kgame.js", "assets/../kgame.js%00", "kgame.js/../../secret.txt"])
+def test_a_traversal_name_is_not_served_as_a_library_script(server, game_dir, path):
+    (game_dir.parent / "kgame.js").write_text("DISARIDA", encoding="utf-8")
+    status, _, data = request(server, "GET", f"/play/{server.token}/{path}")
+    assert status in (403, 404) and b"DISARIDA" not in data
