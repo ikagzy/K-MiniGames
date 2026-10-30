@@ -14,7 +14,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TRAIN_ENV = Path(os.environ.get("LOCALAPPDATA", "")) / "K-MiniGames-train"
 BASE = next((Path.home() / ".cache/huggingface/hub/models--Qwen--Qwen2.5-Coder-1.5B-Instruct/snapshots").glob("*"), None)
-TEMPLATE = (ROOT / "tools/train/ollama/Modelfile.k-ai").read_text(encoding="utf-8").split("FROM", 1)[1].split("\n", 1)[1]
+_FILE = (ROOT / "tools/train/ollama/Modelfile.k-ai").read_text(encoding="utf-8")
+TEMPLATE = _FILE[_FILE.index("TEMPLATE"):]   # everything from TEMPLATE on; the FROM line is written for each model
 
 
 def run(cmd, env=None):

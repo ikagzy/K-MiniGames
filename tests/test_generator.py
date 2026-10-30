@@ -311,3 +311,20 @@ def test_a_spec_request_limits_the_length_of_the_answer():
     client = SpecClient('{"levels": [["P.F", "###"]]}')
     Generator(client, "m").create_spec("x", "platformer")
     assert 500 <= client.calls[0][1]["max_tokens"] <= 4000
+
+
+def test_the_models_trained_for_the_app_get_no_schema_but_every_other_model_does():
+    from k_minigames.generator import Generator
+    for name, expects_schema in (("k-ai", False), ("k-ai-v2", False), ("qwen2.5:3b", True), ("llama3", True)):
+        client = SpecClient('{"theme": "night"}')
+        Generator(client, name).create_spec("gece", "platformer")
+        assert ("schema" in client.calls[0][1]) is expects_schema, name
+
+
+def test_a_spec_followed_by_more_text_or_a_repeat_still_gives_the_first_spec():
+    from k_minigames.generator import Generator
+    repeated = '{"theme": "night", "features": ["ice"]}, {"theme": "night", "features": ["ice"]}]'
+    spec = Generator(SpecClient(repeated), "k-ai").create_spec("gece", "platformer")
+    assert spec == {"kit": "platformer", "theme": "night", "features": ["ice"]}
+    spec = Generator(SpecClient('Tabii: {"theme": "cave"} umarım işe yarar'), "k-ai").create_spec("mağara", "platformer")
+    assert spec["theme"] == "cave"

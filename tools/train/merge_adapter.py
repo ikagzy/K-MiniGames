@@ -18,7 +18,7 @@ def main(argv=None) -> int:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    base = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16)   # on the CPU: the card may be busy
+    base = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.float32)   # on the CPU (the card may be busy); float32 because a bfloat16 merge rounds the small adapter changes away
     merged = PeftModel.from_pretrained(base, args.adapter).merge_and_unload()
     merged.save_pretrained(args.out, safe_serialization=True)
     tokenizer.save_pretrained(args.out)

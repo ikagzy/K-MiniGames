@@ -559,7 +559,7 @@ def score(pred, target: dict, mentioned) -> dict:
     for field in mentioned:
         try:
             fields[field] = _values(field, pred) == _values(field, target)
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, ValueError, AttributeError):
             fields[field] = False
     accuracy = sum(fields.values()) / len(fields) if fields else 1.0
     return {"valid": True, "accuracy": accuracy, "fields": fields}
@@ -630,6 +630,6 @@ def expect_ok(pred_spec, expect: dict) -> dict:
                 got = _values(key, pred_spec)
                 out[key] = (got == want if isinstance(want, int) else got == 0 if want == "none" else got >= 1 if want == "some"
                             else got <= 1 if want == "low" else got >= 4 if want == "high" else False)
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, ValueError, AttributeError):
             out[key] = False
     return out

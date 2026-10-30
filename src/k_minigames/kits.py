@@ -63,6 +63,14 @@ def parse_spec(text: str, kit: str) -> dict:
         if isinstance(data, dict):
             data["kit"] = kit
             return data
+    if first >= 0:   # the first complete object, even when something else was written after it (a small model may repeat itself)
+        try:
+            data, _ = json.JSONDecoder().raw_decode(text[first:])
+        except ValueError:
+            data = None
+        if isinstance(data, dict):
+            data["kit"] = kit
+            return data
     raise SpecError("Modelin cevabında geçerli bir oyun özeti (JSON) yok")
 
 

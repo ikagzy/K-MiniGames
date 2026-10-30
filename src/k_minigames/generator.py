@@ -69,6 +69,7 @@ _TESTER_RULES = (
 
 
 SPEC_MAX_TOKENS = 2500   # a spec is a few hundred tokens; this only stops a model that never ends
+TUNED_PREFIX = "k-ai"   # the models trained for this app (k-ai, k-ai-v2, ...)
 PATCH_MIN_CHARS = 1500   # a shorter game is simply written again; patches pay off on a longer one
 _PATCH_RULES = (
     "Oyunun mevcut hâlini ve kullanıcının isteğini göreceksin. Oyunu YENİDEN YAZMA; yalnızca değişen yerleri şu "
@@ -312,7 +313,9 @@ class Generator:
     # --- spec mode: the model writes the game's spec (JSON, kept in shape by the kit's schema), never its code ---
 
     def _spec(self, kit: str, messages: list[dict], cancel) -> dict:
-        schema = kits.schema(kit)
+        # The k-ai models are fine-tuned to write the spec in its own order; the schema constraint forces another order and fields
+        # on them and makes them lose what the user asked for (measured: features, campaign, music all gone), so they get none.
+        schema = None if self.model.startswith(TUNED_PREFIX) else kits.schema(kit)
         answer = self._chat_schema(messages, schema, cancel)
         try:
             return kits.parse_spec(answer, kit)

@@ -13,3 +13,7 @@ PARAMETER stop <|im_end|>
 PARAMETER stop <|im_start|>
 PARAMETER num_ctx 8192
 PARAMETER temperature 0
+PARAMETER top_k 1
+PARAMETER top_p 1
+# Ollama's default repeat penalty (1.1) punishes the repeated keys and quotes of JSON and made the model drop fields (no 'generate'):
+PARAMETER repeat_penalty 1
