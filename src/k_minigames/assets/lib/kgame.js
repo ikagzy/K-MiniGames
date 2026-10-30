@@ -82,6 +82,11 @@
         var ch = map.charAt(Math.floor(px / tile), Math.floor(py / tile));
         return !!ch && SOLID[legend[ch]] === true;
       },
+      set: function (tx, ty, ch) {   // change one tile (a brick that breaks)
+        var row = rows[ty];
+        if (row === undefined || tx < 0 || tx >= row.length) return;
+        rows[ty] = row.substring(0, tx) + ch + row.substring(tx + 1);
+      },
       addTo: function (g, o) {   // every solid tile as an entity (tag "tile") so it is drawn
         var made = [];
         rows.forEach(function (row, ty) {
