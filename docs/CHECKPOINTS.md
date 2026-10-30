@@ -61,3 +61,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-52 | 2026-10-28 | Eğitim hazırlığı: özet veri seti üreticisi (800/120 örnek, tuttulan çiftler ve elle yazılmış değerlendirme), puanlama, LoRA eğitim ve değerlendirme betikleri; müzik özgünleştirildi; GPU adımları onay bekliyor | ecfcdfd |
 | CP-53 | 2026-10-28 | Taban ölçüm: qwen2.5:3b özet doğruluğu 0.46 (geçerlilik 1.0), sayısal alanlar zayıf; pilot eğitim onay bekliyor | ddf316e |
 | CP-54 | 2026-10-28 | Pilot eğitim (k-ai-pilot, 1.5B, 300 örnek): üretilmiş doğruluk 0,46->0,86, doğal cümlelerde kazanç yok; model adı k-ai; konuşma sürümü sonraya | d0a3a50 |
+| CP-55 | 2026-10-28 | k-ai-v1 (800 örnek, çeşitlendirilmiş veri): üretilmiş 0,963, elle yazılmış alan 0,841 ve tam 0,667 (3B 0,794/0,583); kgame.js pencereye sığdırma; sırada form modu ve kademeli model | e6998bd |
