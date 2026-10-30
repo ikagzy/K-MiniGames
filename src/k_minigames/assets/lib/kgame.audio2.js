@@ -20,12 +20,13 @@
 
   M.define = function (name, def) { M.tracks[name] = { bpm: def.bpm || 120, wave: def.wave || "square", notes: M.parse(def.notes), loop: def.loop !== false }; };
 
-  M.define("overworld", { bpm: 150, notes: "E5:0.5 E5:0.5 R:0.5 E5:0.5 R:0.5 C5:0.5 E5:1 G5:1 R:1 G4:1 R:1 C5:1.5 G4:1 R:0.5 E4:1 A4:0.5 B4:0.5 A#4:0.5 A4:1" });
-  M.define("underground", { bpm: 120, wave: "triangle", notes: "C3:0.5 C4:0.5 A2:0.5 A3:0.5 A#2:0.5 A#3:0.5 R:1 C3:0.5 C4:0.5 A2:0.5 A3:0.5 A#2:0.5 A#3:0.5 R:1" });
-  M.define("castle", { bpm: 140, wave: "sawtooth", notes: "D3:0.5 D3:0.5 D4:0.5 D3:0.5 A3:0.5 D3:0.5 G#3:1 R:0.5 G3:0.5 F3:1 D3:0.5 F3:0.5 G3:0.5" });
-  M.define("boss", { bpm: 170, wave: "sawtooth", notes: "E3:0.5 E3:0.5 R:0.5 E3:0.5 G3:0.5 E3:0.5 B3:1 A3:0.5 G3:0.5 E3:1 R:1" });
-  M.define("victory", { bpm: 140, loop: false, notes: "C5:0.5 E5:0.5 G5:0.5 C6:1 G5:0.5 C6:2" });
-  M.define("gameover", { bpm: 100, loop: false, wave: "triangle", notes: "C5:1 G4:1 E4:1 A4:0.5 B4:0.5 A4:0.5 G#4:0.5 A#4:0.5 G#4:0.5 G4:2" });
+  // Original tunes written for this library (not taken from any game).
+  M.define("overworld", { bpm: 138, notes: "C5:0.5 E5:0.5 G5:1 E5:0.5 C5:0.5 D5:1 R:0.5 D5:0.5 F5:0.5 A5:1 F5:0.5 D5:0.5 E5:2 R:1 G4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:1 B4:1 C5:2 R:1" });
+  M.define("underground", { bpm: 96, wave: "triangle", notes: "A2:1 E3:1 A3:1 R:1 F2:1 C3:1 F3:1 R:1 G2:1 D3:1 G3:1 R:1 E2:2 B2:2" });
+  M.define("castle", { bpm: 132, wave: "sawtooth", notes: "D3:0.5 F3:0.5 A3:0.5 D4:0.5 C4:1 R:0.5 A#3:0.5 A3:1 F3:1 G3:0.5 A3:0.5 A#3:1 G3:1 D3:2" });
+  M.define("boss", { bpm: 168, wave: "sawtooth", notes: "E3:0.25 E3:0.25 G3:0.25 E3:0.25 B3:0.5 A3:0.5 G3:0.5 F#3:0.5 E3:0.25 E3:0.25 G3:0.25 E3:0.25 D4:0.5 C4:0.5 B3:1 R:0.5" });
+  M.define("victory", { bpm: 132, loop: false, notes: "D5:0.5 F#5:0.5 A5:0.5 D6:1.5 A5:0.5 F#5:0.5 D6:2.5" });
+  M.define("gameover", { bpm: 84, loop: false, wave: "triangle", notes: "A4:1 F4:1 D4:1 E4:0.5 D4:0.5 C#4:0.5 D4:2.5" });
 
   var timer = null;
   var contextOf = function () { try { return new (root.AudioContext || root.webkitAudioContext)(); } catch (e) { return null; } };
