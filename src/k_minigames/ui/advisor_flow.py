@@ -22,6 +22,7 @@ class AdvisorFlow:
         self.recommendation: Recommendation | None = None
         self.current_offer: Offer | None = None
         self.cancel_message = ""
+        self.modules: list[str] = []   # the game library modules the game needs, chosen when a model is proposed
         self._offers: list[Offer] = []
 
     @property
@@ -43,6 +44,11 @@ class AdvisorFlow:
         self.history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply.text}]
         if reply.proposal:
             self._propose(reply.proposal)
+            chooser = getattr(self._advisor, "choose_modules", None)
+            try:
+                self.modules = chooser(self.history) if chooser else []
+            except Exception:
+                self.modules = []
         return reply
 
     def remember(self, user_text: str, reply_text: str, cancel=None) -> None:

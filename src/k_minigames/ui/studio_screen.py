@@ -107,7 +107,7 @@ class StudioScreen:
         self.s = services
         self._flows = flows or SimpleNamespace(create=studio.create_game_flow, edit=studio.edit_game_flow)
         self._typing_ms = typing_ms
-        self._generator_factory = generator_factory or (lambda: Generator(self.s.client, settings.get("game_model")))
+        self._generator_factory = generator_factory or (lambda: Generator(self.s.client, settings.get("game_model"), keep_alive="2m"))
         self._server_factory = server_factory or (lambda game: ReportServer(game.folder))
         self._open_url = open_url or webbrowser.open
         self._game: Game | None = None
@@ -201,6 +201,8 @@ class StudioScreen:
             self.s.info(t("Klasör kullanılamıyor"), t("Bu klasöre yazılamıyor ya da diskte yeterli yer yok."))
             return
         self._game = library.create_game(folder, name)
+        if self.s.session.get("modules"):
+            library.set_modules(self._game, self.s.session["modules"])   # what Don chose from the game library
         # what Don learned in the talk before is not asked again: Bob reads Don's notes and only wants a yes or more
         self._notes = memory_notes.load(memory_notes.advisor_path()).strip()
         self._ask(ASK_KNOWN + self._notes + ASK_KNOWN_END if self._notes else ASK_DESCRIPTION, self._on_description)

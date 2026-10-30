@@ -296,3 +296,46 @@ def test_an_edit_whose_game_only_writes_to_the_console_is_accepted(game):
     make_game_with_v1(game)
     out = flow(studio.edit_game_flow, FakeGenerator(edit=Generated("<html>CONSOLE</html>", [])), game, "x", [])
     assert out.saved and not out.rejected
+
+
+class LibGenerator(FakeGenerator):
+    """Like the fake generator, but it takes the library modules and records them."""
+    def create(self, description, textures, on_token=None, cancel=None, *, memory="", modules=()):
+        self.kwargs.append(("create", memory, tuple(modules)))
+        return self._create
+
+    def fix(self, html, problems, on_token=None, cancel=None, *, memory="", modules=()):
+        self.kwargs.append(("fix", tuple(modules)))
+        return super().fix(html, problems, memory=memory)
+
+    def edit(self, html, request, textures, checklist, resolved=(), on_token=None, cancel=None, *, memory="",
+             modules=()):
+        self.kwargs.append(("edit", tuple(modules)))
+        return super().edit(html, request, textures, checklist, resolved, memory=memory)
+
+
+def test_a_game_with_library_modules_gets_the_files_and_the_script_tags(game):
+    library.set_modules(game, ["core", "ai"])
+    page = "<!doctype html><html><head></head><body><script>const g = K.game();</script></html>"
+    gen = LibGenerator(create=Generated(page, ["çalışır"]))
+    outcome = flow(studio.create_game_flow, gen, game, "tarif", [], memory="")
+    assert (game.folder / "kgame.js").is_file() and (game.folder / "kgame.ai.js").is_file()
+    assert outcome.html.count('<script src="kgame.js"></script>') == 1
+    assert outcome.html.index("kgame.js") < outcome.html.index("const g = K.game()")
+    assert ("create", "", ("core", "ai")) in gen.kwargs
+    assert game.html_path.read_text(encoding="utf-8") == outcome.html
+
+
+def test_a_fix_gets_the_modules_too(game):
+    library.set_modules(game, ["core"])
+    page = "<html><head></head><body><script>BUG1</script></body></html>"
+    gen = LibGenerator(create=Generated(page, []), fixes=["<html><head></head><body><script>ok</script></body></html>"])
+    flow(studio.create_game_flow, gen, game, "tarif", [], memory="")
+    assert ("fix", ("core",)) in gen.kwargs
+
+
+def test_a_game_without_modules_goes_the_old_way_and_copies_nothing(game):
+    gen = FakeGenerator(create=Generated(CLEAN, ["çalışır"]))
+    outcome = flow(studio.create_game_flow, gen, game, "tarif", [], memory="")
+    assert not (game.folder / "kgame.js").exists()
+    assert "kgame" not in outcome.html

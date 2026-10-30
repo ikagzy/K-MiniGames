@@ -229,12 +229,13 @@ def parse_tests(text: str, count: int) -> list[str | None]:
 
 
 class Generator:
-    def __init__(self, client, model: str):
-        self.client, self.model = client, model
+    def __init__(self, client, model: str, keep_alive: str | None = None):
+        self.client, self.model, self.keep_alive = client, model, keep_alive
 
     def _chat(self, messages: list[dict], on_token=None, cancel=None) -> str:
+        extra = {"keep_alive": self.keep_alive} if self.keep_alive else {}   # let the model go soon after the last call
         try:
-            return self.client.chat(self.model, messages, on_token=on_token, cancel=cancel)
+            return self.client.chat(self.model, messages, on_token=on_token, cancel=cancel, **extra)
         except OllamaError as exc:
             raise GenerationError(str(exc)) from exc
 

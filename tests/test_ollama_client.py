@@ -177,3 +177,19 @@ def test_a_server_error_shows_what_ollama_said_and_is_not_called_unreachable():
         c.chat("m", [])
     assert "500" in str(caught.value) and "model requires more system memory" in str(caught.value)
     assert "ulaşılamadı" not in str(caught.value)
+
+
+def test_chat_can_ask_for_a_json_schema_and_a_keep_alive_time():
+    body = ndjson({"message": {"content": "{}"}, "done": True})
+    c, opener = client(body)
+    schema = {"type": "object", "properties": {"modules": {"type": "array"}}}
+    c.chat("m", [{"role": "user", "content": "x"}], schema=schema, keep_alive="2m")
+    payload = json.loads(opener.requests[0].data)
+    assert payload["format"] == schema and payload["keep_alive"] == "2m"
+
+
+def test_chat_sends_neither_format_nor_keep_alive_by_default():
+    c, opener = client(ndjson({"message": {"content": "x"}, "done": True}))
+    c.chat("m", [{"role": "user", "content": "x"}])
+    payload = json.loads(opener.requests[0].data)
+    assert "format" not in payload and "keep_alive" not in payload

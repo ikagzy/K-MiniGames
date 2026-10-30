@@ -81,3 +81,9 @@ def test_a_missing_file_with_a_space_in_its_name_is_reported_with_its_whole_name
 def test_an_unquoted_css_url_stops_at_its_closing_parenthesis():
     problems = scan(OK + '<div style="background: url(assets/b.png) no-repeat"></div>', [])
     assert [(p.kind, p.detail) for p in problems] == [("missing_asset", "b.png")]
+
+
+def test_a_library_game_that_exposes_its_state_with_k_expose_has_a_game_state():
+    html = "<html><script>K.expose({ ball, me });</script></html>"
+    assert [p.kind for p in scan(html, []) if p.kind == "no_game_state"] == []
+    assert [p.kind for p in scan("<html><script>var a = 1;</script></html>", [])] == ["no_game_state"]

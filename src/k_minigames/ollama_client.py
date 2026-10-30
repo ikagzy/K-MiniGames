@@ -98,8 +98,14 @@ class OllamaClient:
             raise OllamaError(f"Ollama ile bağlantı koptu: {exc}") from exc
 
     def chat(self, model: str, messages: list[dict], on_token: Callable[[str], None] | None = None,
-             cancel: Callable[[], bool] | None = None) -> str:
+             cancel: Callable[[], bool] | None = None, *, schema: dict | None = None,
+             keep_alive: str | None = None) -> str:
+        """`schema` asks for an answer in that JSON shape; `keep_alive` ("2m") is how long the model stays in memory."""
         payload = {"model": model, "messages": messages, "stream": True, "options": {"num_ctx": NUM_CTX}}
+        if schema is not None:
+            payload["format"] = schema
+        if keep_alive:
+            payload["keep_alive"] = keep_alive
         try:
             response = self._open("/api/chat", payload)
         except _NET_ERRORS as exc:

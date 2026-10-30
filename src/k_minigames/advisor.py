@@ -6,8 +6,9 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from k_minigames import catalog
+from k_minigames import catalog, kgamelib
 from k_minigames import memory as memory_notes
+from k_minigames.ollama_client import OllamaError
 
 HISTORY_WITH_MEMORY = 6   # with a memory summary only the latest messages are sent
 LONG_HISTORY = 10         # a history longer than this is cut when there is a memory
@@ -60,9 +61,29 @@ def _without_proposals(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+MODULE_SCHEMA = {"type": "object", "required": ["modules"],
+                 "properties": {"modules": {"type": "array", "items": {"type": "string", "enum": list(kgamelib.MODULES)}}}}
+_MODULE_PROMPT = (
+    "Kullanıcının anlattığı oyun için oyun kütüphanesinden hangi modüllerin gerektiğini seç. Modüller: core (her oyun), "
+    "ai (düşman ve bot davranışı: kovalama, devriye, rakip), sports (voleybol, futbol, basketbol, pong). "
+    'Yalnızca şu biçimde JSON ver: {"modules": ["core", "..."]}')
+
+
 class Advisor:
     def __init__(self, client, model: str):
         self.client, self.model = client, model
+
+    def choose_modules(self, history: list[dict]) -> list[str]:
+        """The library modules the game needs, as the model picks them (a JSON schema keeps the answer in shape);
+        anything unusable means just the core."""
+        messages = [{"role": "system", "content": _MODULE_PROMPT}, *history[-HISTORY_WITH_MEMORY:],
+                    {"role": "user", "content": "Hangi modüller gerekli?"}]
+        try:
+            data = json.loads(self.client.chat(self.model, messages, schema=MODULE_SCHEMA))
+        except (OllamaError, ValueError, TypeError):
+            return ["core"]
+        names = data.get("modules") if isinstance(data, dict) else None
+        return kgamelib.normalize(names if isinstance(names, list) else [])
 
     def ask(self, history: list[dict], user_text: str, memory: str = "", on_token: Callable | None = None,
             cancel: Callable[[], bool] | None = None) -> AdvisorReply:

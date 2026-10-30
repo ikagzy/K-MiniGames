@@ -4,7 +4,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-from k_minigames import checker, library, testlist
+from k_minigames import checker, kgamelib, library, testlist
 from k_minigames import memory as memory_notes
 from k_minigames.checker import CheckReport
 from k_minigames.generator import GenerationError
@@ -51,7 +51,7 @@ def _fix_texts(report: CheckReport, previous: list[TestItem]) -> list[str]:
 
 
 def repair_loop(generator, game: Game, html: str, items: list[TestItem], server, open_url: Callable[[str], object],
-                on_status: OnStatus, cancel: Callable[[], bool] | None = None, *, memory: str = "",
+                on_status: OnStatus, cancel: Callable[[], bool] | None = None, *, memory: str = "", modules=(),
                 ) -> tuple[str, CheckReport, int]:
     """Try the game; while something is broken ask the model to fix it (at most MAX_ATTEMPTS times).
     Returns the version with the fewest problems, not necessarily the last one."""
@@ -74,16 +74,22 @@ def repair_loop(generator, game: Game, html: str, items: list[TestItem], server,
         on_status("fixing", f"Hata buldum, düzeltiyorum ({attempts}/{MAX_ATTEMPTS})")
         sent = now
         try:
-            fixed = generator.fix(current, _fix_texts(report, previous), cancel=cancel, memory=memory)
+            fixed = generator.fix(current, _fix_texts(report, previous), cancel=cancel, memory=memory,
+                                  **({"modules": modules} if modules else {}))
         except GenerationError:
             break
-        current, previous = fixed.html, report.items
+        current, previous = _with_scripts(fixed.html, modules), report.items
     html_best, report_best, score_best = best
     if score_best > 0:
         items_final = [replace(i, status=UNVERIFIED, note="otomatik düzeltilemedi") if i.status == FAILED else i
                        for i in report_best.items]
         report_best = replace(report_best, items=items_final)
     return html_best, report_best, attempts
+
+
+def _with_scripts(html: str, modules) -> str:
+    """With library modules the app (not the model) puts the <script> tags in."""
+    return kgamelib.ensure_scripts(html, list(modules)) if modules else html
 
 
 def _with_new_tests(generator, html: str, items: list[TestItem], cancel, memory: str) -> list[TestItem]:
@@ -123,16 +129,21 @@ def create_game_flow(generator, game: Game, description: str, textures: list[Tex
     previous = memory_notes.load(memory_notes.game_path(game))
     memory = memory or previous
     notify = background or remember_exchange
+    modules = library.modules(game)
+    if modules:
+        kgamelib.install(game, modules)
     on_status("generating", "Oyun üretiliyor…")
     try:
-        generated = generator.create(description, textures, cancel=cancel, memory=memory)
+        generated = generator.create(description, textures, cancel=cancel, memory=memory,
+                                     **({"modules": modules} if modules else {}))
     except GenerationError as exc:
         notify(generator, game, description, f"Oyun üretilemedi: {exc}", previous)
         raise
+    page = _with_scripts(generated.html, modules)
     items = testlist.merge_checklist([], generated.checklist)
-    items = _with_new_tests(generator, generated.html, items, cancel, memory)
-    html, report, attempts = repair_loop(generator, game, generated.html, items, server, open_url, on_status,
-                                         cancel, memory=memory)
+    items = _with_new_tests(generator, page, items, cancel, memory)
+    html, report, attempts = repair_loop(generator, game, page, items, server, open_url, on_status,
+                                         cancel, memory=memory, modules=modules)
     testlist.save(game, report.items)
     library.save_version(game, html)
     outcome = Outcome(html, report, attempts, saved=True, rejected=False)
@@ -151,17 +162,21 @@ def edit_game_flow(generator, game: Game, request: str, textures: list[Texture],
     notify = background or remember_exchange
     current = game.html_path.read_text(encoding="utf-8")
     items = testlist.load(game)
+    modules = library.modules(game)
+    if modules:
+        kgamelib.install(game, modules)   # the newest copy of the library files
     on_status("generating", "Değişiklik yapılıyor…")
     try:
         generated = generator.edit(current, request, textures, [i.text for i in items], testlist.load_resolved(game),
-                                   cancel=cancel, memory=memory)
+                                   cancel=cancel, memory=memory, **({"modules": modules} if modules else {}))
     except GenerationError as exc:
         notify(generator, game, request, f"Düzenleme üretilemedi: {exc}", previous)
         raise
+    page = _with_scripts(generated.html, modules)
     items = testlist.merge_checklist(items, generated.checklist)
-    items = _with_new_tests(generator, generated.html, items, cancel, memory)
-    html, report, attempts = repair_loop(generator, game, generated.html, items, server, open_url, on_status,
-                                         cancel, memory=memory)
+    items = _with_new_tests(generator, page, items, cancel, memory)
+    html, report, attempts = repair_loop(generator, game, page, items, server, open_url, on_status,
+                                         cancel, memory=memory, modules=modules)
     if _hard_problems(report) or report.js_errors or not report.finished:
         # an edit that could not be tried (page hung or never answered) is treated like a broken one
         outcome = Outcome(current, report, attempts, saved=False, rejected=True)

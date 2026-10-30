@@ -187,5 +187,5 @@ class AdvisorScreen:
 
     def _hand_over(self) -> None:
         """Don is done: Bob takes the game on (he reads Don's notes, see StudioScreen._on_name)."""
-        self.s.session = {"mode": "create"}
+        self.s.session = {"mode": "create", "modules": list(self._flow.modules) if self._flow else []}
         self.s.navigate("studio")

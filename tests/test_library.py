@@ -177,3 +177,15 @@ def test_can_write_is_false_when_the_disk_is_nearly_full(games, monkeypatch):
     usage = namedtuple("usage", "total used free")
     monkeypatch.setattr(shutil, "disk_usage", lambda p: usage(100, 99, 1024))
     assert library.can_write(games, min_free_mb=50) is False
+
+
+def test_a_games_modules_are_remembered_and_a_broken_file_means_none(tmp_path):
+    games = tmp_path / "Oyunlar"
+    games.mkdir()
+    game = library.create_game(games, "Uzay")
+    assert library.modules(game) == []
+    library.set_modules(game, ["sports", "yok"])
+    assert library.modules(game) == ["core", "ai", "sports"]
+    library.add_texture  # (the texture list in the same file must survive)
+    (game.folder / "game.json").write_text("{bozuk", encoding="utf-8")
+    assert library.modules(game) == []

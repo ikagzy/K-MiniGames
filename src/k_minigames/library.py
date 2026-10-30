@@ -153,6 +153,19 @@ def _meta(game: Game) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def modules(game: Game) -> list[str]:
+    """The game library modules this game uses (none for games made before the library existed)."""
+    names = _meta(game).get("modules")
+    return [n for n in names if isinstance(n, str)] if isinstance(names, list) else []
+
+
+def set_modules(game: Game, names: list[str]) -> None:
+    from k_minigames import kgamelib   # kgamelib imports this module
+    meta = _meta(game)
+    meta["modules"] = kgamelib.normalize(names) if names else []
+    _write_bytes(game.folder / "game.json", json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"))
+
+
 def _png_size(path: Path) -> tuple[int, int]:
     try:
         head = path.read_bytes()[:24]

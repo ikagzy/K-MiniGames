@@ -69,6 +69,6 @@ def scan(html: str, asset_files: list[str]) -> list[Problem]:
             continue
         urls.add(url)
         problems.append(Problem("external_url", url, "warning"))
-    if "window.__game" not in html:
+    if "window.__game" not in html and "K.expose(" not in html:   # K.expose is the library's way to set it
         problems.append(Problem("no_game_state", "", "error"))
     return problems

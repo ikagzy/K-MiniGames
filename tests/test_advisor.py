@@ -90,3 +90,28 @@ def test_without_memory_the_whole_history_is_sent_and_no_memory_block_appears():
 def test_memory_block_is_empty_for_no_memory_and_titled_otherwise():
     assert memory.block("") == "" and memory.block("   ") == ""
     assert memory.block("x") == "HAFIZA (bunu unutma):\nx"
+
+
+class SchemaClient(FakeClient):
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
+        self.calls.append((model, messages, kwargs))
+        return self.answer
+
+
+def test_choose_modules_asks_with_a_schema_and_cleans_the_answer():
+    client = SchemaClient('{"modules": ["SPORTS", "yok", "ai"]}')
+    modules = Advisor(client, "m").choose_modules([{"role": "user", "content": "voleybol"}])
+    assert modules == ["core", "ai", "sports"]
+    assert client.calls[0][2]["schema"]["properties"]["modules"]["type"] == "array"
+
+
+def test_choose_modules_falls_back_to_core_on_garbage_or_errors():
+    assert Advisor(SchemaClient("saçma"), "m").choose_modules([]) == ["core"]
+    assert Advisor(SchemaClient('{"modules": "sports"}'), "m").choose_modules([]) == ["core"]
+
+    class Broken:
+        def chat(self, *a, **k):
+            from k_minigames.ollama_client import OllamaError
+            raise OllamaError("kapalı")
+
+    assert Advisor(Broken(), "m").choose_modules([]) == ["core"]
