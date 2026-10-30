@@ -75,6 +75,9 @@ Kullanıcı "ölçümü genişlet, gerekirse eğit" dedi. Yorumum ve yöntem:
 
 - **Müzik üreteci (kullanıcı kararı, sonra):** model notaları yazmaz; ayarları seçer (tempo, gam: majör/minör/pentatonik, ruh hali, enstrümanlar, ritim kalıbı, yapı, `seed`) ve özgün bir üreteç (tanınmış melodi yok) müziği kurar. `music` alanı hazır 4 parçadan bu ayarlara genişler, tarif cümleleri veri üretecine eklenir, tek yeniden eğitimde öğretilir. Tahmin: üreteç 2-3 saat; kulakla ayar gerektirir (ses kullanıcı tarafından dinlenecek).
 
+- **Katalogdan seçme (kullanıcı fikri):** kitin özellik adı + açıklaması modelin istemine ve şemaya KAYITTAN otomatik yazılır (şema şimdi statik dosya), eğitim verisinde özellik listesi/adları rastgele değiştirilir, görülmemiş özellikler de ölçülür; böylece yeni özellik için yeniden eğitim gerekmez (yeni oyun türü/yeni yapı için gerekir). Tahmin: görülmüşte ~%90, görülmemişte %70-80 (ölçülmedi). Özellik sayısı 20-30'u geçerse kategori/ön eleme gerekir.
+- **Don modeli (kullanıcı fikri):** `k-ai` Don için kullanılamaz (konuşmayı bilmez). Don için ayrı küçük model: `k-ai-don`, taban 0,5B genel sohbet (örn. Qwen2.5-0.5B-Instruct; indirme için kullanıcı onayı gerekir), modül seçimi (JSON) + kısa sohbet, Bob'un konuşma sürümüyle aynı veri hazırlığı; karakter tarifini kullanıcı verecek. Türkçe zayıfsa 1.5B kademesi.
+
 ## 6. Dikkat edilecek tuzaklar
 - **Türkçe karakterli klasör yolu** (`klasörler\lazım olabilecek...`). Tk `PhotoImage(file=)` bu yüzden `data=` ile yüklenir. Komut satırı betiklerinde Türkçe harf ve ters eğik çizgi (`\n`) bozulabiliyor: dosya yazarken Write/Edit aracı kullan, `python - <<EOF` içinde `\n` yazma (gerçek satır sonuna dönüşebilir).
 - Dosyalarda **CRLF** var (Windows); betikle düzenlerken satır sonunu koru.
