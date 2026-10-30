@@ -1,0 +1,13 @@
+# k-ai: the small model that writes game specs (Qwen2.5-Coder-1.5B-Instruct + our LoRA, merged).
+# ollama create k-ai -f tools/train/ollama/Modelfile.k-ai --quantize int8     (from the repository root)
+FROM ./tools/train/out/k-ai-v1-merged
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
+"""
+PARAMETER stop <|im_end|>
+PARAMETER stop <|im_start|>
+PARAMETER num_ctx 8192
+PARAMETER temperature 0
