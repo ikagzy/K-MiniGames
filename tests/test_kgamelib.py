@@ -33,7 +33,8 @@ def test_every_registered_file_and_guide_exists():
         for name in module.files:
             assert (kgamelib.LIB_DIR / name).is_file(), name
         assert (kgamelib.LIB_DIR / module.guide).is_file(), module.guide
-    assert kgamelib.all_files() == {"kgame.js", "kgame.ai.js", "kgame.sports.js"}
+    assert kgamelib.all_files() == {name for m in kgamelib.MODULES.values() for name in m.files}
+    assert {"kgame.js", "kgame.ai.js", "kgame.sports.js"} <= kgamelib.all_files()
 
 
 PAGE = "<!doctype html><html><head><title>x</title></head><body><canvas></canvas><script>const g = K.game();</script></body></html>"
@@ -81,3 +82,24 @@ def test_other_spellings_of_the_library_tags_are_replaced_not_doubled():
             "<body><script>const g = K.game();</script></body></html>")
     out = kgamelib.ensure_scripts(page, ["core", "ai"])
     assert out.count("kgame.js") == 1 and out.count("kgame.ai.js") == 1
+
+
+def test_every_module_has_a_summary_for_dons_prompt_and_the_prompt_lists_them_all():
+    from k_minigames import advisor
+    for module in kgamelib.MODULES.values():
+        assert module.summary.strip(), module.name
+        assert module.name in advisor.module_prompt()
+    assert advisor.module_prompt().count("\n") < 80   # one line per module keeps the prompt small
+
+
+def test_a_quiet_dependency_loads_its_file_but_its_guide_is_not_shown(monkeypatch):
+    quiet = kgamelib.Module("quietmod", ("kgame.quiet.js",), "core.guide.md", ("core",), "x", quiet=True)
+    loud = kgamelib.Module("loudmod", ("kgame.loud.js",), "ai.guide.md", ("core", "quietmod"), "y")
+    monkeypatch.setitem(kgamelib.MODULES, "quietmod", quiet)
+    monkeypatch.setitem(kgamelib.MODULES, "loudmod", loud)
+    monkeypatch.setattr(kgamelib, "_ORDER", ["core", "ai", "sports", "quietmod", "loudmod"])
+    assert kgamelib.normalize(["loudmod"]) == ["core", "quietmod", "loudmod"]
+    text = kgamelib.guides(["loudmod"])
+    assert "kgame.ai.js" in text and text.count("# kgame.js") == 1   # core and loudmod's own guide, not the quiet one twice
+    explicit = kgamelib.guides(["quietmod", "loudmod"])
+    assert explicit.count("# kgame.js") == 2   # chosen on purpose: its guide is shown

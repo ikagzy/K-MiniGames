@@ -20,12 +20,16 @@ class Module:
     files: tuple[str, ...]
     guide: str
     needs: tuple[str, ...] = ()
+    summary: str = ""      # one line for the advisor: what the module is for
+    quiet: bool = False    # loaded only as a dependency: its guide is not shown unless the module was chosen itself
 
 
 MODULES: dict[str, Module] = {
-    "core": Module("core", ("kgame.js",), "core.guide.md"),
-    "ai": Module("ai", ("kgame.ai.js",), "ai.guide.md", ("core",)),
-    "sports": Module("sports", ("kgame.sports.js",), "sports.guide.md", ("core", "ai")),
+    "core": Module("core", ("kgame.js",), "core.guide.md", (), "her oyun (döngü, fizik, girdi, çarpışma, sahne, ses)"),
+    "ai": Module("ai", ("kgame.ai.js",), "ai.guide.md", ("core",),
+                 "düşman ve bot davranışı: kovalama, devriye, rakip, yol bulma"),
+    "sports": Module("sports", ("kgame.sports.js",), "sports.guide.md", ("core", "ai"),
+                     "voleybol, futbol, basketbol, pong"),
 }
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
 _TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
@@ -68,7 +72,11 @@ def install(game: Game, modules: list[str]) -> list[str]:
 
 
 def guides(modules: list[str]) -> str:
-    return "\n\n".join((LIB_DIR / MODULES[m].guide).read_text(encoding="utf-8").strip() for m in normalize(modules))
+    """The guides the model is shown: of the chosen modules and of what they need, except quiet dependencies (parts
+    a kit builds on, which the kit's own guide already covers)."""
+    chosen = {m.strip().lower() for m in modules if isinstance(m, str)} | {"core"}
+    shown = [m for m in normalize(modules) if not MODULES[m].quiet or m in chosen]
+    return "\n\n".join((LIB_DIR / MODULES[m].guide).read_text(encoding="utf-8").strip() for m in shown)
 
 
 def ensure_scripts(html: str, modules: list[str]) -> str:

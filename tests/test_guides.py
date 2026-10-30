@@ -16,10 +16,10 @@ def _library_source():
     return "\n".join(_read(name) for name in sorted(kgamelib.all_files()))
 
 
-@pytest.mark.parametrize("module", sorted(BUDGET_TOKENS))
+@pytest.mark.parametrize("module", sorted(kgamelib.MODULES))
 def test_a_guide_stays_within_its_token_budget(module):
     text = _read(kgamelib.MODULES[module].guide)
-    assert len(text) / CHARS_PER_TOKEN <= BUDGET_TOKENS[module], f"{module} guide is too long"
+    assert len(text) / CHARS_PER_TOKEN <= BUDGET_TOKENS.get(module, 1500), f"{module} guide is too long"
 
 
 def test_everything_the_guides_ship_fits_the_context_with_room_for_the_game():

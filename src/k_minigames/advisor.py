@@ -63,10 +63,12 @@ def _without_proposals(text: str) -> str:
 
 MODULE_SCHEMA = {"type": "object", "required": ["modules"],
                  "properties": {"modules": {"type": "array", "items": {"type": "string", "enum": list(kgamelib.MODULES)}}}}
-_MODULE_PROMPT = (
-    "Kullanıcının anlattığı oyun için oyun kütüphanesinden hangi modüllerin gerektiğini seç. Modüller: core (her oyun), "
-    "ai (düşman ve bot davranışı: kovalama, devriye, rakip), sports (voleybol, futbol, basketbol, pong). "
-    'Yalnızca şu biçimde JSON ver: {"modules": ["core", "..."]}')
+def module_prompt() -> str:
+    """The advisor's instruction for picking modules: one line per module of the library."""
+    lines = "\n".join(f"- {m.name}: {m.summary}" for m in kgamelib.MODULES.values())
+    return ("Kullanıcının anlattığı oyun için oyun kütüphanesinden hangi modüllerin gerektiğini seç (core her zaman; "
+            "yalnızca gerçekten gereken en az modülü seç, bir tür kiti varsa onu seç). Modüller:\n" + lines +
+            '\nYalnızca şu biçimde JSON ver: {"modules": ["core", "..."]}')
 
 
 class Advisor:
@@ -76,7 +78,7 @@ class Advisor:
     def choose_modules(self, history: list[dict]) -> list[str]:
         """The library modules the game needs, as the model picks them (a JSON schema keeps the answer in shape);
         anything unusable means just the core."""
-        messages = [{"role": "system", "content": _MODULE_PROMPT}, *history[-HISTORY_WITH_MEMORY:],
+        messages = [{"role": "system", "content": module_prompt()}, *history[-HISTORY_WITH_MEMORY:],
                     {"role": "user", "content": "Hangi modüller gerekli?"}]
         try:
             data = json.loads(self.client.chat(self.model, messages, schema=MODULE_SCHEMA))
