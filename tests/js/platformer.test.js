@@ -416,3 +416,52 @@ test('all the variety features together keep a generated campaign valid and runn
   run(s, 3);
   assert.strictEqual(s.levels.count, 8);
 });
+
+// ---- the music composer ----
+const SCALE_OF = { happy: [0, 2, 4, 5, 7, 9, 11], calm: [0, 2, 4, 5, 7, 9, 11], tense: [0, 2, 3, 5, 7, 8, 11], epic: [0, 2, 3, 5, 7, 8, 10],
+                   mystery: [0, 2, 3, 5, 7, 9, 10], spooky: [0, 1, 3, 5, 7, 8, 10] };
+const beatsOf = (notes) => notes.reduce((s, n) => s + n.beats, 0);
+const pitchClasses = (K, text) => new Set(K.music.parse(text).filter((n) => n.freq).map((n) => ((Math.round(12 * Math.log2(n.freq / 440)) + 9) % 12 + 12) % 12));
+
+test('the composer writes the same tune for the same numbers and another one for another seed or mood', () => {
+  const K = fresh();
+  const a = K.music.compose({ mood: 'epic', tempo: 'fast', seed: 12 });
+  assert.deepStrictEqual(K.music.compose({ mood: 'epic', tempo: 'fast', seed: 12 }), a);
+  assert.notStrictEqual(K.music.compose({ mood: 'epic', tempo: 'fast', seed: 13 }).notes, a.notes);
+  assert.notStrictEqual(K.music.compose({ mood: 'calm', tempo: 'fast', seed: 12 }).notes, a.notes);
+  assert.ok(K.music.compose({ mood: 'epic', tempo: 'fast' }).bpm > K.music.compose({ mood: 'epic', tempo: 'slow' }).bpm, 'tempo changes the speed');
+});
+
+test('every tune is 64 beats with the bass as long as the lead, only notes of its own scale, and it loops', () => {
+  const K = fresh();
+  for (const mood of K.music.moods) {
+    for (let seed = 0; seed < 30; seed++) {
+      const t = K.music.compose({ mood, tempo: 'medium', seed });
+      const lead = K.music.parse(t.notes), bass = K.music.parse(t.bass);
+      assert.strictEqual(beatsOf(lead), 64, mood + ' ' + seed);
+      assert.strictEqual(beatsOf(bass), 64, mood + ' bass ' + seed);
+      assert.ok(lead.every((n) => n.freq === 0 || (n.freq > 100 && n.freq < 2200)), 'a playable range');
+      const ok = new Set();
+      for (const root of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
+        const set = new Set(SCALE_OF[mood].map((x) => (x + root) % 12));
+        if ([...pitchClasses(K, t.notes), ...pitchClasses(K, t.bass)].every((pc) => set.has(pc))) ok.add(root);
+      }
+      assert.ok(ok.size > 0, mood + ' ' + seed + ': notes stay in one scale');
+    }
+  }
+  assert.ok(K.music.compose({ mood: 'nope' }).notes, 'an unknown mood still gives a tune (happy)');
+});
+
+test('musicStyle makes the kit play a composed tune; a wrong mood or tempo makes the spec invalid', () => {
+  const K = fresh();
+  assert.deepStrictEqual(K.kit.check({ kit: 'platformer', musicStyle: { mood: 'spooky', tempo: 'slow', seed: 5 } }), []);
+  assert.ok(K.kit.check({ kit: 'platformer', musicStyle: { mood: 'sad' } })[0].includes('ruh hali'));
+  assert.ok(K.kit.check({ kit: 'platformer', musicStyle: { tempo: 'warp' } })[0].includes('tempo'));
+  const s = K.kit.run({ kit: 'platformer', musicStyle: { mood: 'tense', seed: 9 }, levels: [LONG], time: 100 });
+  run(s, 0.2);
+  assert.strictEqual(K.music.current, 'style');
+  assert.strictEqual(K.music.tracks.style.wave, 'sawtooth');
+  const named = K.kit.run({ kit: 'platformer', music: 'castle', levels: [LONG], time: 100 });
+  run(named, 0.2);
+  assert.strictEqual(K.music.current, 'castle');
+});

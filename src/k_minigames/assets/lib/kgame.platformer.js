@@ -20,6 +20,9 @@
     check: function (spec) {
       var errors = [], all = K.levels.fromSpec(spec);
       var who = (spec.hero && spec.hero.character) || "hero";
+      var ms = spec.musicStyle;
+      if (ms && ms.mood !== undefined && K.music.moods.indexOf(ms.mood) < 0) errors.push("bilinmeyen müzik ruh hali: " + ms.mood + " (var olanlar: " + K.music.moods.join(", ") + ")");
+      if (ms && ms.tempo !== undefined && ["slow", "medium", "fast"].indexOf(ms.tempo) < 0) errors.push("bilinmeyen müzik temposu: " + ms.tempo + " (slow, medium, fast)");
       if (!K.sprites.has(who + ".idle")) errors.push("bilinmeyen kahraman: " + who + " (var olanlar: hero, runner)");
       all.forEach(function (rows, i) {
         if (!Array.isArray(rows)) { errors.push("seviye " + (i + 1) + " bir satır listesi olmalı"); return; }
@@ -39,6 +42,8 @@
       var state = { g: g, spec: spec, theme: theme, levels: levels, level: null, map: null, me: null, tiles: {}, frozen: false,
                     jumpHooks: [], heroHooks: [], loadHooks: [], hurtHooks: [], floorHooks: [], speedMul: 1, slip: 1, checkpoint: null, invuln: 0, star: 0, qIndex: 0 };
       var hud;
+      var tune = spec.music;   // a named tune, or one composed from musicStyle {mood, tempo, seed}
+      if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
 
       // ---- screens ----
       var restart = function () {
@@ -90,7 +95,7 @@
         state.loadHooks.forEach(function (h) { h(lv); });
         g.camera.x = 0; g.camera.y = lv.height - g.height;
         g.follow(state.me, 0.12);
-        if (spec.music) K.music.play(spec.music);
+        if (tune) K.music.play(tune);
       }
 
       // ---- the hero ----

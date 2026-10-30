@@ -18,7 +18,10 @@
     });
   };
 
-  M.define = function (name, def) { M.tracks[name] = { bpm: def.bpm || 120, wave: def.wave || "square", notes: M.parse(def.notes), loop: def.loop !== false }; };
+  M.define = function (name, def) {
+    M.tracks[name] = { bpm: def.bpm || 120, wave: def.wave || "square", notes: M.parse(def.notes), loop: def.loop !== false,
+                       bass: def.bass ? M.parse(def.bass) : null, bassWave: def.bassWave || "triangle" };
+  };
 
   // Original tunes written for this library (not taken from any game).
   M.define("overworld", { bpm: 138, notes: "C5:0.5 E5:0.5 G5:1 E5:0.5 C5:0.5 D5:1 R:0.5 D5:0.5 F5:0.5 A5:1 F5:0.5 D5:0.5 E5:2 R:1 G4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:1 B4:1 C5:2 R:1" });
@@ -28,27 +31,100 @@
   M.define("victory", { bpm: 132, loop: false, notes: "D5:0.5 F#5:0.5 A5:0.5 D6:1.5 A5:0.5 F#5:0.5 D6:2.5" });
   M.define("gameover", { bpm: 84, loop: false, wave: "triangle", notes: "A4:1 F4:1 D4:1 E4:0.5 D4:0.5 C#4:0.5 D4:2.5" });
 
+  // ---- a composer: the model picks a mood, a tempo and a seed; this writes an original tune from scale and chord rules ----
+  // K.music.compose({mood, tempo, seed}) -> a track definition (lead + bass) for K.music.define. The same numbers always give the
+  // same tune. A tune is 64 beats: A, A with a changed third bar, B (higher), A; the lead leans on chord tones on the strong
+  // beats and moves by steps in between; the bass plays the chord roots; it ends on the root so that it loops.
+  var MOODS = {
+    happy:   { scale: [0, 2, 4, 5, 7, 9, 11], prog: [[0, 4, 5, 3], [0, 5, 3, 4], [0, 3, 4, 0]], bpm: [128, 150, 172], wave: "square" },
+    calm:    { scale: [0, 2, 4, 5, 7, 9, 11], prog: [[0, 5, 3, 4], [0, 3, 0, 4]], bpm: [72, 88, 104], wave: "triangle" },
+    tense:   { scale: [0, 2, 3, 5, 7, 8, 11], prog: [[0, 5, 3, 4], [0, 3, 4, 0]], bpm: [132, 154, 176], wave: "sawtooth" },
+    epic:    { scale: [0, 2, 3, 5, 7, 8, 10], prog: [[0, 5, 2, 6], [0, 6, 5, 4]], bpm: [112, 134, 156], wave: "sawtooth" },
+    mystery: { scale: [0, 2, 3, 5, 7, 9, 10], prog: [[0, 3, 0, 6], [0, 6, 3, 6]], bpm: [78, 94, 110], wave: "triangle" },
+    spooky:  { scale: [0, 1, 3, 5, 7, 8, 10], prog: [[0, 1, 0, 6], [0, 5, 1, 0]], bpm: [88, 108, 128], wave: "sawtooth" }
+  };
+  var RHYTHMS = [[1, 1, 1, 1], [1.5, 0.5, 1, 1], [0.5, 0.5, 1, 1, 1], [2, 1, 1], [1, 0.5, 0.5, 2], [0.5, 0.5, 0.5, 0.5, 2],
+                 [1, 1, 2], [0.5, 0.5, 1, 0.5, 0.5, 1], [1, 0.5, 0.5, 1, 1]];
+  var NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  function noteName(midi) { return NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1); }
+  function seeded(seed) {
+    var a = (Math.floor(seed) * 2654435761 + 12345) >>> 0 || 1;
+    return function () { a = (a + 0x6D2B79F5) >>> 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+
+  M.moods = Object.keys(MOODS);
+  M.compose = function (o) {
+    o = o || {};
+    var mood = MOODS[o.mood] ? o.mood : "happy", def = MOODS[mood];
+    var seed = typeof o.seed === "number" && isFinite(o.seed) ? o.seed : 1, rnd = seeded(seed);
+    var pick = function (list) { return list[Math.floor(rnd() * list.length) % list.length]; };
+    var bpm = o.tempo === "slow" ? def.bpm[0] : o.tempo === "fast" ? def.bpm[2] : def.bpm[1];
+    var root = 48 + pick([0, 2, 3, 5, 7, 9]), scale = def.scale;
+    var pitch = function (idx) { return root + 12 * Math.floor(idx / 7) + scale[((idx % 7) + 7) % 7]; };
+    var prog = pick(def.prog);
+    var isTone = function (idx, d) { return [0, 2, 4].some(function (k) { return ((idx - d - k) % 7 + 7) % 7 === 0; }); };
+    var nearestTone = function (idx, d) { for (var k = 0; k < 7; k++) { if (isTone(idx + k, d)) return idx + k; if (isTone(idx - k, d)) return idx - k; } return idx; };
+    var lead = [];
+
+    var bar = function (d, from, lo, hi, closing) {   // one bar of 4 beats; returns the last pitch index
+      var rhythm = closing ? pick([[2, 2], [1, 1, 2], [1, 3]]) : pick(RHYTHMS), at = 0, idx = from;
+      rhythm.forEach(function (beats, i) {
+        var last = closing && i === rhythm.length - 1;
+        if (last || at % 2 === 0) idx = nearestTone(idx + (last ? 0 : pick([-2, -1, 0, 1, 2])), d);   // a strong beat or the end: a chord tone
+        else idx = idx + pick([-1, 1, -2, 2]);   // in between: a step
+        idx = Math.max(lo, Math.min(hi, idx));
+        if (last) idx = nearestTone(idx, d);
+        var rest = !last && at > 0 && rnd() < 0.08;
+        lead.push((rest ? "R" : noteName(pitch(idx))) + ":" + beats);
+        at += beats;
+      });
+      return idx;
+    };
+    var section = function (low, high, vary) {
+      var idx = (low + high) >> 1, first = null;
+      prog.forEach(function (d, i) {
+        var closing = i === 3;
+        if (i === 2 && vary) { idx = bar(d, idx + pick([-3, 3]), low, high, false); return; }
+        idx = bar(d, idx, low, high, closing);
+      });
+    };
+    section(7, 14, false); section(7, 14, true); section(10, 17, false); section(7, 14, false);
+
+    var bass = [];
+    for (var s = 0; s < 4; s++) prog.forEach(function (d) {
+      var low = pitch(d - 7), fifth = pitch(d - 7 + 4);
+      bass.push(noteName(low) + ":1", noteName(fifth) + ":1", noteName(low) + ":1", noteName(fifth) + ":1");
+    });
+    return { bpm: bpm, wave: def.wave, notes: lead.join(" "), bass: bass.join(" "), bassWave: "triangle", mood: mood };
+  };
+
   var timer = null;
   var contextOf = function () { try { return new (root.AudioContext || root.webkitAudioContext)(); } catch (e) { return null; } };
   var ctx;
 
   function schedule(track, name) {
     if (!ctx) return;
-    var t = ctx.currentTime + 0.05, beat = 60 / track.bpm;
-    track.notes.forEach(function (n) {
-      var length = n.beats * beat;
-      if (n.freq) {
-        try {
-          var osc = ctx.createOscillator(), gain = ctx.createGain();
-          osc.type = track.wave; osc.frequency.value = n.freq;
-          gain.gain.setValueAtTime(M.volume, t);
-          gain.gain.exponentialRampToValueAtTime(0.0008, t + length * 0.95);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(t); osc.stop(t + length);
-        } catch (e) { /* silent */ }
-      }
-      t += length;
-    });
+    var start = ctx.currentTime + 0.05, beat = 60 / track.bpm;
+    var voice = function (notes, wave, volume) {   // writes one line of notes into the audio clock; returns where it ends
+      var t = start;
+      notes.forEach(function (n) {
+        var length = n.beats * beat;
+        if (n.freq) {
+          try {
+            var osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.type = wave; osc.frequency.value = n.freq;
+            gain.gain.setValueAtTime(volume, t);
+            gain.gain.exponentialRampToValueAtTime(0.0008, t + length * 0.95);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(t); osc.stop(t + length);
+          } catch (e) { /* silent */ }
+        }
+        t += length;
+      });
+      return t;
+    };
+    var t = voice(track.notes, track.wave, M.volume);
+    if (track.bass) voice(track.bass, track.bassWave, M.volume * 0.75);
     var total = (t - ctx.currentTime) * 1000;
     timer = setTimeout(function () {
       if (M.current !== name) return;
