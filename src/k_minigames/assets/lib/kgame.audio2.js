@@ -109,6 +109,12 @@
     return { bpm: bpm, wave: def.wave, notes: lead.join(" "), bass: bass.join(" "), bassWave: "triangle", mood: mood };
   };
 
+  // The secret tune (for easter eggs): a mystery tune written by the composer once (mood mystery, medium, seed 7) and kept as it
+  // is, so that a later change of the composer does not change it. K.music.play("secret").
+  M.define("secret", { bpm: 94, wave: "triangle", bassWave: "triangle",
+    notes: "A4:0.5 C5:0.5 A4:1 D5:1 C5:1 B4:1 A4:1 G4:1 B4:1 D5:0.5 C5:0.5 B4:1 A4:0.5 G4:0.5 E4:1 G4:1 E4:3 A4:1 B4:1 D5:2 B4:0.5 D5:0.5 B4:0.5 C5:0.5 R:2 D5:1.5 C5:0.5 D5:1 R:1 D5:1 C5:1 C5:2 A4:1 B4:1 A4:1 G4:1 B4:0.5 A4:0.5 C5:1 R:0.5 C5:0.5 D5:1 F5:0.5 D5:0.5 C5:0.5 A4:0.5 A4:2 C5:1 E5:3 C5:0.5 D5:0.5 B4:1 D5:0.5 B4:0.5 G4:1 B4:0.5 D5:0.5 B4:0.5 C5:0.5 B4:2 A4:1 C5:1 D5:1 C5:1 G4:1 A4:1 G4:2",
+    bass: "D2:1 A2:1 D2:1 A2:1 G2:1 D3:1 G2:1 D3:1 D2:1 A2:1 D2:1 A2:1 C3:1 G3:1 C3:1 G3:1 D2:1 A2:1 D2:1 A2:1 G2:1 D3:1 G2:1 D3:1 D2:1 A2:1 D2:1 A2:1 C3:1 G3:1 C3:1 G3:1 D2:1 A2:1 D2:1 A2:1 G2:1 D3:1 G2:1 D3:1 D2:1 A2:1 D2:1 A2:1 C3:1 G3:1 C3:1 G3:1 D2:1 A2:1 D2:1 A2:1 G2:1 D3:1 G2:1 D3:1 D2:1 A2:1 D2:1 A2:1 C3:1 G3:1 C3:1 G3:1" });
+
   var timer = null;
   var contextOf = function () { try { return new (root.AudioContext || root.webkitAudioContext)(); } catch (e) { return null; } };
   var ctx;

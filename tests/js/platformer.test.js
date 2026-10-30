@@ -480,3 +480,14 @@ test('the same seed in another mood is another tune that starts differently, and
   }
   assert.ok(same / pairs < 0.1, 'repeated notes: ' + (100 * same / pairs).toFixed(1) + '%');
 });
+
+test('the secret tune is fixed text that the composer cannot change, and it is a playable 64-beat track with a bass', () => {
+  const K = fresh();
+  const secret = K.music.tracks.secret;
+  assert.ok(secret && secret.bass, 'the secret track exists with a bass');
+  assert.strictEqual(beatsOf(secret.notes), 64);
+  assert.strictEqual(beatsOf(secret.bass), 64);
+  assert.strictEqual(secret.bpm, 94);
+  assert.ok(K.music.play('secret'));
+  assert.strictEqual(K.music.current, 'secret');
+});
