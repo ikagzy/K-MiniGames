@@ -70,3 +70,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-61 | 2026-10-28 | Müzik düzeltmeleri (ruh hali tohuma karışır, açılış çeşitliliği, tekrar azaltma), gizli easter egg parçası sabitlendi, yeni mystery örneği; 144 JS testi | 563fc9b |
 | CP-62 | 2026-10-28 | Eğitim verisi yeni alanları öğretir (1150 özet kitle doğrulandı); eğitim 6x hızlandı (answer_loss), ara kayıt ve --resume; k-ai-v2 henüz eğitilmedi | e4881cc |
 | CP-63 | 2026-10-28 | k-ai v1 Ollama'ya GGUF ile kuruldu, uygulamada Bob'un modeli yapıldı (game_model), install_kai.py, exe yeniden derlendi; v2 eğitimi sürüyor | 4259461 |
+| CP-64 | 2026-10-28 | k-ai v2 eğitildi ve ölçüldü (HF'de yeni özellikler %100, genel 0,98); Ollama'da v2 bozuluyor (açık sorun); k-ai için şemasız çağrı; devlog | 34b738c |
