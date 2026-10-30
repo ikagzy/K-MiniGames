@@ -99,9 +99,11 @@ class OllamaClient:
 
     def chat(self, model: str, messages: list[dict], on_token: Callable[[str], None] | None = None,
              cancel: Callable[[], bool] | None = None, *, schema: dict | None = None,
-             keep_alive: str | None = None) -> str:
+             keep_alive: str | None = None, max_tokens: int | None = None) -> str:
         """`schema` asks for an answer in that JSON shape; `keep_alive` ("2m") is how long the model stays in memory."""
         payload = {"model": model, "messages": messages, "stream": True, "options": {"num_ctx": NUM_CTX}}
+        if max_tokens:
+            payload["options"]["num_predict"] = max_tokens   # a cap: a model that rambles stops here
         if schema is not None:
             payload["format"] = schema
         if keep_alive:

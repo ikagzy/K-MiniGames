@@ -193,3 +193,12 @@ def test_chat_sends_neither_format_nor_keep_alive_by_default():
     c.chat("m", [{"role": "user", "content": "x"}])
     payload = json.loads(opener.requests[0].data)
     assert "format" not in payload and "keep_alive" not in payload
+
+
+def test_chat_can_limit_how_many_tokens_the_answer_may_have():
+    c, opener = client(ndjson({"message": {"content": "x"}, "done": True}))
+    c.chat("m", [{"role": "user", "content": "x"}], max_tokens=1500)
+    assert json.loads(opener.requests[0].data)["options"]["num_predict"] == 1500
+    c2, opener2 = client(ndjson({"message": {"content": "x"}, "done": True}))
+    c2.chat("m", [{"role": "user", "content": "x"}])
+    assert "num_predict" not in json.loads(opener2.requests[0].data)["options"]

@@ -68,6 +68,7 @@ _TESTER_RULES = (
 )
 
 
+SPEC_MAX_TOKENS = 2500   # a spec is a few hundred tokens; this only stops a model that never ends
 PATCH_MIN_CHARS = 1500   # a shorter game is simply written again; patches pay off on a longer one
 _PATCH_RULES = (
     "Oyunun mevcut hâlini ve kullanıcının isteğini göreceksin. Oyunu YENİDEN YAZMA; yalnızca değişen yerleri şu "
@@ -322,6 +323,7 @@ class Generator:
         extra = {"keep_alive": self.keep_alive} if self.keep_alive else {}
         if schema is not None:
             extra["schema"] = schema
+        extra["max_tokens"] = SPEC_MAX_TOKENS
         try:
             return self.client.chat(self.model, messages, cancel=cancel, **extra)
         except OllamaError as exc:

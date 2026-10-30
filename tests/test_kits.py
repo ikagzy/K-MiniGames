@@ -72,3 +72,14 @@ def test_the_spec_of_a_game_is_remembered_and_a_broken_file_means_none(game):
     assert library.kit(game) == "platformer"
     (game.folder / "game.json").write_text("{bozuk", encoding="utf-8")
     assert library.spec(game) is None and library.kit(game) is None
+
+
+def test_the_schema_bounds_every_list_and_string_so_a_model_cannot_ramble_forever():
+    schema = kits.schema("platformer")
+    props = schema["properties"]
+    assert 1 <= props["levels"]["maxItems"] <= 6
+    assert props["levels"]["items"]["maxItems"] <= 16
+    assert props["levels"]["items"]["items"]["maxLength"] <= 100
+    for name in ("qblocks", "features"):
+        assert props[name]["maxItems"] <= 10
+    assert props["title"]["maxLength"] <= 60 and props["world"]["maxLength"] <= 10

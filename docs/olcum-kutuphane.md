@@ -129,3 +129,9 @@
 **new** düzeltmelere giden sorunlar: Dış ağ adresi kullanılmış: https://cdn.jsdelivr.net/npm/k-game. Kaldır; oyun tamamen yerel çalışmalı. ; Ekran boş görünüyor: canvas'a hiçbir şey çizilmemiş (tek renk). Oyunun ilk karede sahneyi çizdiğinden emin ol. ; Dosya yüklenemedi: https://cdn.jsdelivr.net/npm/k-game ; JavaScript hatası: Uncaught TypeError: Cannot read properties of undefined (reading 'mouse') (satır 76: x: K.input.mouse.x,) || Ekran boş görünüyor: canvas'a hiçbir şey çizilmemiş (tek renk). Oyunun ilk karede sahneyi çizdiğinden emin ol. ; JavaScript hatası: Uncaught TypeError: Cannot read properties of undefined (reading 'mouse') (satır 76: x: K.input.mouse.x,) || Ekran boş görünüyor: canvas'a hiçbir şey çizilmemiş (tek renk). Oyunun ilk karede sahneyi çizdiğinden emin ol. ; JavaScript hatası: Uncaught TypeError: g.on is not a function (satır 69: g.on('mousemove', (e, dt) => {)
 **new** maddeler: 
 **new** uyarılar: Klavye dinleniyor ama W A S D, ok tuşları ve boşluk hiçbir şeyi değiştirmedi. | Fare dinleniyor ama tıklama ve fare hareketi hiçbir şeyi değiştirmedi.
+
+## 2026-10-30 14:09 — qwen2.5:3b, tarif: mario
+
+| yöntem | geçti | doğrulanamadı | kaldı | düzeltme | JS hatası | sorunlar | süre (sn) |
+|---|---|---|---|---|---|---|---|
+| spec | hata: Modelin cevabında geçerli bir oyun özeti (JSON) yok | | | | | | 766 |

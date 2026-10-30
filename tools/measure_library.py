@@ -27,6 +27,8 @@ RECIPES = {
     "pong": "Klasik pong. Oyuncu W ve S ile sol raketi oynatır, sağ raketi bir bot oynatır. 5 puana kadar oynanır.",
     "shooter": ("Uzay nişancısı. Oyuncu gemisi ok tuşlarıyla sağa sola gider, boşluk tuşuyla ateş eder. Yukarıdan düşmanlar "
                 "iner; vurulan düşman puan verir, gemiye çarpan düşman can götürür, 3 can bitince oyun biter."),
+    "mario": ("Mario gibi bir platform oyunu. Kahraman koşar ve zıplar, düşmanlara basarak onları ezer, altın toplar, soru bloklarından mantar çıkar; "
+              "iki seviye olsun ve her seviye bir bayrakla bitsin."),
     "snake": "Yılan oyunu. Ok tuşlarıyla yön verilir, yem yiyince yılan uzar ve skor artar; duvara ya da kendine çarpınca oyun biter.",
 }
 
@@ -40,7 +42,7 @@ class Recording(generator.Generator):
     def fix(self, html, problems, *args, **kwargs):
         self.fix_log.append([str(p)[:220] for p in problems])
         return super().fix(html, problems, *args, **kwargs)
-MODES = {"old": [], "new": ["core", "ai", "sports"]}
+MODES = {"old": [], "new": ["core", "ai", "sports"], "spec": ["core", "platformer"]}
 REPORT = ROOT / "docs" / "olcum-kutuphane.md"
 
 

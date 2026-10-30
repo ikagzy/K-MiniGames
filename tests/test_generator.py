@@ -304,3 +304,10 @@ def test_edit_and_fix_spec_send_the_current_spec_and_return_a_whole_new_one():
     fixed = gen.fix_spec(edited, ["seviye 1: bayrağa ulaşılamıyor"], "platformer")
     assert fixed["levels"] == [["P..F", "####"]]
     assert "bayrağa ulaşılamıyor" in client.calls[1][0][1]["content"]
+
+
+def test_a_spec_request_limits_the_length_of_the_answer():
+    from k_minigames.generator import Generator
+    client = SpecClient('{"levels": [["P.F", "###"]]}')
+    Generator(client, "m").create_spec("x", "platformer")
+    assert 500 <= client.calls[0][1]["max_tokens"] <= 4000
