@@ -69,3 +69,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-60 | 2026-10-28 | Müzik üreteci: K.music.compose (6 ruh hali, tempo, seed), iki sesli motor, musicStyle alanı; kulakla doğrulanmadı; 142 JS testi | 3cc159a |
 | CP-61 | 2026-10-28 | Müzik düzeltmeleri (ruh hali tohuma karışır, açılış çeşitliliği, tekrar azaltma), gizli easter egg parçası sabitlendi, yeni mystery örneği; 144 JS testi | 563fc9b |
 | CP-62 | 2026-10-28 | Eğitim verisi yeni alanları öğretir (1150 özet kitle doğrulandı); eğitim 6x hızlandı (answer_loss), ara kayıt ve --resume; k-ai-v2 henüz eğitilmedi | e4881cc |
+| CP-63 | 2026-10-28 | k-ai v1 Ollama'ya GGUF ile kuruldu, uygulamada Bob'un modeli yapıldı (game_model), install_kai.py, exe yeniden derlendi; v2 eğitimi sürüyor | 4259461 |
