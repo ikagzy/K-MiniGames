@@ -25,7 +25,21 @@ RECIPES = {
     "platform": ("Basit bir platform oyunu. Oyuncu A ve D ile yürür, W ile zıplar. Sahada altınlar ve devriye gezen bir düşman "
                  "var; tüm altınları toplayınca oyun kazanılır, düşmana çarpınca kaybedilir."),
     "pong": "Klasik pong. Oyuncu W ve S ile sol raketi oynatır, sağ raketi bir bot oynatır. 5 puana kadar oynanır.",
+    "shooter": ("Uzay nişancısı. Oyuncu gemisi ok tuşlarıyla sağa sola gider, boşluk tuşuyla ateş eder. Yukarıdan düşmanlar "
+                "iner; vurulan düşman puan verir, gemiye çarpan düşman can götürür, 3 can bitince oyun biter."),
+    "snake": "Yılan oyunu. Ok tuşlarıyla yön verilir, yem yiyince yılan uzar ve skor artar; duvara ya da kendine çarpınca oyun biter.",
 }
+
+
+class Recording(generator.Generator):
+    """A generator that remembers what it was asked to fix (to see why a game needed fixes)."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fix_log: list[list[str]] = []
+
+    def fix(self, html, problems, *args, **kwargs):
+        self.fix_log.append([str(p)[:220] for p in problems])
+        return super().fix(html, problems, *args, **kwargs)
 MODES = {"old": [], "new": ["core", "ai", "sports"]}
 REPORT = ROOT / "docs" / "olcum-kutuphane.md"
 
@@ -47,9 +61,10 @@ def one_run(model: str, recipe: str, mode: str) -> dict:
         server = ReportServer(game.folder)
         server.start()
         started, status = time.time(), []
+        gen = Recording(OllamaClient(), model)
         try:
             outcome = studio.create_game_flow(
-                generator.Generator(OllamaClient(), model), game, RECIPES[recipe], [], server,
+                gen, game, RECIPES[recipe], [], server,
                 __import__("webbrowser").open, lambda state, text: status.append(state), background=lambda *a: None)
         except generator.GenerationError as exc:
             return {"mode": mode, "error": str(exc), "seconds": round(time.time() - started)}
@@ -62,7 +77,9 @@ def one_run(model: str, recipe: str, mode: str) -> dict:
         (kept / f"{recipe}-{mode}.html").write_text(outcome.html, encoding="utf-8")
         return {"mode": mode, "passed": counts[testlist.PASSED], "unverified": counts[testlist.UNVERIFIED],
                 "failed": counts[testlist.FAILED], "fixes": outcome.attempts, "js_errors": len(outcome.report.js_errors),
-                "problems": problems, "chars": len(outcome.html), "seconds": round(time.time() - started)}
+                "problems": problems, "chars": len(outcome.html), "seconds": round(time.time() - started),
+                "fix_log": gen.fix_log, "notes": [f"{i.status}: {i.text[:60]} ({i.note})" for i in outcome.report.items],
+                "warnings": [p.as_text()[:160] for p in outcome.report.problems if p.severity == "warning"]}
 
 
 def main(argv: list[str]) -> int:
@@ -98,6 +115,13 @@ def main(argv: list[str]) -> int:
         else:
             lines.append(f"| {r['mode']} | {r['passed']} | {r['unverified']} | {r['failed']} | {r['fixes']} | {r['js_errors']} | "
                          f"{', '.join(r['problems']) or '-'} | {r['seconds']} |")
+    for r in rows:
+        if "error" in r:
+            continue
+        lines.append(f"\n**{r['mode']}** düzeltmelere giden sorunlar: " + (" || ".join(" ; ".join(f) for f in r["fix_log"]) or "yok"))
+        lines.append(f"**{r['mode']}** maddeler: " + " | ".join(r["notes"]))
+        if r["warnings"]:
+            lines.append(f"**{r['mode']}** uyarılar: " + " | ".join(r["warnings"]))
     with REPORT.open("a", encoding="utf-8") as out:
         out.write("\n".join(lines) + "\n")
     print("\n".join(lines))

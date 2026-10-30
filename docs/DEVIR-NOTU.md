@@ -36,6 +36,12 @@ Dürüst yorum: **oyun kalitesi/hız farkı net değil**. Voleybolda model kıla
 3. Ertelenen küçük bulgu (yukarıda) ve `kgame.js` için doku yolu dizgesi desteği.
 4. Yayın/GitHub/CI/itch.io: yalnızca kullanıcı isterse. Font lisansı metni yayından önce FontStruct sayfasından doğrulanmalı.
 
+## 5b. Şu an yapılan iş: ölçümü genişletme ve iyileştirme (kullanıcı isteği, 2026-10-30)
+Kullanıcı "ölçümü genişlet, gerekirse eğit" dedi. Yorumum ve yöntem:
+- **Ölçüm:** `tools/measure_library.py` artık düzeltmelere giden sorunları, madde notlarını ve uyarıları da kaydediyor (`docs/olcum-kutuphane.md`). Arka planda toplu koşu: 14B ile platform (yeni), pong, uzay nişancısı (`shooter`), yılan (`snake`); sonra kurulu küçük modellerle (indirme yok): llama3.1:8b ve qwen2.5:3b (voleybol), gemma3:4b (pong). Betik: `batch.sh` (scratchpad; yeniden yazması kolay: `python tools/measure_library.py --model M --recipe R [--modes new]`).
+- **"Eğit" = model ağırlıklarını eğitmek DEĞİL** (ince ayar için GPU, eğitim aracı ve veri kümesi gerekir; bu makinede kurulu değil, kullanıcının 32 GB RAM'ini de zorlar). Pratik eğitim: ölçümde görülen hataları kılavuzlara, örnek oyunlara ve istem kurallarına işlemek (few-shot örnekler, "yapma" listeleri, tür başına küçük şablonlar). Gerçek ince ayar ileride istenirse: üretilen ve denetçiden temiz geçen oyunlardan (tarif → oyun.html) bir veri kümesi biriktirmek (`tools/_measure/` ve kütüphane `examples/` bunun tohumu), sonra Unsloth/LoRA ile küçük bir coder modeli eğitmek ve Ollama'ya `Modelfile` ile eklemek. Bu ayrı, onaylı bir alt proje olmalı.
+- **Sonra:** sonuçlara göre kılavuz/örnek iyileştirmesi, aynı tariflerle yeniden ölçüm, sonuçların `docs/olcum-kutuphane.md` ve bu nota işlenmesi. Anlamlı fark çıkarsa seviye/tür/3B alt projelerine geçilir.
+
 ## 6. Dikkat edilecek tuzaklar
 - **Türkçe karakterli klasör yolu** (`klasörler\lazım olabilecek...`). Tk `PhotoImage(file=)` bu yüzden `data=` ile yüklenir. Komut satırı betiklerinde Türkçe harf ve ters eğik çizgi (`\n`) bozulabiliyor: dosya yazarken Write/Edit aracı kullan, `python - <<EOF` içinde `\n` yazma (gerçek satır sonuna dönüşebilir).
 - Dosyalarda **CRLF** var (Windows); betikle düzenlerken satır sonunu koru.
