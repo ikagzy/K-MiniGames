@@ -152,3 +152,34 @@ def test_an_error_shows_the_line_of_the_games_own_source_even_though_the_monitor
     server.canned = [{"type": "error", "message": "Uncaught ReferenceError: game is not defined", "line": 3 + shift}]
     report, _ = run(game, page, [], server)
     assert report.js_errors == ["JavaScript hatası: Uncaught ReferenceError: game is not defined (satır 3: broken(game);)"]
+
+
+def test_a_ball_that_only_goes_up_and_down_is_an_error_with_a_concrete_hint(game):
+    server = FakeServer([{"type": "probe", "name": "flat", "path": "game.ball", "axis": "dikey"}])
+    report, _ = run(game, PAGE, [], server)
+    problem = next(p for p in report.problems if p.kind == "probe_flat")
+    assert problem.severity == "error" and "game.ball" in problem.as_text() and "dikey" in problem.as_text()
+    assert "x hem y hızı" in problem.as_text()
+
+
+def test_a_bot_that_does_not_answer_the_ball_is_an_error_but_a_motionless_one_only_a_warning(game):
+    answering = FakeServer([{"type": "probe", "name": "bot", "path": "game.cpu", "alive": True, "still": False}])
+    report, _ = run(game, PAGE, [], answering)
+    bot = next(p for p in report.problems if p.kind == "probe_bot")
+    assert bot.severity == "error" and "topun konumundan" in bot.as_text()
+    waiting = FakeServer([{"type": "probe", "name": "bot", "path": "game.cpu", "alive": False, "still": True}])
+    report, _ = run(game, PAGE, [], waiting)
+    assert next(p for p in report.problems if p.kind == "probe_bot").severity == "warning"
+
+
+def test_items_about_the_bot_or_the_ball_direction_are_not_trusted_when_the_probes_disagree(game):
+    server = FakeServer([{"type": "probe", "name": "bot", "path": "game.cpu", "alive": True, "still": False},
+                         {"type": "probe", "name": "flat", "path": "game.ball", "axis": "yatay"},
+                         {"type": "test", "id": "t1", "passed": True}, {"type": "test", "id": "t2", "passed": True},
+                         {"type": "test", "id": "t3", "passed": True}])
+    items = [TestItem("t1", "CPU topu basit bir şekilde takip eder", "return true;"),
+             TestItem("t2", "Top rakibe çarpınca yön değiştirir", "return true;"),
+             TestItem("t3", "Skor gösterilir", "return true;")]
+    report, _ = run(game, PAGE, items, server)
+    assert [i.status for i in report.items] == [UNVERIFIED, UNVERIFIED, PASSED]
+    assert "bot" in report.items[0].note and "top" in report.items[1].note

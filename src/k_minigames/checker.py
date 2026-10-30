@@ -10,9 +10,11 @@ from k_minigames.library import Game
 from k_minigames.testlist import TestItem
 
 PER_TEST_SECONDS = 4
-PROBE_SECONDS = 8   # the probes press every key and click a few times
+PROBE_SECONDS = 20   # the probes press every key, click, and watch the ball and the bot for a few seconds
 _KEY_WORDS = re.compile(r"tuş|klavye|wasd|\boklar?\b|zıpl|boşluk|hareket", re.I)
 _MOUSE_WORDS = re.compile(r"tıkl|fare|mouse|\bvur", re.I)
+_BOT_WORDS = re.compile(r"\bbot|cpu|rakip|yapay zek|düşman|takip", re.I)
+_BALL_WORDS = re.compile(r"\btop\b|topu|topun|sek|yön", re.I)
 _ASSET_URL = re.compile(r"/assets/(.*)$")
 
 
@@ -50,6 +52,19 @@ def _probe_problem(event: dict) -> Problem | None:
     if name == "mouse":
         return Problem("probe_mouse", "Fare dinleniyor ama tıklama ve fare hareketi hiçbir şeyi değiştirmedi.",
                        "warning")
+    if name == "flat":
+        return Problem("probe_flat", f"{event.get('path')} yalnızca {event.get('axis')} gidiyor: öbür eksende hiç "
+                       "hareketi yok. Vuruşta ve sekmede topa hem x hem y hızı ver; yönü vuran nesneye ya da hedefe "
+                       "göre hesapla.", "error")
+    if name == "stuck":
+        return Problem("probe_stuck", f"{event.get('path')} hiç hareket etmiyor. Oyun başlayınca (ya da tıklayınca) "
+                       "hızı olmalı ve her karede konumuna eklenmeli.", "warning")
+    if name == "bot":
+        if event.get("still") and not event.get("alive"):
+            return Problem("probe_bot", f"{event.get('path')} hiç hareket etmiyor. Bot topu takip etmeli.", "warning")
+        return Problem("probe_bot", f"{event.get('path')} topa tepki vermiyor: top nerede olursa olsun aynı hareketi "
+                       "yapıyor (ya da hiç yapmıyor). Botun hedefini topun konumundan hesapla: top botun üstündeyse "
+                       "yukarı, altındaysa aşağı, solundaysa sola, sağındaysa sağa git.", "error")
     if name == "growth":
         return Problem("probe_growth", f"Şu listeler durmadan büyüyor: {paths}. Eski nesneleri sil.", "warning")
     return None
@@ -117,4 +132,8 @@ def _cross_checked(item: TestItem, problems: list[Problem]) -> TestItem:
         return replace(item, status=testlist.UNVERIFIED, note="yoklama: hiçbir tuş oyunu değiştirmedi")
     if "probe_mouse" in kinds and _MOUSE_WORDS.search(item.text):
         return replace(item, status=testlist.UNVERIFIED, note="yoklama: tıklama oyunu değiştirmedi")
+    if "probe_bot" in kinds and _BOT_WORDS.search(item.text):
+        return replace(item, status=testlist.UNVERIFIED, note="yoklama: bot topa tepki vermedi")
+    if "probe_flat" in kinds and _BALL_WORDS.search(item.text):
+        return replace(item, status=testlist.UNVERIFIED, note="yoklama: top tek eksende gidiyor")
     return item

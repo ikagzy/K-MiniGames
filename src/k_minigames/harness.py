@@ -151,6 +151,73 @@ async function probeMouse() {
   }
   if (!good) await send({type: 'probe', name: 'mouse'});
 }
+// --- logic probes: does the ball go anywhere but straight up and down, does the bot answer the ball ---
+var BALL = /ball|puck|shuttle|top$|^top|mermi/i;
+var BOT = /cpu|bot|enemy|rakip|opponent|ai$|^ai|dusman|düşman/i;
+function entities() {
+  var found = [];
+  function walk(value, path, depth) {
+    if (!value || typeof value !== 'object' || depth > 4 || found.length > 200) return;
+    if (typeof value.x === 'number' && typeof value.y === 'number') found.push({path: path, ref: value});
+    var names = Object.keys(value).slice(0, 60);
+    for (var i = 0; i < names.length; i++) {
+      var inner;
+      try { inner = value[names[i]]; } catch (e) { continue; }
+      walk(inner, path + '.' + names[i], depth + 1);
+    }
+  }
+  try { walk(window.__game, 'game', 0); } catch (e) {}
+  return found;
+}
+function named(list, pattern) {
+  return list.filter(function (e) { return pattern.test(e.path.split('.').pop()); })[0] || null;
+}
+function trackOf(entity, track) {
+  var t = track[entity.path] = track[entity.path] || {minX: 1e9, maxX: -1e9, minY: 1e9, maxY: -1e9, length: 0, last: null};
+  var x = entity.ref.x, y = entity.ref.y;
+  if (t.last) t.length += Math.abs(x - t.last[0]) + Math.abs(y - t.last[1]);
+  t.last = [x, y];
+  t.minX = Math.min(t.minX, x); t.maxX = Math.max(t.maxX, x); t.minY = Math.min(t.minY, y); t.maxY = Math.max(t.maxY, y);
+}
+async function watch(ms, list, track) {
+  for (var t = 0; t < ms; t += 100) { list.forEach(function (e) { trackOf(e, track); }); await sleep(100); }
+}
+function clickAt(fx, fy) {
+  var target = canvases()[0] || document.body, box = target.getBoundingClientRect();
+  var init = {clientX: box.left + box.width * fx, clientY: box.top + box.height * fy, bubbles: true, cancelable: true, view: window};
+  ['mousemove', 'pointermove', 'mousedown', 'pointerdown', 'mouseup', 'pointerup', 'click'].forEach(function (t) { target.dispatchEvent(new MouseEvent(t, init)); });
+}
+async function probeLogic() {
+  var list = entities(), ball = named(list, BALL), bot = named(list, BOT);
+  if (!ball) return;
+  var track = {};
+  await watch(1500, [ball, bot].filter(Boolean), track);
+  clickAt(0.25, 0.3);
+  await watch(1500, [ball, bot].filter(Boolean), track);
+  clickAt(0.75, 0.7);
+  await watch(1500, [ball, bot].filter(Boolean), track);
+  var b = track[ball.path], spanX = b.maxX - b.minX, spanY = b.maxY - b.minY;
+  if (b.length < 2) await send({type: 'probe', name: 'stuck', path: ball.path});
+  else if (b.length > 60 && ((spanX < 3 && spanY > 60) || (spanY < 3 && spanX > 60))) {
+    await send({type: 'probe', name: 'flat', path: ball.path, axis: spanX < 3 ? 'dikey' : 'yatay'});
+  }
+  if (!bot || ball === bot) return;
+  var moved = track[bot.path] && track[bot.path].length > 5;
+  var rx = ball.ref.x, ry = ball.ref.y, answers = 0, tried = 0;
+  var spots = [[0, -160], [0, 160], [-160, 0], [160, 0]];
+  var reactions = [];
+  for (var i = 0; i < spots.length; i++) {
+    var before = [bot.ref.x, bot.ref.y];
+    ball.ref.x = bot.ref.x + spots[i][0]; ball.ref.y = bot.ref.y + spots[i][1];
+    await sleep(350);
+    reactions.push([bot.ref.x - before[0], bot.ref.y - before[1]]);
+  }
+  ball.ref.x = rx; ball.ref.y = ry;
+  function opposite(a, b) { return Math.abs(a) > 3 && Math.abs(b) > 3 && (a > 0) !== (b > 0); }
+  var follows = opposite(reactions[0][1], reactions[1][1]) || opposite(reactions[2][0], reactions[3][0]);
+  var still = reactions.every(function (r) { return Math.abs(r[0]) < 2 && Math.abs(r[1]) < 2; });
+  if (!follows) await send({type: 'probe', name: 'bot', path: bot.path, alive: !!moved, still: still});
+}
 async function runProbes() {
   try {
     if (document.visibilityState !== 'visible') return;
@@ -163,6 +230,7 @@ async function runProbes() {
     if (blank) await send({type: 'probe', name: 'blank'});
     await probeKeys();
     await probeMouse();
+    await probeLogic();
     var last = state(), grown = [];
     for (var p in last.lengths) { if (last.lengths[p] > 300 && last.lengths[p] > (first.lengths[p] || 1) * 5) grown.push(p); }
     if (grown.length) await send({type: 'probe', name: 'growth', paths: grown.slice(0, 3)});

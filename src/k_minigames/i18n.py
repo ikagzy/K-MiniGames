@@ -104,6 +104,15 @@ _PAIRS = {
     "Oyun durumu bozuk: ": "The game state is broken: ", " sayı değil (NaN ya da sonsuz). Bölme ve tanımsız değerleri kontrol et.":
         " is not a number (NaN or infinite). Check divisions and undefined values.",
     "Şu listeler durmadan büyüyor: ": "These lists keep growing: ", ". Eski nesneleri sil.": ". Delete the old objects.",
+    " yalnızca ": " only goes ", " gidiyor: öbür eksende hiç hareketi yok. Vuruşta ve sekmede topa hem x hem y hızı ver; "
+    "yönü vuran nesneye ya da hedefe göre hesapla.":
+        ": it has no movement on the other axis. Give the ball both an x and a y speed on a hit and a bounce; work "
+        "out the direction from the hitter or the target.",
+    " hiç hareket etmiyor.": " does not move at all.",
+    " topa tepki vermiyor: top nerede olursa olsun aynı hareketi yapıyor (ya da hiç yapmıyor). Botun hedefini topun "
+    "konumundan hesapla: top botun üstündeyse yukarı, altındaysa aşağı, solundaysa sola, sağındaysa sağa git.":
+        " does not react to the ball: it moves the same wherever the ball is (or not at all). Work out the bot's target "
+        "from the ball's position: up if the ball is above it, down if below, left if left, right if right.",
     # title and settings
     "Başla": "Start", "Ayarlar": "Settings", "Çıkış": "Quit", "← Geri": "← Back", "Hafızayı sil": "Forget memory",
     "Ayarlar: Ollama, model ve klasör.": "Settings: Ollama, model and folder.",
