@@ -26,6 +26,20 @@ python -m PyInstaller K-MiniGames.spec     # dist/K-MiniGames.exe
 
 Görsel araçları (`tools/`: damalı arka planı temizleme, ayı karelerini bölme, çalışma görsellerini hazırlama, simge) Pillow ister: `pip install -r requirements-tools.txt`. Uygulamanın kendisi yalnızca standart kütüphaneyi kullanır.
 
+## Oyun kütüphanesi
+
+Model oyunu sıfırdan yazmaz; uygulamayla gelen küçük bir JavaScript kütüphanesini kullanır ve yalnızca oyunun kurallarını yazar.
+Dosyalar `src/k_minigames/assets/lib/` içindedir ve oyun oluşturulurken oyunun klasörüne kopyalanır (`kgame.js`, `kgame.ai.js`,
+`kgame.sports.js`); `<script>` etiketlerini uygulama ekler.
+
+- **Modüller:** `core` (döngü, fizik, girdi, çarpışma, karo haritası, kamera, sahne, ses, doku), `ai` (botlar), `sports` (voleybol,
+  pong, futbol, basketbol). Don, konuşmadan hangi modüllerin gerektiğini seçer.
+- **Kılavuzlar:** her modülün modele gösterilen kısa kılavuzu `*.guide.md`; örnek oyunlar `examples/` altında. Kılavuz bütçeleri
+  `tests/test_guides.py` ile korunur.
+- **Ayarlar:** oyunun sayısal ayarları en üstteki `const CONFIG = {...}` bloğundadır (geçerli JSON olmalıdır).
+- **Düzenleme:** kütüphaneli oyunlar bul/değiştir yamalarıyla düzenlenir; yama uygulanamazsa bütün dosya yöntemine dönülür.
+- **Test:** `node --test "tests/js/*.test.js"` (ya da `python -m pytest`) kütüphanenin JS testlerini çalıştırır; Node yoksa atlanır.
+
 ## Atıflar
 
 - Yazı tipi: The FontStruction “Determination” (https://fontstruct.com/fontstructions/show/2368299) by “anonymous-1438277”. Lisansı o sayfada yazılıdır; atıf burada (README) verilir ve yazı tipiyle birlikte `src/k_minigames/assets/fonts/LICENSE.txt` içinde durur. Uygulamanın penceresinde gösterilmez.
