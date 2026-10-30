@@ -1,6 +1,8 @@
 # k-ai: the small model that writes game specs (Qwen2.5-Coder-1.5B-Instruct + our LoRA, merged).
-# ollama create k-ai -f tools/train/ollama/Modelfile.k-ai --quantize int8     (from the repository root)
-FROM ./tools/train/out/k-ai-v1-merged
+# Ollama cannot import this Qwen model from safetensors, so the merged model is first turned into a GGUF with llama.cpp's
+# convert_hf_to_gguf.py (tag b6000, q8_0; see docs/DEVIR-NOTU.md), then:
+# ollama create k-ai -f tools/train/ollama/Modelfile.k-ai     (the FROM path is relative to this file)
+FROM ../out/k-ai-v1-q8.gguf
 TEMPLATE """{{- if .System }}<|im_start|>system
 {{ .System }}<|im_end|>
 {{ end }}{{- range .Messages }}<|im_start|>{{ .Role }}
