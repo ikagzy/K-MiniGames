@@ -166,6 +166,25 @@ def set_modules(game: Game, names: list[str]) -> None:
     _write_bytes(game.folder / "game.json", json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"))
 
 
+def spec(game: Game) -> dict | None:
+    """The spec the game was built from (a game made from a kit), or None."""
+    data = _meta(game).get("spec")
+    return data if isinstance(data, dict) else None
+
+
+def set_spec(game: Game, spec: dict) -> None:
+    meta = _meta(game)
+    meta["spec"] = spec
+    _write_bytes(game.folder / "game.json", json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"))
+
+
+def kit(game: Game) -> str | None:
+    """The kit this game is made from: its saved modules decide (a game with a kit module is a spec game)."""
+    from k_minigames import kgamelib
+    names = modules(game)
+    return kgamelib.kit_of(names) if names else None
+
+
 def _png_size(path: Path) -> tuple[int, int]:
     try:
         head = path.read_bytes()[:24]

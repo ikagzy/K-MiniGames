@@ -68,7 +68,8 @@
         g.all().forEach(function (e) { if (e.tag !== "_hud") e.dead = true; });
         state.level = lv; state.map = lv.map; state.tiles = {}; state.frozen = false; state.invuln = 0; state.star = 0;
         hud.time = spec.time; hud.timeUp = false;
-        g.cameraBounds = { x0: 0, y0: 0, x1: Math.max(lv.width, g.width), y1: Math.max(lv.height, g.height) };
+        // a level shorter than the window sits at the bottom of it (the sky shows above); a taller one scrolls
+        g.cameraBounds = { x0: 0, y0: Math.min(0, lv.height - g.height), x1: Math.max(lv.width, g.width), y1: lv.height };
         lv.cells.forEach(function (c) {
           var key = c.tx + "," + c.ty;
           if (c.kind === "ground") {
@@ -92,7 +93,7 @@
           }
         });
         spawnHero(lv.start || { x: 0, y: 0 });
-        g.camera.x = 0; g.camera.y = Math.max(0, lv.height - g.height);
+        g.camera.x = 0; g.camera.y = lv.height - g.height;
         g.follow(state.me, 0.12);
         if (spec.music) K.music.play(spec.music);
       }

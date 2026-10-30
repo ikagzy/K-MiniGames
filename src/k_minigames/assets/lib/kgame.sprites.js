@@ -103,7 +103,9 @@
   S.define("grass", ["gggggggggggggggg", "gGgggGgggGggggGg", "GGGGGGGGGGGGGGGG", "nnnnnnnnnnnnnnnn", "ndnnnnnnndnnnnnn", "nnnnnnnnnnnnnnnn",
     "nnnnndnnnnnnnnnd", "nnnnnnnnnnnnnnnn", "dnnnnnnnnnndnnnn", "nnnnnnnnnnnnnnnn", "nnnndnnnnnnnnnnn", "nnnnnnnnnnnnnnnn", "nndnnnnnnndnnnnn",
     "nnnnnnnnnnnnnnnn", "nnnnnnnndnnnnnnn", "nnnnnnnnnnnnnnnn"]);
-  S.define("pipe.top", ["GGGGGGGGGGGGGGGG", "GgggggggggggggGk", "GgGGggggggggggGk", "GgGGggggggggggGk", "GgggggggggggggGk", "GGGGGGGGGGGGGGGG"]);
+  S.define("pipe.top", ["GGGGGGGGGGGGGGGG", "GgggggggggggggGk", "GgGGggggggggggGk", "GgGGggggggggggGk", "GgggggggggggggGk", "GGGGGGGGGGGGGGGG",
+    "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..",
+    "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG.."]);
   S.define("pipe.body", ["..GgggggggggG...", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..",
     "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..",
     "..GgGggggggggG.."]);

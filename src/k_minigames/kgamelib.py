@@ -75,12 +75,25 @@ def normalize(names: Iterable[str] | None) -> list[str]:
     return [name for name in _ORDER if name in wanted]
 
 
+def kit_of(modules) -> str | None:
+    """The game kit among the modules (a module with a `<name>.schema.json`), or None for an ordinary game."""
+    for name in normalize(modules):
+        if (LIB_DIR / f"{name}.schema.json").is_file():
+            return name
+    return None
+
+
 def all_files() -> set[str]:
     return {name for module in MODULES.values() for name in module.files}
 
 
 def _files(modules: list[str]) -> list[str]:
     return [name for module in normalize(modules) for name in MODULES[module].files]
+
+
+def install_files(modules: list[str]) -> list[str]:
+    """The library files these modules (and what they need) load, in loading order."""
+    return _files(modules)
 
 
 def install(game: Game, modules: list[str]) -> list[str]:
