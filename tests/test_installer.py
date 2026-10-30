@@ -105,6 +105,7 @@ def test_start_server_runs_ollama_serve_without_a_window(tmp_path):
     args, kwargs = calls[0]
     assert args[0] == [str(exe), "serve"]
     assert kwargs["creationflags"] & subprocess.CREATE_NO_WINDOW
+    assert not kwargs["creationflags"] & subprocess.DETACHED_PROCESS   # that would make Windows show console windows
 
 
 def test_start_server_and_run_setup_are_false_on_os_errors(tmp_path):

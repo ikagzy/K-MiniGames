@@ -89,8 +89,12 @@ def run_setup(setup: Path, popen: Callable = subprocess.Popen) -> bool:
 
 
 def start_server(exe: Path, popen: Callable = subprocess.Popen) -> bool:
-    """`ollama serve` in the background, with no console window."""
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+    """`ollama serve` in the background, with no console window.
+
+    Not DETACHED_PROCESS: Windows then ignores CREATE_NO_WINDOW, and every helper program Ollama starts (GPU checks,
+    model runners) opens a console window of its own that flashes up again and again. With a hidden console they
+    inherit it instead. The new process group keeps the server alive after this app closes."""
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     try:
         popen([str(exe), "serve"], creationflags=flags, close_fds=True,
               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
