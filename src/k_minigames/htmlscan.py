@@ -42,6 +42,8 @@ class Problem:
             return f"Dış ağ adresi kullanılmış: {self.detail}. Kaldır; oyun tamamen yerel çalışmalı."
         if self.kind == "no_game_state":
             return "window.__game nesnesi tanımlı değil; skor, konum gibi oyun durumunu window.__game içinde tut."
+        if self.kind.startswith("probe_"):
+            return self.detail   # found by trying the game in the browser (see checker._probe_problem)
         return f"{self.kind}: {self.detail}"
 
 

@@ -74,6 +74,8 @@ def summary_lines(report: CheckReport, attempts: int, rejected: bool) -> list[st
     for problem in report.problems:
         if isinstance(problem, Problem) and problem.kind == "external_url":
             lines.append(f"Dikkat: oyun bir dış ağ adresi kullanıyor ({problem.detail})")
+        elif isinstance(problem, Problem) and problem.kind.startswith("probe_") and problem.severity == "warning":
+            lines.append(f"Dikkat: {problem.detail}")
     if rejected:
         lines.append("Bu düzenleme çalışmadı; oyunun önceki hâli korundu.")
     return lines

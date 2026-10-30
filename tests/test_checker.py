@@ -113,4 +113,42 @@ def test_the_time_allowed_grows_with_the_number_of_tests(game):
     server = FakeServer()
     items = [TestItem(f"t{i}", "a", "return true;") for i in range(3)] + [TestItem("t9", "kodsuz", None)]
     run(game, PAGE, items, server, timeout_s=20)
-    assert server.timeouts == [20 + 4 * 3]
+    assert server.timeouts == [20 + checker.PROBE_SECONDS + 4 * 3]
+
+
+# --- probes: checks that need no test written by the model ---------------------------------------------------------
+
+def test_probe_findings_become_problems_and_the_blank_screen_is_an_error(game):
+    server = FakeServer([{"type": "probe", "name": "blank"}, {"type": "probe", "name": "keys"},
+                         {"type": "probe", "name": "state", "paths": ["game.ball.x"]}])
+    report, _ = run(game, PAGE, [], server)
+    kinds = {p.kind: p.severity for p in report.problems}
+    assert kinds["probe_blank"] == "error" and kinds["probe_state"] == "error" and kinds["probe_keys"] == "warning"
+    assert "game.ball.x" in next(p for p in report.problems if p.kind == "probe_state").as_text()
+    assert report.js_errors == []   # probes are not browser errors
+
+
+def test_a_passed_item_about_the_keys_is_not_trusted_when_no_key_did_anything(game):
+    server = FakeServer([{"type": "probe", "name": "keys"}, {"type": "test", "id": "t1", "passed": True},
+                         {"type": "test", "id": "t2", "passed": True}])
+    items = [TestItem("t1", "Oyuncu WASD ile hareket eder", "return true;"),
+             TestItem("t2", "Skor gösterilir", "return true;")]
+    report, _ = run(game, PAGE, items, server)
+    assert report.items[0].status == UNVERIFIED and "tuş" in report.items[0].note
+    assert report.items[1].status == PASSED   # about something else: left alone
+
+
+def test_a_mouse_item_is_not_trusted_when_the_mouse_did_nothing(game):
+    server = FakeServer([{"type": "probe", "name": "mouse"}, {"type": "test", "id": "t1", "passed": True}])
+    report, _ = run(game, PAGE, [TestItem("t1", "Mouse tıklamasıyla topa vurur", "return true;")], server)
+    assert report.items[0].status == UNVERIFIED and "tıklama" in report.items[0].note
+
+
+def test_an_error_shows_the_line_of_the_games_own_source_even_though_the_monitor_moved_the_lines(game):
+    page = "<html><head></head><body><script>\nvar a = 1;\nbroken(game);\n</script></body></html>"
+    server = FakeServer()
+    # the monitor script is put right after <head>, so the browser's line numbers are bigger by its length
+    shift = checker.harness.inject(page, server.report_url(), []).count("\n") - page.count("\n")
+    server.canned = [{"type": "error", "message": "Uncaught ReferenceError: game is not defined", "line": 3 + shift}]
+    report, _ = run(game, page, [], server)
+    assert report.js_errors == ["JavaScript hatası: Uncaught ReferenceError: game is not defined (satır 3: broken(game);)"]

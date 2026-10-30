@@ -94,6 +94,16 @@ _PAIRS = {
     "Don bana şunları anlattı:\n": "Don told me this:\n",
     "\nBunu yapayım mı? 'evet' yaz ya da eklemek istediklerini yaz.":
         "\nShall I make it? Type 'yes' or write what you want to add.",
+    # the checker's probes
+    "Ekran boş görünüyor: canvas'a hiçbir şey çizilmemiş (tek renk). Oyunun ilk karede sahneyi çizdiğinden emin ol.":
+        "The screen looks blank: nothing is drawn on the canvas (one colour). Make sure the game draws the scene in the first frame.",
+    "Klavye dinleniyor ama W A S D, ok tuşları ve boşluk hiçbir şeyi değiştirmedi.":
+        "The keyboard is listened to, but W A S D, the arrow keys and space changed nothing.",
+    "Fare dinleniyor ama tıklama ve fare hareketi hiçbir şeyi değiştirmedi.":
+        "The mouse is listened to, but clicking and moving it changed nothing.",
+    "Oyun durumu bozuk: ": "The game state is broken: ", " sayı değil (NaN ya da sonsuz). Bölme ve tanımsız değerleri kontrol et.":
+        " is not a number (NaN or infinite). Check divisions and undefined values.",
+    "Şu listeler durmadan büyüyor: ": "These lists keep growing: ", ". Eski nesneleri sil.": ". Delete the old objects.",
     # title and settings
     "Başla": "Start", "Ayarlar": "Settings", "Çıkış": "Quit", "← Geri": "← Back", "Hafızayı sil": "Forget memory",
     "Ayarlar: Ollama, model ve klasör.": "Settings: Ollama, model and folder.",
