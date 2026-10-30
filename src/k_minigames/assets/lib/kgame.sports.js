@@ -127,6 +127,21 @@
     } });
   };
 
+  // Bir bot topa her yaklaştığında (aralarında bekleyerek) onu karşı sahaya gönderir. Hedef: o.target ({x,y} ya da işlev)
+  // ya da topun olmadığı sahanın ortası; seviyeye göre hedef şaşar.
+  sports.autoHit = function (g, ball, bot, o) {
+    o = o || {};
+    var level = K.ai.levels[o.level] || K.ai.levels.normal, wait = 0;
+    return g.add({ shape: "rect", x: -100, y: -100, w: 1, h: 1, hidden: true, tag: "_autohit", onUpdate: function (self, dt) {
+      wait -= dt;
+      if (wait > 0) return;
+      var c = ball.court, t = typeof o.target === "function" ? o.target() : o.target;
+      if (!t) t = { x: c && c.sideOf(bot.cx) === "right" ? c.width * 0.25 : (c ? c.width * 0.75 : g.width / 2), y: 100 };
+      var aim = { x: t.x + K.rand(-1, 1) * level.error * 3, y: t.y };
+      if (sports.hit(g, ball, bot, aim, { power: o.power || 550, reach: o.reach })) wait = o.cooldown || 0.5;
+    } });
+  };
+
   function newState() { return { scoreLeft: 0, scoreRight: 0, winner: null }; }
   function award(g, state, side, to, onPoint) {
     state["score" + cap(side)]++;

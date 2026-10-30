@@ -153,3 +153,21 @@ test('the basketball court is known and has hoops as goals', () => {
   const court = K.sports.court(g, { type: 'basketball' });
   assert.ok(court.goals.left && court.goals.right);
 });
+
+test('autoHit makes a bot hit the ball back toward the other side, with a pause between hits', () => {
+  const { K, g, court, ball } = volley();
+  const bot = g.add({ shape: 'rect', x: 600, y: court.floorY - 50, w: 30, h: 50 });
+  K.sports.autoHit(g, ball, bot, { level: 'hard', power: 600, cooldown: 0.5 });
+  ball.x = 615; ball.y = court.floorY - 60; ball.vx = 0; ball.vy = 0; ball.gravity = false;
+  run(g, 0.1);
+  assert.ok(ball.vx < 0, 'sent toward the left side');
+  assert.ok(ball.vy < 0);
+  const hits = ball.touches;
+  ball.x = 615; ball.y = court.floorY - 60; ball.vx = 0; ball.vy = 0;
+  run(g, 0.1);
+  assert.strictEqual(ball.touches, hits, 'the cooldown stops an immediate second hit');
+  run(g, 0.5);
+  ball.x = 615; ball.y = court.floorY - 60;
+  run(g, 0.1);
+  assert.ok(ball.touches > hits, 'hits again after the pause');
+});

@@ -76,3 +76,21 @@ test('an entity with life disappears when it has run out', () => {
   run(g, 0.2);
   assert.strictEqual(g.all().length, 0);
 });
+
+test('an entity with a floor line stands on it, and jump only works from the floor', () => {
+  const K2 = load('kgame.js');
+  const g = K2.game({ headless: true, gravity: 900, height: 450 });
+  const e = g.add({ shape: 'rect', x: 10, y: 0, w: 20, h: 40, gravity: true, floor: 400, controls: 'wasd', jump: 420 });
+  run(g, 1);
+  assert.strictEqual(e.y + e.h, 400);
+  assert.ok(e.onFloor);
+  K2.press('w');
+  run(g, 0.1);
+  assert.ok(e.y + e.h < 400 && e.vy < 0, 'jumped');
+  const high = e.y;
+  run(g, 0.05);
+  assert.ok(e.y <= high + 0.001 || e.vy > -420, 'no second jump in the air');
+  K2.press('w', false);
+  run(g, 2);
+  assert.strictEqual(e.y + e.h, 400);
+});

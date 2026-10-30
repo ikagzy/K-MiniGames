@@ -307,6 +307,7 @@
     var speed = e.speed === undefined ? 200 : e.speed;
     e.vx = ((right ? 1 : 0) - (left ? 1 : 0)) * speed;
     if (!e.gravity) e.vy = ((down ? 1 : 0) - (up ? 1 : 0)) * speed;
+    else if (e.jump && up && e.onFloor) e.vy = -e.jump;   // jump: from the floor only
   }
 
   function physics(g, e, dt) {
@@ -317,13 +318,19 @@
     if (e.friction) { var f = Math.min(1, e.friction * dt); e.vx -= e.vx * f; if (!e.gravity) e.vy -= e.vy * f; }
     e.x += e.vx * dt;
     e.y += e.vy * dt;
+    e.onFloor = false;   // set again below when it is standing; control() reads the value of the step before
     if (e.bounds) {
       var circle = isCircle(e), ox = circle ? e.r : 0, oy = ox;
       var maxX = g.width - (circle ? e.r : e.w), maxY = g.height - (circle ? e.r : e.h);
       if (e.x < ox) { e.x = ox; e.vx = -e.vx * e.bounce; }
       else if (e.x > maxX) { e.x = maxX; e.vx = -e.vx * e.bounce; }
       if (e.y < oy) { e.y = oy; e.vy = -e.vy * e.bounce; }
-      else if (e.y > maxY) { e.y = maxY; e.vy = -e.vy * e.bounce; }
+      else if (e.y > maxY) { e.y = maxY; e.vy = -e.vy * e.bounce; e.onFloor = true; }
+    }
+    if (e.floor !== undefined && e.bottom >= e.floor) {   // floor: a floor line of this entity's own (the court's floor)
+      e.y = isCircle(e) ? e.floor - e.r : e.floor - e.h;
+      if (e.vy > 0) e.vy = -e.vy * e.bounce;
+      e.onFloor = true;
     }
   }
 
