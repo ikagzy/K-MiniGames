@@ -246,6 +246,19 @@
     if (g.canvas) {
       g.canvas.width = g.width; g.canvas.height = g.height;
       g.ctx = g.canvas.getContext("2d");
+      if (hasDom && !opts.headless && !opts.canvas) {   // fill the window with the same proportions, centred (F11 makes it full screen)
+        var fit = function () {
+          var s = Math.min(window.innerWidth / g.width, window.innerHeight / g.height) || 1;
+          g.canvas.style.width = Math.floor(g.width * s) + "px";
+          g.canvas.style.height = Math.floor(g.height * s) + "px";
+        };
+        var page = document.body.style;
+        page.margin = "0"; page.height = "100vh"; page.display = "flex"; page.justifyContent = "center"; page.alignItems = "center";
+        page.overflow = "hidden";
+        g.canvas.style.display = "block";
+        fit();
+        window.addEventListener("resize", fit);
+      }
       var at = function (e, down) {
         var r = g.canvas.getBoundingClientRect();
         K.setMouse((e.clientX - r.left) * (g.width / (r.width || g.width)) / g.camera.zoom + g.camera.x,
