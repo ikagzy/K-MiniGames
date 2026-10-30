@@ -63,3 +63,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-54 | 2026-10-28 | Pilot eğitim (k-ai-pilot, 1.5B, 300 örnek): üretilmiş doğruluk 0,46->0,86, doğal cümlelerde kazanç yok; model adı k-ai; konuşma sürümü sonraya | d0a3a50 |
 | CP-55 | 2026-10-28 | k-ai-v1 (800 örnek, çeşitlendirilmiş veri): üretilmiş 0,963, elle yazılmış alan 0,841 ve tam 0,667 (3B 0,794/0,583); kgame.js pencereye sığdırma; sırada form modu ve kademeli model | e6998bd |
 | CP-56 | 2026-10-28 | Platform kitine Sonic özellikleri: spring, dashPad, rings (130 JS testi, tarayıcıda denendi); k-ai henüz bilmiyor, yeniden eğitim gerekli | b8cdf2d |
+| CP-57 | 2026-10-28 | hero.character ve özgün runner karakteri (turuncu tilki); Hız Koşusu demosu yeniden kuruldu; Mario benzeri tasarımlar bekliyor | 70641fe |
