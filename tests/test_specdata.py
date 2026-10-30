@@ -41,8 +41,15 @@ def test_every_target_spec_is_inside_the_schema(data):
                 lo, hi = INT_BOUNDS[key]
                 assert isinstance(value, int) and lo <= value <= hi, (key, value)
         hero = spec.get("hero", {})
-        assert set(hero) <= {"speed", "jump", "lives"}
-        assert set(spec.get("features", [])) <= {"doubleJump"}
+        assert set(hero) <= {"speed", "jump", "lives", "character"} and hero.get("character", "runner") == "runner"
+        assert set(spec.get("features", [])) <= set(specdata.FEATURES_ALL) and len(spec.get("features", [])) <= 4
+        assert len(set(spec.get("features", []))) == len(spec.get("features", []))
+        if "campaign" in spec:
+            c = spec["campaign"]
+            assert 5 <= c["count"] <= 20 and 1 <= c["from"] <= c["to"] <= 5 and len(spec["generate"]) == 1
+        if "musicStyle" in spec:
+            style = spec["musicStyle"]
+            assert style["mood"] in specdata.MOODS and style.get("tempo", "slow") in ("slow", "fast") and 0 <= style["seed"] <= 9999
         json.dumps(spec)   # it must be plain JSON
 
 
@@ -67,7 +74,8 @@ def test_what_a_prompt_asks_for_is_what_the_answer_contains(data):
         spec = example["spec"]
         for field in example["mentioned"]:
             assert specdata.mentions(text, field, spec), (field, text, spec)
-        assert ("doublejump" in json.dumps(spec).lower()) == bool(specdata.mentions(text, "features", spec) and "features" in example["mentioned"])
+        if "features" in example["mentioned"]:
+            assert spec["features"], text
 
 
 def test_a_prompt_that_asks_for_little_gets_a_small_answer_with_defaults_left_out(data):
@@ -116,7 +124,7 @@ def test_the_hand_written_prompts_are_realistic_and_their_expectations_are_valid
         expect = item["expect"]
         assert expect.get("theme", "sky") in themes
         assert set(expect) <= {"theme", "features", "levels", "difficulty", "lives", "enemies", "coins", "pits", "pipes", "blocks",
-                               "flyers", "spikes", "width_class", "music"}
+                               "flyers", "spikes", "width_class", "music", "character", "campaign"}
 
 
 def test_scoring_rewards_the_right_choices_and_gives_nothing_for_unusable_answers(data):
@@ -136,3 +144,39 @@ def test_the_user_prompt_is_never_empty_and_not_absurdly_long(data):
     for e in train + held:
         text = specdata.prompt_text(e)
         assert 5 < len(text) < 700
+
+
+def test_every_training_spec_is_accepted_by_the_real_kit(data, tmp_path):
+    import os
+    import shutil
+    import subprocess
+    if not shutil.which("node"):
+        pytest.skip("node is not installed")
+    train, held = data
+    path = tmp_path / "specs.json"
+    path.write_text(json.dumps([e["spec"] for e in train + held]), encoding="utf-8")
+    js = ("const { load } = require('./helpers'); const fs = require('fs');"
+          "const K = load('kgame.js','kgame.sprites.js','kgame.animation.js','kgame.themes.js','kgame.levels.js','kgame.hud.js','kgame.audio2.js',"
+          "'kgame.items.js','kgame.enemies.js','kgame.kits.js','kgame.platformer.js');"
+          "const specs = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); let bad = [];"
+          "specs.forEach((s, i) => { const e = K.kit.check(s); if (e.length) bad.push(i + ': ' + e[0]); });"
+          "console.log(JSON.stringify(bad));")
+    root = Path(__file__).resolve().parent / "js"
+    out = subprocess.check_output(["node", "-e", js, str(path)], cwd=str(root), text=True, encoding="utf-8")
+    assert json.loads(out.strip().splitlines()[-1]) == []
+
+
+def test_all_the_new_features_the_character_the_campaign_and_the_music_styles_appear_in_training(data):
+    train, _ = data
+    seen = {f for e in train for f in e["spec"].get("features", [])}
+    assert seen == set(specdata.FEATURES_ALL)
+    assert any(e["spec"].get("hero", {}).get("character") == "runner" for e in train)
+    assert any("campaign" in e["spec"] for e in train)
+    assert {e["spec"]["musicStyle"]["mood"] for e in train if "musicStyle" in e["spec"]} == set(specdata.MOODS)
+
+
+def test_the_hand_written_prompts_never_appear_in_the_training_prompts():
+    train, held = specdata.build_examples(n_train=400, n_eval=40, seed=1)
+    texts = [specdata.prompt_text(e).lower() for e in train]
+    for item in specdata.HAND_EVAL:
+        assert not any(item["prompt"].lower() in text for text in texts), item["prompt"]

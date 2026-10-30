@@ -21,7 +21,8 @@ TITLES = ("Kagzy", "Orman Macerası", "Gece Koşusu", "Kara Şövalye", "Mavi Yo
 LIVES = (1, 2, 3, 5, 7, 9)
 TIMES = (90, 120, 180, 300, 500)
 WIDTH_CLASSES = {"short": (30, 40), "medium": (50, 70), "long": (90, 130), "huge": (140, 160)}
-MUSIC = ("overworld", "underground", "castle", "boss")
+MOODS = ("happy", "calm", "tense", "epic", "mystery", "spooky")
+FEATURES_ALL = ("doubleJump", "spring", "dashPad", "rings", "checkpoint", "ice", "movingPlatforms")
 
 # ---- how things are said (Turkish; English for the main fields) ----
 TR = {
@@ -123,6 +124,23 @@ TR["features"].extend(MORE_TR_LISTS["features"])
 EN["spikes"] = {0: ["no spikes"], 1: ["a few spikes"], 3: ["lots of spikes"], 5: ["spikes everywhere"]}
 EN["flyers"] = {0: ["no flying enemies"], 1: ["a few flying enemies"], 3: ["lots of flying enemies"], 5: ["flying enemies everywhere"]}
 EN["blocks"] = {1: ["few blocks"], 3: ["lots of blocks"], 5: ["blocks everywhere"]}
+FEATURE_TR = {
+    "spring": ["yaylar olsun", "zıplatan yaylar", "üstüne basınca fırlatan yaylar"],
+    "dashPad": ["hız zeminleri olsun", "hızlandıran zemin parçaları", "üstünden geçince hızlanılan zeminler"],
+    "rings": ["halka sistemi olsun", "vurulunca ölmesin altınları kaybetsin", "halkalı can sistemi"],
+    "checkpoint": ["kontrol noktası olsun", "ölünce ortadan devam etsin", "ara kayıt noktası"],
+    "ice": ["buzlu zemin olsun", "kaygan buz parçaları", "kayarak ilerlenen buzlar"],
+    "movingPlatforms": ["hareketli platformlar olsun", "çukurların üstünde kayan platformlar", "gidip gelen platformlar"],
+}
+CHARACTER_TR = {"runner": ["turuncu tilki karakter", "tilki kahraman", "hızlı tilki karakteri olsun"]}
+RAMPS = {"ramp": ((1, 5), ["kolaydan zora doğru ilerlesin", "giderek zorlaşsın"]),
+         "gentle": ((1, 3), ["yavaş yavaş zorlaşsın", "hafif artan zorlukla"]),
+         "hard": ((3, 5), ["baştan zor, sonda çok zor", "en başından zorlu olsun"])}
+CAMPAIGN_TR = ["{n} seviyeli bir kampanya", "{n} bölümlük macera", "tam {n} seviye olsun"]
+MOODS_TR = {"happy": ["neşeli müzik", "şen bir melodi"], "calm": ["sakin müzik", "dinlendirici melodi"],
+            "tense": ["gerilimli müzik", "tedirgin edici melodi"], "epic": ["epik müzik", "destansı bir müzik"],
+            "mystery": ["gizemli müzik", "esrarengiz melodi"], "spooky": ["ürkütücü müzik", "korkunç bir melodi"]}
+TEMPOS_TR = {"slow": ["yavaş tempolu"], "fast": ["hızlı tempolu"]}
 PREFIXES = ["Şöyle bir oyun düşünüyorum:", "Bir oyun yapabilir misin?", "Hey Bob,", "Arkadaşlarla oynayacağız,", "Merhaba, bir oyun lazım:",
             "Yeni bir oyun istiyorum,", "Platform oyunu yapalım:"]
 SUFFIXES = ["", "", "", " olsun", " lütfen", " Yapabilir misin?", " Teşekkürler!"]
@@ -160,8 +178,14 @@ def _values(field: str, spec: dict):
     """What the spec says about a field (None when it says nothing)."""
     level = _level0(spec)
     hero = spec.get("hero", {})
-    if field in ("theme", "title", "music", "time"):
+    if field in ("theme", "title", "time"):
         return spec.get(field)
+    if field == "musicStyle":
+        style = spec.get("musicStyle") or {}
+        return (style.get("mood"), style.get("tempo", "medium"))
+    if field == "campaign":
+        c = spec.get("campaign")
+        return (c.get("count"), c.get("from"), c.get("to")) if c else None
     if field == "difficulty":
         return level.get("difficulty", 2)
     if field == "width":
@@ -176,7 +200,7 @@ def _values(field: str, spec: dict):
         return sorted(spec.get("qblocks", []))
     if field == "hero":
         return {"lives": hero.get("lives"), "speed": _speed_class(hero["speed"]) if "speed" in hero else None,
-                "jump": _jump_class(hero["jump"]) if "jump" in hero else None}
+                "jump": _jump_class(hero["jump"]) if "jump" in hero else None, "character": hero.get("character")}
     return None
 
 
@@ -197,14 +221,24 @@ def mentions(text: str, field: str, spec: dict) -> bool:
             parts.append(any(fold(p) in text for p in TR["speed"][v["speed"]]))
         if v["jump"] in ("low", "high"):
             parts.append(any(fold(p) in text for p in TR["jump"][v["jump"]]))
+        if v["character"]:
+            parts.append(any(fold(p) in text for p in CHARACTER_TR[v["character"]]))
         return bool(parts) and all(parts)
+    if field == "campaign":
+        n, ft, to = v
+        ramp = next(name for name, (pair, _) in RAMPS.items() if pair == (ft, to))
+        return str(n) in text and any(fold(p) in text for p in RAMPS[ramp][1])
+    if field == "musicStyle":
+        mood, tempo = v
+        return any(fold(p) in text for p in MOODS_TR[mood]) and (tempo == "medium" or any(fold(p) in text for p in TEMPOS_TR[tempo]))
     if field == "features":
-        return bool(v) and any(fold(p) in text for p in TR["features"] + EVAL_EXTRA["features"] + EN["features"])
+        def said(name):
+            if name == "doubleJump":
+                return any(fold(p) in text for p in TR["features"] + EVAL_EXTRA["features"] + EN["features"])
+            return any(fold(p) in text for p in FEATURE_TR[name])
+        return bool(v) and all(said(name) for name in v)
     if field == "qblocks":
         return all(any(fold(p) in text for p in TR["qblocks"][k]) for k in v)
-    table = {"theme": TR["theme"], "difficulty": TR["difficulty"], "width": TR["width"], "levels": TR["levels"], "music": TR["music"]}
-    if field in DENSITIES:
-        table = {field: TR[field]}
     phrases = []
     for source in (TR, EN, EVAL_EXTRA):
         entry = source.get(field)
@@ -218,17 +252,19 @@ _NUM_WORDS = {5: "beş", 3: "üç", 2: "iki", 7: "yedi", 9: "dokuz"}
 
 # ---- sampling a spec ----
 def _sample_fields(rng: random.Random, lang: str) -> set:
-    probs = {"theme": 0.7, "difficulty": 0.5, "width": 0.35, "features": 0.3, "lives": 0.2, "speed": 0.15, "jump": 0.15,
-             "levels": 0.25, "title": 0.25, "time": 0.15, "music": 0.15, "qblocks": 0.2}
+    probs = {"theme": 0.7, "difficulty": 0.5, "width": 0.35, "features": 0.35, "lives": 0.2, "speed": 0.15, "jump": 0.15,
+             "levels": 0.25, "title": 0.25, "time": 0.15, "musicStyle": 0.15, "qblocks": 0.2, "character": 0.12, "campaign": 0.12}
     probs.update({d: 0.3 for d in DENSITIES})
     allowed = {"theme", "difficulty", "width", "features", "levels", "title", "enemies", "coins", "pits", "lives"} if lang == "en" else set(probs)
     chosen = {f for f in allowed if rng.random() < probs[f]}
+    if "campaign" in chosen:
+        chosen.discard("levels")   # many levels come from a campaign, not from a few generated ones
     if rng.random() < 0.05:
         return set()   # a vague request: "make me a platformer"
     return chosen or {"theme"}
 
 
-def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=None) -> dict:
+def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=None, english: bool = False) -> dict:
     spec: dict = {"kit": "platformer"}
     theme = difficulty = None
     if force_pair:
@@ -243,8 +279,12 @@ def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=Non
         spec["theme"] = theme
     if "title" in fields:
         spec["title"] = rng.choice(TITLES)
-    if "music" in fields:
-        spec["music"] = rng.choice(MUSIC)
+    if "musicStyle" in fields:
+        style = {"mood": rng.choice(MOODS)}
+        if rng.random() < 0.4:
+            style["tempo"] = rng.choice(("slow", "fast"))
+        style["seed"] = rng.randint(0, 9999)
+        spec["musicStyle"] = style
     if "time" in fields:
         spec["time"] = rng.choice(TIMES)
     hero = {}
@@ -254,10 +294,19 @@ def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=Non
         hero["speed"] = rng.randint(100, 140) if rng.random() < 0.5 else rng.randint(210, 260)
     if "jump" in fields:
         hero["jump"] = rng.randint(320, 370) if rng.random() < 0.5 else rng.randint(500, 600)
+    if "character" in fields:
+        hero["character"] = "runner"
     if hero:
         spec["hero"] = hero
     if "features" in fields:
-        spec["features"] = ["doubleJump"]
+        if english:
+            spec["features"] = ["doubleJump"]
+        else:
+            how_many = rng.choices((1, 2, 3), weights=(6, 3, 1))[0]
+            spec["features"] = rng.sample(FEATURES_ALL, how_many)
+    if "campaign" in fields:
+        ramp = rng.choice(list(RAMPS))
+        spec["campaign"] = {"count": rng.randint(5, 20), "from": RAMPS[ramp][0][0], "to": RAMPS[ramp][0][1]}
     if "qblocks" in fields:
         spec["qblocks"] = [rng.choice(["mushroom", "star"])]
     count = rng.choice((2, 3, 4)) if "levels" in fields else 1
@@ -284,7 +333,7 @@ def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=Non
 
 def _mentioned(fields: set) -> list:
     out = set(fields)
-    for f in ("lives", "speed", "jump"):
+    for f in ("lives", "speed", "jump", "character"):
         if f in out:
             out.discard(f)
             out.add("hero")
@@ -300,8 +349,20 @@ def _phrase(rng: random.Random, field: str, spec: dict, lang: str, eval_mode: bo
     if field == "time":
         return rng.choice([f"{v} saniye süre", f"süre {v} saniye"])
     if field == "features":
-        pool = list(source["features"]) + (EVAL_EXTRA["features"] if eval_mode and lang == "tr" else [])
-        return rng.choice(pool)
+        out = []
+        for name in v:
+            if name == "doubleJump":
+                out.append(rng.choice(list(source["features"]) + (EVAL_EXTRA["features"] if eval_mode and lang == "tr" else [])))
+            else:
+                out.append(rng.choice(FEATURE_TR[name]))
+        return ", ".join(out)
+    if field == "campaign":
+        n, ft, to = v
+        ramp = next(name for name, (pair, _) in RAMPS.items() if pair == (ft, to))
+        return f"{rng.choice(CAMPAIGN_TR).format(n=n)}, {rng.choice(RAMPS[ramp][1])}"
+    if field == "musicStyle":
+        mood, tempo = v
+        return rng.choice(MOODS_TR[mood]) + (", " + rng.choice(TEMPOS_TR[tempo]) if tempo != "medium" else "")
     if field == "hero":
         parts = []
         if v["lives"] is not None:
@@ -313,6 +374,8 @@ def _phrase(rng: random.Random, field: str, spec: dict, lang: str, eval_mode: bo
         for key in ("speed", "jump"):
             if v[key] in ("slow", "fast", "low", "high"):
                 parts.append(rng.choice(TR[key][v[key]]))
+        if v["character"]:
+            parts.append(rng.choice(CHARACTER_TR[v["character"]]))
         return ", ".join(parts)
     if field == "qblocks":
         return rng.choice(TR["qblocks"][v[0]])
@@ -377,7 +440,7 @@ def prompt_text(example: dict) -> str:
 # ---- edits ----
 def changed_fields(old: dict, new: dict) -> set:
     out = set()
-    for f in ("theme", "title", "music", "time", "features", "qblocks"):
+    for f in ("theme", "title", "musicStyle", "campaign", "time", "features", "qblocks"):
         if old.get(f) != new.get(f):
             out.add(f)
     if old.get("hero", {}) != new.get("hero", {}):
@@ -391,6 +454,11 @@ def changed_fields(old: dict, new: dict) -> set:
     return out
 
 
+_EDIT_FEATURE = {"spring": ["yaylar ekle", "zıplatan yaylar koy"], "dashPad": ["hız zeminleri ekle", "hızlandıran zeminler koy"],
+                 "rings": ["halka sistemi ekle", "vurulunca altınlar gitsin ama ölmeyeyim"], "checkpoint": ["kontrol noktası ekle", "ortada bir kayıt noktası olsun"],
+                 "ice": ["buzlu zemin ekle", "kaygan buzlar koy"], "movingPlatforms": ["hareketli platformlar ekle", "çukurlara kayan platform koy"]}
+_EDIT_MUSIC = {"happy": ["müziği neşeli yap"], "calm": ["müziği sakinleştir"], "tense": ["müziği gerilimli yap"], "epic": ["müziği epik yap"],
+               "mystery": ["müziği gizemli yap"], "spooky": ["müziği ürkütücü yap"]}
 _EDIT_THEME = {"sky": ["gündüz olsun", "gökyüzü teması yap"], "cave": ["mağaraya çevir", "mağara teması olsun"],
                "castle": ["kale teması yap"], "night": ["gece olsun", "geceye çevir"], "underwater": ["su altına taşı"],
                "space": ["uzaya taşı"], "forest": ["ormana çevir"]}
@@ -399,15 +467,25 @@ _EDIT_THEME = {"sky": ["gündüz olsun", "gökyüzü teması yap"], "cave": ["ma
 def _edit_example(rng: random.Random, spec: dict):
     """(request, new spec, changed field) for one edit that makes sense for this spec."""
     new = json.loads(json.dumps(spec))
-    kind = rng.choice(["theme", "features", "harder", "easier", "enemies_up", "no_enemies", "level", "lives", "longer"])
+    kind = rng.choice(["theme", "features", "harder", "easier", "enemies_up", "no_enemies", "level", "lives", "longer", "feature_add", "feature_add", "music"])
     level = new["generate"]
     if kind == "theme":
         theme = rng.choice([t for t in THEMES if t != spec.get("theme")])
         new["theme"] = theme
         return rng.choice(_EDIT_THEME[theme]), new, "theme"
-    if kind == "features" and "doubleJump" not in spec.get("features", []):
-        new["features"] = ["doubleJump"]
+    if kind == "features" and "doubleJump" not in spec.get("features", []) and len(spec.get("features", [])) < 4:
+        new["features"] = spec.get("features", []) + ["doubleJump"]
         return rng.choice(["çift zıplama ekle", "iki kez zıplayabileyim"]), new, "features"
+    if kind == "feature_add" and len(spec.get("features", [])) < 4:
+        free = [f for f in FEATURE_TR if f not in spec.get("features", [])]
+        if free:
+            name = rng.choice(free)
+            new["features"] = spec.get("features", []) + [name]
+            return rng.choice(_EDIT_FEATURE[name]), new, "features"
+    if kind == "music":
+        mood = rng.choice(MOODS)
+        new["musicStyle"] = {"mood": mood, "seed": rng.randint(0, 9999)}
+        return rng.choice(_EDIT_MUSIC[mood]), new, "musicStyle"
     if kind == "harder":
         for lv in level:
             lv["difficulty"] = min(5, lv.get("difficulty", 2) + 1)
@@ -447,6 +525,7 @@ def build_examples(n_train: int = 600, n_eval: int = 100, seed: int = 0):
         lang = "en" if rng.random() < 0.15 else "tr"
         if rng.random() < 0.2:   # an edit of a game that was made from a spec
             base_fields = _sample_fields(rng, "tr") or {"theme"}
+            base_fields.discard("campaign")   # an edit starts from a simple game
             base = _build_spec(rng, base_fields, held_pairs=None if eval_mode else HELD_PAIRS)
             request, new, field = _edit_example(rng, base)
             if changed_fields(base, new) == set():
@@ -457,7 +536,7 @@ def build_examples(n_train: int = 600, n_eval: int = 100, seed: int = 0):
         force = None
         if eval_mode and "theme" in fields and "difficulty" in fields:
             force = rng.choice(sorted(HELD_PAIRS))
-        spec = _build_spec(rng, fields, held_pairs=None if eval_mode else HELD_PAIRS, force_pair=force)
+        spec = _build_spec(rng, fields, held_pairs=None if eval_mode else HELD_PAIRS, force_pair=force, english=lang == "en")
         mentioned = _mentioned(fields)
         description = _describe(rng, mentioned, spec, lang, eval_mode)
         return {"id": index, "kind": "create", "lang": lang, "description": description, "spec": spec, "mentioned": mentioned,
@@ -495,7 +574,7 @@ HAND_EVAL = [
     {"prompt": "Orman temalı, uzun bir seviye, bol altın ve az düşman", "expect": {"theme": "forest", "width_class": "long", "coins": "high", "enemies": "low"}},
     {"prompt": "su altında geçen sakin bir oyun, dikenler olmasın", "expect": {"theme": "underwater", "spikes": "none"}},
     {"prompt": "Tek canlı, çok zor, hiç altın yok", "expect": {"lives": 1, "difficulty": 5, "coins": "none"}},
-    {"prompt": "Kale içinde geçen, gerilimli müzikli bir macera", "expect": {"theme": "castle", "music": "castle"}},
+    {"prompt": "Kale içinde geçen, gerilimli müzikli bir macera", "expect": {"theme": "castle", "music": "tense"}},
     {"prompt": "Üç bölümlü, her bölümü kısa olan bir oyun", "expect": {"levels": 3, "width_class": "short"}},
     {"prompt": "Gökyüzünde, bol boru ve çok blok olan, rahat zorlukta bir oyun", "expect": {"theme": "sky", "pipes": "high", "blocks": "high"}},
     {"prompt": "Çukurlarla dolu, zorlu bir mağara", "expect": {"theme": "cave", "pits": "high", "difficulty": 4}},
@@ -512,6 +591,14 @@ HAND_EVAL = [
     {"prompt": "Yeşil bir ormanda iki seviye, ikisi de kolay", "expect": {"theme": "forest", "levels": 2, "difficulty": 2}},
     {"prompt": "Gece teması, kolay, bol blok ve tuğla", "expect": {"theme": "night", "difficulty": 2, "blocks": "high"}},
     {"prompt": "Beş canlı, hızlı koşan bir kahraman olsun", "expect": {"lives": 5}},
+    {"prompt": "Hızlı koşan, yayları ve hız zeminleri olan bir koşu oyunu", "expect": {"features": ["spring", "dashPad"]}},
+    {"prompt": "Karlı bir yerde kayarak ilerlediğimiz, buzlu bir oyun", "expect": {"features": ["ice"]}},
+    {"prompt": "Ölünce en baştan başlamayayım, ortada bir kayıt yeri olsun", "expect": {"features": ["checkpoint"]}},
+    {"prompt": "On iki bölümlük, kolaydan zora giden bir kampanya", "expect": {"campaign": 12}},
+    {"prompt": "Turuncu tilkiyle oynadığım, esrarengiz müzikli bir oyun", "expect": {"character": "runner", "music": "mystery"}},
+    {"prompt": "Çukurların üstünde gidip gelen platformlar olsun", "expect": {"features": ["movingPlatforms"]}},
+    {"prompt": "Vurulunca ölmeyeyim, sadece altınlarım gitsin", "expect": {"features": ["rings"]}},
+    {"prompt": "Korkunç müzikli, gece teması, on beş seviyelik bir macera", "expect": {"theme": "night", "music": "spooky", "campaign": 15}},
 ]
 
 
@@ -526,7 +613,11 @@ def expect_ok(pred_spec, expect: dict) -> dict:
                 got = pred_spec.get("theme", "sky")
                 out[key] = got == want
             elif key == "music":
-                out[key] = pred_spec.get("music") == want
+                out[key] = (pred_spec.get("musicStyle") or {}).get("mood") == want
+            elif key == "character":
+                out[key] = (pred_spec.get("hero") or {}).get("character") == want
+            elif key == "campaign":
+                out[key] = (pred_spec.get("campaign") or {}).get("count") == want
             elif key == "features":
                 out[key] = sorted(pred_spec.get("features", [])) == sorted(want)
             elif key == "levels":
