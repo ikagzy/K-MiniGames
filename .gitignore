@@ -5,3 +5,5 @@ __pycache__/
 build/
 dist/
 tools/_measure/
+tools/train/data/
+tools/train/out/
