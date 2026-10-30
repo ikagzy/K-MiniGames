@@ -7,7 +7,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from k_minigames import kgamelib, patching
+from k_minigames import kgamelib, kits, patching
 from k_minigames import memory as memory_notes
 from k_minigames.library import Texture
 from k_minigames.ollama_client import OllamaError
@@ -307,6 +307,42 @@ class Generator:
     def fix(self, html: str, problems: list[str], on_token: Callable | None = None,
             cancel: Callable[[], bool] | None = None, *, memory: str = "", modules=()) -> Generated:
         return self._game(build_fix_messages(html, problems, memory=memory, modules=modules), on_token, cancel)
+
+    # --- spec mode: the model writes the game's spec (JSON, kept in shape by the kit's schema), never its code ---
+
+    def _spec(self, kit: str, messages: list[dict], cancel) -> dict:
+        schema = kits.schema(kit)
+        answer = self._chat_schema(messages, schema, cancel)
+        try:
+            return kits.parse_spec(answer, kit)
+        except kits.SpecError as exc:
+            raise GenerationError(str(exc)) from exc
+
+    def _chat_schema(self, messages: list[dict], schema, cancel) -> str:
+        extra = {"keep_alive": self.keep_alive} if self.keep_alive else {}
+        if schema is not None:
+            extra["schema"] = schema
+        try:
+            return self.client.chat(self.model, messages, cancel=cancel, **extra)
+        except OllamaError as exc:
+            raise GenerationError(str(exc)) from exc
+
+    def create_spec(self, description: str, kit: str, cancel: Callable[[], bool] | None = None, *,
+                    memory: str = "") -> dict:
+        user = f"Oyun tarifi:\n{description}\n\nÖzeti (tek JSON nesnesi) ver."
+        return self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+
+    def edit_spec(self, spec: dict, request: str, kit: str, cancel: Callable[[], bool] | None = None, *,
+                  memory: str = "") -> dict:
+        user = (f"Oyunun şimdiki özeti:\n```json\n{json.dumps(spec, ensure_ascii=False, indent=1)}\n```\n\n"
+                f"Kullanıcının isteği:\n{request}\n\nİsteği uygulayıp özetin TAMAMINI yeniden ver (tek JSON nesnesi).")
+        return self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+
+    def fix_spec(self, spec: dict, problems: list[str], kit: str, cancel: Callable[[], bool] | None = None, *,
+                 memory: str = "") -> dict:
+        user = (f"Oyunun özeti:\n```json\n{json.dumps(spec, ensure_ascii=False, indent=1)}\n```\n\nOyunda şu sorunlar bulundu:\n"
+                + "\n".join(f"- {p}" for p in problems) + "\n\nÖzeti düzeltip TAMAMINI yeniden ver (tek JSON nesnesi).")
+        return self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
 
     def write_tests(self, html: str, checklist: list[str], cancel: Callable[[], bool] | None = None,
                     *, memory: str = "", modules=()) -> list[str | None]:

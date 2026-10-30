@@ -262,3 +262,45 @@ def test_write_tests_passes_the_modules_on():
     Generator(Client(), "m").write_tests("<html></html>", ["a"], modules=["core"])
     Generator(Client(), "m").write_tests("<html></html>", ["a"])
     assert "K.expose" in seen[0] and "K.expose" not in seen[1]
+
+
+# --- spec mode: the model writes a spec, not code --------------------------------------------------------------
+
+class SpecClient:
+    def __init__(self, *answers):
+        self.answers, self.calls = list(answers), []
+
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
+        self.calls.append((messages, kwargs))
+        return self.answers.pop(0)
+
+
+def test_create_spec_asks_with_the_kits_schema_and_guide_and_returns_the_spec_with_the_kit_filled_in():
+    from k_minigames.generator import Generator
+    client = SpecClient('```json\n{"theme": "night", "levels": [["P.F", "###"]]}\n```')
+    spec = Generator(client, "m").create_spec("gece temalı mario", "platformer", memory="")
+    assert spec == {"kit": "platformer", "theme": "night", "levels": [["P.F", "###"]]}
+    messages, kwargs = client.calls[0]
+    assert kwargs["schema"]["properties"]["theme"]["enum"]          # the answer is kept in shape
+    assert "K.kit.run" in messages[0]["content"] and "ÖZET" in messages[0]["content"]
+    assert "gece temalı mario" in messages[1]["content"]
+
+
+def test_create_spec_turns_a_useless_answer_into_a_generation_error():
+    import pytest
+    from k_minigames.generator import GenerationError, Generator
+    with pytest.raises(GenerationError):
+        Generator(SpecClient("üzgünüm, yapamadım"), "m").create_spec("x", "platformer")
+
+
+def test_edit_and_fix_spec_send_the_current_spec_and_return_a_whole_new_one():
+    from k_minigames.generator import Generator
+    current = {"kit": "platformer", "theme": "sky", "levels": [["P.F", "###"]]}
+    client = SpecClient('{"theme": "cave", "levels": [["P.F", "###"]]}', '{"theme": "sky", "levels": [["P..F", "####"]]}')
+    gen = Generator(client, "m")
+    edited = gen.edit_spec(current, "mağara yap", "platformer")
+    assert edited["theme"] == "cave" and edited["kit"] == "platformer"
+    assert '"theme": "sky"' in client.calls[0][0][1]["content"] and "mağara yap" in client.calls[0][0][1]["content"]
+    fixed = gen.fix_spec(edited, ["seviye 1: bayrağa ulaşılamıyor"], "platformer")
+    assert fixed["levels"] == [["P..F", "####"]]
+    assert "bayrağa ulaşılamıyor" in client.calls[1][0][1]["content"]

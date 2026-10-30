@@ -355,3 +355,86 @@ def test_the_fix_prompt_leaves_out_probe_warnings_but_keeps_real_problems():
     assert not any("Fare dinleniyor" in t for t in texts)
     assert any("Ekran boş" in t for t in texts) and any("hata:BUG1" in t for t in texts)
     assert any("x.test" in t for t in texts)   # the old behaviour for the other warnings stays
+
+
+# --- spec games (a kit): the model writes a spec, the app makes the page ---------------------------------------
+
+class SpecGenerator:
+    client, model = object(), "m"
+
+    def __init__(self, specs, fixes=(), edits=()):
+        self.specs, self.fixes, self.edits = list(specs), list(fixes), list(edits)
+        self.calls = []
+
+    def create_spec(self, description, kit, cancel=None, *, memory=""):
+        self.calls.append(("create_spec", kit, description))
+        step = self.specs.pop(0)
+        if isinstance(step, Exception):
+            raise step
+        return step
+
+    def fix_spec(self, spec, problems, kit, cancel=None, *, memory=""):
+        self.calls.append(("fix_spec", list(problems)))
+        return self.fixes.pop(0)
+
+    def edit_spec(self, spec, request, kit, cancel=None, *, memory=""):
+        self.calls.append(("edit_spec", request))
+        return self.edits.pop(0)
+
+    def fix(self, *a, **k):
+        raise AssertionError("a spec game is never fixed by rewriting its page")
+
+    def write_tests(self, *a, **k):
+        raise AssertionError("a spec game uses the kit's own checks")
+
+
+def spec_game(game):
+    library.set_modules(game, ["platformer"])
+    return game
+
+
+def test_a_spec_game_is_made_from_the_spec_with_the_kits_own_checks(game):
+    spec_game(game)
+    spec = {"kit": "platformer", "theme": "cave", "levels": [["P.F", "###"]]}
+    gen = SpecGenerator([spec])
+    outcome = flow(studio.create_game_flow, gen, game, "mağara oyunu", [], memory="")
+    assert "K.kit.run(" in outcome.html and '"theme": "cave"' in outcome.html
+    assert (game.folder / "kgame.platformer.js").is_file() and (game.folder / "kgame.js").is_file()
+    assert library.spec(game) == spec
+    assert game.html_path.read_text(encoding="utf-8") == outcome.html
+    saved = testlist.load(game)
+    assert len(saved) >= 4 and all(i.code for i in saved)   # hand-written checks, not the model's tests
+
+
+def test_a_broken_spec_is_fixed_by_asking_for_a_new_spec_and_the_best_one_is_kept(game):
+    spec_game(game)
+    first = {"kit": "platformer", "theme": "sky", "levels": [["P.F", "###"], ["BUG1"]]}
+    second = {"kit": "platformer", "theme": "sky", "levels": [["P.F", "###"]]}
+    gen = SpecGenerator([first], fixes=[second])
+    outcome = flow(studio.create_game_flow, gen, game, "x", [], memory="")
+    assert [c[0] for c in gen.calls] == ["create_spec", "fix_spec"]
+    assert "BUG1" not in outcome.html and outcome.attempts == 1
+    assert library.spec(game) == second          # the spec that matches the saved page
+
+
+def test_a_spec_game_without_a_usable_answer_raises_and_saves_nothing(game):
+    spec_game(game)
+    with pytest.raises(GenerationError):
+        flow(studio.create_game_flow, SpecGenerator([GenerationError("özet yok")]), game, "x", [], memory="")
+    assert library.spec(game) is None
+
+
+def test_editing_a_spec_game_changes_the_spec_and_keeps_the_old_page_when_it_breaks(game):
+    spec_game(game)
+    spec = {"kit": "platformer", "theme": "sky", "levels": [["P.F", "###"]]}
+    flow(studio.create_game_flow, SpecGenerator([spec]), game, "x", [], memory="")
+    before = game.html_path.read_text(encoding="utf-8")
+    better = dict(spec, theme="night")
+    gen = SpecGenerator([], edits=[better])
+    outcome = flow(studio.edit_game_flow, gen, game, "gece olsun", [], memory="")
+    assert outcome.saved and '"theme": "night"' in outcome.html and library.spec(game) == better
+    broken = dict(better, levels=[["BUG1"]])
+    gen = SpecGenerator([], edits=[broken], fixes=[broken, broken, broken])
+    outcome = flow(studio.edit_game_flow, gen, game, "boz", [], memory="")
+    assert outcome.rejected and library.spec(game) == better
+    assert "BUG1" not in game.html_path.read_text(encoding="utf-8")
