@@ -87,3 +87,18 @@ def test_a_library_game_that_exposes_its_state_with_k_expose_has_a_game_state():
     html = "<html><script>K.expose({ ball, me });</script></html>"
     assert [p.kind for p in scan(html, []) if p.kind == "no_game_state"] == []
     assert [p.kind for p in scan("<html><script>var a = 1;</script></html>", [])] == ["no_game_state"]
+
+
+CFG_PAGE = '<html><script src="kgame.js"></script><script>const CONFIG = %s;\nK.expose({});</script></html>'
+
+
+def test_a_library_games_config_must_be_valid_json():
+    assert [p.kind for p in scan(CFG_PAGE % '{"speed": 200, "color": "#4af"}', [])] == []
+    broken = [p for p in scan(CFG_PAGE % "{speed: 200}", []) if p.kind == "bad_config"]
+    assert len(broken) == 1 and broken[0].severity == "error"
+    assert "JSON" in broken[0].as_text() and "tırnak" in broken[0].as_text()
+
+
+def test_config_is_not_required_and_not_checked_in_games_without_the_library():
+    assert scan("<html><script>K.expose({});</script></html>", []) == []
+    assert scan("<html><script>const CONFIG = {speed: 1}; window.__game = {};</script></html>", []) == []

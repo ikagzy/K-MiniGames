@@ -1,10 +1,12 @@
 """Static checks of a generated game, before it is even opened in a browser."""
+import json
 import re
 import urllib.parse
 from dataclasses import dataclass
 
 _ASSET = re.compile(r"assets/([^\"'`<>?#\n]+)")
 _URL = re.compile(r"https?://[^\s\"'`<>)]+")
+_CONFIG = re.compile(r"const\s+CONFIG\s*=\s*")
 _NAMESPACE_HOSTS = ("http://www.w3.org/", "https://www.w3.org/")
 
 
@@ -40,11 +42,38 @@ class Problem:
             return f"assets/{self.detail} dosyası yok; yalnızca doku listesindeki dosyaları kullan. {self.hint}".strip()
         if self.kind == "external_url":
             return f"Dış ağ adresi kullanılmış: {self.detail}. Kaldır; oyun tamamen yerel çalışmalı."
+        if self.kind == "bad_config":
+            return ("const CONFIG geçerli JSON olmalı (anahtarlar çift tırnaklı, tek tırnak ve yorum yok): "
+                    f"{self.detail}")
         if self.kind == "no_game_state":
             return "window.__game nesnesi tanımlı değil; skor, konum gibi oyun durumunu window.__game içinde tut."
         if self.kind.startswith("probe_"):
             return self.detail   # found by trying the game in the browser (see checker._probe_problem)
         return f"{self.kind}: {self.detail}"
+
+
+def _config_literal(html: str) -> str | None:
+    """The `{...}` after `const CONFIG =` (up to the matching brace, strings respected), or None."""
+    match = _CONFIG.search(html)
+    if not match or html[match.end():match.end() + 1] != "{":
+        return None
+    depth, quote, escaped = 0, "", False
+    for i in range(match.end(), len(html)):
+        ch = html[i]
+        if quote:
+            escaped = (ch == "\\" and not escaped)
+            if ch == quote and not escaped:
+                quote = ""
+            continue
+        if ch in "\"'":
+            quote = ch
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return html[match.end():i + 1]
+    return None
 
 
 def scan(html: str, asset_files: list[str]) -> list[Problem]:
@@ -69,6 +98,13 @@ def scan(html: str, asset_files: list[str]) -> list[Problem]:
             continue
         urls.add(url)
         problems.append(Problem("external_url", url, "warning"))
+    if "kgame" in html:   # a game built on the library: its settings block must be valid JSON
+        literal = _config_literal(html)
+        if literal is not None:
+            try:
+                json.loads(literal)
+            except ValueError as exc:
+                problems.append(Problem("bad_config", str(exc), "error"))
     if "window.__game" not in html and "K.expose(" not in html:   # K.expose is the library's way to set it
         problems.append(Problem("no_game_state", "", "error"))
     return problems
