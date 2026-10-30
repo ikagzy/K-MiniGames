@@ -5,3 +5,9 @@
 |---|---|---|---|---|---|---|---|
 | old | 0 | 5 | 0 | 1 | 0 | - | 458 |
 | new | 1 | 4 | 0 | 3 | 0 | - | 659 |
+
+## 2026-10-30 10:38 — qwen2.5-coder:14b, tarif: volleyball
+
+| yöntem | geçti | doğrulanamadı | kaldı | düzeltme | JS hatası | sorunlar | süre (sn) |
+|---|---|---|---|---|---|---|---|
+| new | 0 | 5 | 0 | 0 | 0 | - | 161 |

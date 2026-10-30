@@ -30,6 +30,12 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 - Kod modeli denemesi (qwen2.5-coder:14b, kullanıcı yükledi; indirme yapılmadı): aynı tarifle (zıplayan kare) hat ~6,5 dakikada bitti: 3 madde geçti, 1 doğrulanamadı, 3 otomatik düzeltme; oyun gerçekten oynanıyor (zıplama, engel, skor). Karşılaştırma: llama3.1:8b ~3 dakika, hiçbir madde geçmedi, oyun zayıf. Kod modeli kesin daha iyi; varsayılan öneri qwen2.5-coder serisi olarak kalıyor.
 - Uygulama ilerlemesi: Hepsi tamam (400 test: 349 Python + 51 JS); oyun kütüphanesi G1–G8 yapıldı (çekirdek, bot, spor); sırada G9 kılavuzlar ve örnekler (plan: docs/superpowers/plans/2026-10-30-oyun-kutuphanesi.md)
 
+## Oyun kütüphanesi (2026-10-30)
+- Model oyunu sıfırdan yazmaz; `src/k_minigames/assets/lib/` altındaki JS kütüphanesini (`kgame.js` çekirdek, `kgame.ai.js` bot, `kgame.sports.js` spor) kullanır, yalnızca kuralları yazar. Dosyalar oyun klasörüne kopyalanır, `<script>` etiketlerini uygulama ekler (`kgamelib.ensure_scripts`). Don konuşmadan modül seçer (`Advisor.choose_modules`), oyunun `game.json`'unda `modules` tutulur; Bob bunları kullanır ve Don'un hafıza notunu okur.
+- Kılavuzlar `*.guide.md` (bütçe: çekirdek ≤2000, modül ≤1500 token), örnekler `examples/`, düzenleme bul/değiştir yamalarıyla (`patching.py`, uygulanamazsa bütün dosya), `CONFIG` bloğu geçerli JSON olmalı.
+- Akıllı denetçi (harness.py yoklamaları): boş ekran, tuş/fare etkisi, NaN durum, büyüyen liste, düz giden top, topa tepki vermeyen bot; hata satırı kod parçasıyla. Yoklamalar oyun bitmeden başlar (mantık yoklaması en önce).
+- Tasarım/plan/ölçüm: `docs/superpowers/specs/2026-10-30-oyun-kutuphanesi-design.md`, `plans/2026-10-30-oyun-kutuphanesi.md`, `docs/olcum-kutuphane.md`. Sonraki alt projeler (ölçümden sonra): seviye modülü, 2B tür modülleri, 3B (three.js paketlenip sarmalanacak).
+
 ## Kullanıcıyla çalışma
 - Türkçe konuşulur. Soru başına tek soru, seçenekli.
 - Kullanıcı "senin kolayına ne gelirse" diyerek teknik seçimleri bana bırakabilir; yine de sonucu açıklarım.
