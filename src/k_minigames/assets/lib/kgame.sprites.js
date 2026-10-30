@@ -60,17 +60,20 @@
     return sprite;
   };
 
-  // ---- hero (red cap, blue overalls) ----
-  S.define("hero.idle", ["...rrrr...", "..rrrrrrr.", "..nnsssns.", ".nsnsssnss", ".nsnnsssns", "..nssssnn.", "...sssss..",
-    "..rrbrrr..", ".rrrbrbrrr", "rrrrbbbbrr", "ss.bybyb.s", "ss.bbbbb.s", "..bbb.bbb.", ".nnn...nnn"]);
-  S.define("hero.run1", ["...rrrr...", "..rrrrrrr.", "..nnsssns.", ".nsnsssnss", ".nsnnsssns", "..nssssnn.", "...sssss..",
-    ".rrrbrrr..", "rrrrbrbrr.", "ss.bbbbbbs", "s..bybybbs", "...bbbbb..", "..nnb.bbn.", "..nnn..nnn"]);
-  S.define("hero.run2", ["...rrrr...", "..rrrrrrr.", "..nnsssns.", ".nsnsssnss", ".nsnnsssns", "..nssssnn.", "...sssss..",
-    "..rrbrrr..", ".rrrbrbrrr", "rrrrbbbbrr", "ss.bybyb.s", "ss.bbbbb.s", "...bb.bbb.", "...nn.nnn."]);
-  S.define("hero.jump", ["s.rrrr..ss", "ss.rrrrrrss", "..nnsssns.", ".nsnsssnss", ".nsnnsssns", "..nssssnn.", "...sssss..",
-    "..rrbrrr..", ".rrrbrbrrr", "rrrrbbbbrr", "..bbybybb.", "..bbbbbbb.", ".bbb...bbb", ".nnn...nnn"]);
-  S.define("hero.die", ["..........", "...rrrr...", "..rrrrrrr.", "..nnsssns.", ".nsnkskns.", "..nssssnn.", "..sskkkss.", "s.rrbrrr.s", "ssrrbrbrrs",
-    "rrrrbbbbrr", "..bbybyb..", "..bbbbbb..", ".bbb..bbb.", ".nnn..nnn."]);
+
+  // ---- hero (an original explorer: purple hood and tunic, yellow belt) ----
+  S.define("hero.idle", ["...gggg...", "..gggggg..", ".gGggggGg.", ".gssssssg.", ".gskssksg.", "..ssssss..", "...ssss...", "..GGggGG..",
+    ".Gggggggg.", "ssgyyyygss", "..gggggg..", "..dd..dd..", ".ddd..ddd.", ".nnn..nnn."]);
+  S.define("hero.run1", ["...gggg...", "..gggggg..", ".gGggggGg.", ".gssssssg.", ".gskssksg.", "..ssssss..", "...ssss...", ".GGggggG..",
+    "sGggggggs.", "s.gyyyyg..", "..gggggg..", ".dd....dd.", ".dd.....dd", ".nn......n"]);
+  S.define("hero.run2", ["...gggg...", "..gggggg..", ".gGggggGg.", ".gssssssg.", ".gskssksg.", "..ssssss..", "...ssss...", "..GGggGG..",
+    ".Gggggggg.", "..gyyyygss", "..gggggg..", "...dd.dd..", "...dd.dd..", "..nnn.nnn."]);
+  S.define("hero.jump", ["...gggg...", "..gggggg..", ".gGggggGg.", ".gssssssg.", ".gskssksg.", "..ssssss..", "...ssss...", "s.GGggGG.s",
+    "ssGggggggs", "..gyyyyg..", "..gggggg..", ".dd....dd.", ".dd....dd.", ".nn....nn."]);
+  S.define("hero.die", ["...gggg...", "..gggggg..", ".gGggggGg.", ".gssssssg.", ".gkskkskg.", "..ssssss..", "...ssss...", "s.GGggGG.s",
+    "ssGggggggs", "..gyyyyg..", "..gggggg..", ".dd....dd.", ".dd....dd.", ".........."]);
+
+  ["idle", "run1", "run2", "jump", "die"].forEach(function (n) { art["hero." + n].palette = { g: "#7a56d6", G: "#4b348f" }; });
 
   // ---- runner (an original fast hero: orange fox, purple scarf, yellow boots) ----
   S.define("runner.idle", ["..o....o..", ".ooo..ooo.", ".oooooooo.", ".owkoowko.", ".oooeeooo.", "..oeekeeo.", "...pppp...", "..opppp.o.",
@@ -84,17 +87,20 @@
   S.define("runner.die", ["..o....o..", ".ooo..ooo.", ".oooooooo.", ".okkookko.", ".oooeeooo.", "..oeekeeo.", "...pppp...", "o.opppp.o.",
     "oooeeeeooo", "..oeeeeo..", "..oooooo..", ".yy....yy.", ".yy....yy.", ".........."]);
 
-  // ---- walking enemy (brown) ----
-  S.define("walker.1", ["...dddd...", "..dddddd..", ".dddddddd.", ".dwkddkwd.", ".dwkddkwd.", "dddddddddd", ".ddsssssd.", "..sssssss.", "..nnn.nnn.", ".nnn...nnn"]);
-  S.define("walker.2", ["...dddd...", "..dddddd..", ".dddddddd.", ".dwkddkwd.", ".dwkddkwd.", "dddddddddd", ".ddsssssd.", "..sssssss.", "...nn.nn..", "..nnn.nnn."]);
-  S.define("walker.flat", ["..........", "..........", "..........", "..........", "..........", "..........", "..dddddd..", ".dwkddkwd.", "dddddddddd", ".nnn..nnn."]);
+
+  // ---- walking enemy (an original blue slime) ----
+  S.define("walker.1", ["..........", "...bbbb...", "..bbffbb..", ".bbfbbbbb.", ".bwkbbwkb.", "bbbbbbbbbb", "bbbbbbbbbb", "BBBBBBBBBB", ".BB....BB.", ".BB....BB."]);
+  S.define("walker.2", ["..........", "...bbbb...", "..bbffbb..", ".bbfbbbbb.", ".bwkbbwkb.", "bbbbbbbbbb", "bbbbbbbbbb", "BBBBBBBBBB", "..BB..BB..", "..BB..BB.."]);
+  S.define("walker.flat", ["..........", "..........", "..........", "..........", "..........", "..........", "...bbbb...", ".bwkbbwkb.", "bbbbbbbbbb", "BBBBBBBBBB"]);
+
+  // ---- power-up (an original blue potion) ----
+  S.define("mushroom", ["....ll....", "...llll...", "....bb....", "...bbbb...", "..bbffbb..", ".bbffffbb.", ".bbfffbbb.", ".bbbbbbbb.", "..bbbbbb..", "...bbbb..."]);
 
   // ---- items ----
   S.define("coin.1", ["...yy...", "..yYYy..", ".yYyyYy.", ".yYyyYy.", ".yYyyYy.", ".yYyyYy.", "..yYYy..", "...yy..."]);
   S.define("coin.2", ["...yy...", "..yYy...", "..yYy...", "..yYy...", "..yYy...", "..yYy...", "..yYy...", "...yy..."]);
   S.define("coin.3", ["...yy...", "...yy...", "...yy...", "...yy...", "...yy...", "...yy...", "...yy...", "...yy..."]);
   S.define("coin.4", S.get("coin.2").rows.slice());
-  S.define("mushroom", ["...rrrr...", "..rrwwrrr.", ".rrwwwwrrr", "rrrwwwwrrr", "rrrrrrrrrr", "..eeeeee..", "..eekkee..", "..eeeeee..", "...eeee..."]);
   S.define("star", ["....yy....", "....yy....", "...yyyy...", "yyyyyyyyyy", ".yyYyyYyy.", "..yyyyyy..", "..yyyyyy..", ".yyy..yyy.", ".yy....yy."]);
   S.define("heart", [".mm..mm.", "mmmmmmmm", "mmmmmmmm", "mmmmmmmm", ".mmmmmm.", "..mmmm..", "...mm..."]);
   S.define("spike", ["....l....", "...lLl...", "...lLl...", "..lLLLl..", "..lLLLl..", ".lLLLLLl.", ".lLLLLLl.", "lLLLLLLLl"]);
@@ -103,9 +109,19 @@
   S.define("brick", ["cccccccccccccccc", "cCcccccCcccccccC", "CCCCCCCCCCCCCCCC", "cccCcccccccCcccc", "cccCcccccccCcccc", "CCCCCCCCCCCCCCCC",
     "cCcccccCcccccccC", "cCcccccCcccccccC"].concat(["CCCCCCCCCCCCCCCC", "cccCcccccccCcccc", "cccCcccccccCcccc", "CCCCCCCCCCCCCCCC", "cCcccccCcccccccC",
     "cCcccccCcccccccC", "CCCCCCCCCCCCCCCC", "cccCcccccccCcccc"]));
-  S.define("qblock", ["YYYYYYYYYYYYYYYY", "Yyyyyyyyyyyyyyyk", "YyYyyyyyyyyyyYyk", "YyyyykkkkkkyyyYk", "YyyyykyyyykyyyYk", "YyyyykyyyykyyyYk",
-    "YyyyyyyyykkyyyYk", "YyyyyyyykkyyyyYk", "YyyyyyyykyyyyyYk", "YyyyyyyykyyyyyYk", "YyyyyyyyyyyyyyYk", "YyyyyyyykyyyyyYk", "YyYyyyyykyyyyYYk",
-    "Yyyyyyyyyyyyyyyk", "YkkkkkkkkkkkkkkY", "YYYYYYYYYYYYYYYY"]);
+  // ---- gem block (the question block) ----
+  (function () {
+    var rows = [], plain = "p".repeat(14);
+    var gem = [2, 4, 6, 8, 6, 4, 2];
+    rows.push("B".repeat(16));
+    for (var r = 1; r < 15; r++) {
+      var w = gem[r - 3], inner = plain;
+      if (w) inner = "p".repeat((14 - w) / 2) + "w" + "f".repeat(w - 2) + "w" + "p".repeat((14 - w) / 2);
+      rows.push("B" + inner + "B");
+    }
+    rows.push("B".repeat(16));
+    S.define("qblock", rows);
+  })();
   S.define("qblock.used", ["LLLLLLLLLLLLLLLL", "LdddddddddddddLk", "LdLdddddddddLdLk", "LddddddddddddddLk", "LddddddddddddddLk", "LddddddddddddddLk",
     "LddddddddddddddLk", "LddddddddddddddLk", "LddddddddddddddLk", "LddddddddddddddLk", "LddddddddddddddLk", "LddddddddddddddLk", "LdLdddddddddLdLk",
     "LdddddddddddddLk", "LkkkkkkkkkkkkkkL", "LLLLLLLLLLLLLLLL"]);
@@ -117,10 +133,10 @@
     "nnnnnnnnnnnnnnnn", "nnnnnnnndnnnnnnn", "nnnnnnnnnnnnnnnn"]);
   S.define("pipe.top", ["GGGGGGGGGGGGGGGG", "GgggggggggggggGk", "GgGGggggggggggGk", "GgGGggggggggggGk", "GgggggggggggggGk", "GGGGGGGGGGGGGGGG",
     "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..",
-    "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG.."]);
+    "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG.."], { g: "#9aa7b8", G: "#4d5868" });
   S.define("pipe.body", ["..GgggggggggG...", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..",
     "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..", "..GgGggggggggG..",
-    "..GgGggggggggG.."]);
+    "..GgGggggggggG.."], { g: "#9aa7b8", G: "#4d5868" });
 
   // ---- scenery and goal ----
   S.define("cloud", ["....www.....", "..wwwwwww...", ".wwwwwwwwww.", "wwwwwwwwwwww", ".wwwwwwwwww."]);

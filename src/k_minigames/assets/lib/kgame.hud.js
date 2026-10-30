@@ -13,7 +13,7 @@
     var refresh = function () {
       g.ui.text("hud.score", "SKOR " + pad(hud.score, 6), 12, 24, { size: 18 });
       g.ui.text("hud.coins", "ALTIN x" + pad(hud.coins, 2), 170, 24, { size: 18, color: "#ffd23f" });
-      g.ui.text("hud.world", "DÜNYA " + hud.world, 310, 24, { size: 18 });
+      g.ui.text("hud.world", "BÖLÜM " + hud.world, 310, 24, { size: 18 });
       if (hud.time > 0 || o.time) g.ui.text("hud.time", "SÜRE " + pad(Math.max(0, hud.time), 3), 440, 24, { size: 18 });
       g.ui.text("hud.lives", "CAN " + hud.lives, 560, 24, { size: 18, color: "#ff6b6b" });
     };
