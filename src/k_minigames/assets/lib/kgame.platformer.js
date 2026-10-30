@@ -8,30 +8,18 @@
   var K = root.K;
   var TILE = 32;
 
-  var DEFAULT_LEVEL = [
-    "....................",
-    "....................",
-    "......?.B?B.........",
-    "....................",
-    "..o...........o.o...",
-    "P...E....T.......F..",
-    "####################",
-    "####################"
-  ];
 
   K.kit.define("platformer", {
     defaults: {
       title: "Platform", theme: "sky", music: "overworld", world: "1-1", width: 640, height: 352, gravity: 1100, time: 300,
       hero: { speed: 170, jump: 430, lives: 3 },
       qblocks: ["coin", "coin", "mushroom"],
-      levels: [DEFAULT_LEVEL],
       features: []
     },
 
     check: function (spec) {
-      var errors = [];
-      if (!Array.isArray(spec.levels) || !spec.levels.length) return ["levels en az bir seviye (satır listesi) olmalı"];
-      spec.levels.forEach(function (rows, i) {
+      var errors = [], all = K.levels.fromSpec(spec);
+      all.forEach(function (rows, i) {
         if (!Array.isArray(rows)) { errors.push("seviye " + (i + 1) + " bir satır listesi olmalı"); return; }
         var lv = K.levels.parse(rows);
         lv.warnings.forEach(function (w) { errors.push("seviye " + (i + 1) + ": " + w); });
@@ -44,7 +32,7 @@
     build: function (spec) {
       var g = K.game({ width: spec.width, height: spec.height, gravity: spec.gravity });
       var theme = K.themes.apply(g, spec.theme);
-      var levels = K.levels.set(spec.levels);
+      var levels = K.levels.set(K.levels.fromSpec(spec));
       var hero = spec.hero;
       var state = { g: g, spec: spec, theme: theme, levels: levels, level: null, map: null, me: null, tiles: {}, frozen: false,
                     jumpHooks: [], heroHooks: [], invuln: 0, star: 0, qIndex: 0 };

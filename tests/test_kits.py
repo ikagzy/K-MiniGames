@@ -51,7 +51,8 @@ def test_the_schema_keeps_the_answer_in_shape_and_lists_the_menus():
     assert schema["type"] == "object"
     assert "sky" in schema["properties"]["theme"]["enum"]
     assert "doubleJump" in schema["properties"]["features"]["items"]["enum"]
-    assert schema["properties"]["levels"]["items"]["items"]["type"] == "string"
+    assert schema["properties"]["generate"]["items"]["properties"]["difficulty"]["maximum"] == 5
+    assert "levels" not in schema["properties"]   # a small model cannot draw a level: it describes one with numbers
     assert kits.schema("yok") is None
 
 
@@ -77,9 +78,8 @@ def test_the_spec_of_a_game_is_remembered_and_a_broken_file_means_none(game):
 def test_the_schema_bounds_every_list_and_string_so_a_model_cannot_ramble_forever():
     schema = kits.schema("platformer")
     props = schema["properties"]
-    assert 1 <= props["levels"]["maxItems"] <= 6
-    assert props["levels"]["items"]["maxItems"] <= 16
-    assert props["levels"]["items"]["items"]["maxLength"] <= 100
+    assert 1 <= props["generate"]["maxItems"] <= 6
+    assert schema["required"] == ["kit", "generate"]
     for name in ("qblocks", "features"):
         assert props[name]["maxItems"] <= 10
     assert props["title"]["maxLength"] <= 60 and props["world"]["maxLength"] <= 10

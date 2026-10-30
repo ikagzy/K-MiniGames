@@ -204,3 +204,24 @@ test('the Mario example spec is valid and plays for ten seconds without an error
   assert.ok(Number.isFinite(state.me.x) && Number.isFinite(state.me.y));
   assert.deepStrictEqual(K.kit.check({ kit: 'platformer', levels: state.spec.levels, features: state.spec.features }), []);
 });
+
+test('a spec that only describes its levels with numbers gets finishable levels and can be played to the end', () => {
+  const K = fresh();
+  const spec = { kit: 'platformer', time: 200, generate: [{ seed: 2, width: 50, pits: 0, enemies: 0, pipes: 0, spikes: 0, flyers: 0, coins: 2, blocks: 2 }] };
+  assert.deepStrictEqual(K.kit.check(spec), []);
+  const s = K.kit.run(spec);
+  assert.strictEqual(s.level.cols, 50);
+  K.press('d');
+  run(s, 14);
+  K.press('d', false);
+  assert.strictEqual(s.g.current, 'win', 'finished (lives ' + s.hud.lives + ')');
+  assert.ok(s.hud.coins > 0 || s.hud.score > 1000);
+});
+
+test('many generated levels with everything switched on are valid specs', () => {
+  const K = fresh();
+  for (let seed = 0; seed < 25; seed++) {
+    const spec = { kit: 'platformer', generate: [{ seed, width: 90, difficulty: 1 + (seed % 5), pits: 5, enemies: 5, blocks: 5, pipes: 5, coins: 5, flyers: 5, spikes: 5 }] };
+    assert.deepStrictEqual(K.kit.check(spec), [], 'seed ' + seed);
+  }
+});

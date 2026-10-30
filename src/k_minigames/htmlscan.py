@@ -105,6 +105,6 @@ def scan(html: str, asset_files: list[str]) -> list[Problem]:
                 json.loads(literal)
             except ValueError as exc:
                 problems.append(Problem("bad_config", str(exc), "error"))
-    if "window.__game" not in html and "K.expose(" not in html:   # K.expose is the library's way to set it
+    if "window.__game" not in html and "K.expose(" not in html and "K.kit.run(" not in html:   # K.expose is the library's way to set it
         problems.append(Problem("no_game_state", "", "error"))
     return problems

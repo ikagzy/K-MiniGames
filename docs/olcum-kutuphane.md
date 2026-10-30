@@ -135,3 +135,13 @@
 | yöntem | geçti | doğrulanamadı | kaldı | düzeltme | JS hatası | sorunlar | süre (sn) |
 |---|---|---|---|---|---|---|---|
 | spec | hata: Modelin cevabında geçerli bir oyun özeti (JSON) yok | | | | | | 766 |
+
+## 2026-10-30 14:12 — qwen2.5:3b, tarif: mario
+
+| yöntem | geçti | doğrulanamadı | kaldı | düzeltme | JS hatası | sorunlar | süre (sn) |
+|---|---|---|---|---|---|---|---|
+| spec | 0 | 5 | 0 | 3 | 1 | no_game_state, probe_blank, probe_keys | 56 |
+
+**spec** düzeltmelere giden sorunlar: yok
+**spec** maddeler: unverified: Oyun açılır ve kahraman sahnededir. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'me')) | unverified: Seviyede bir başlangıç ve bir bayrak vardır. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'level')) | unverified: Kahraman zemine basar ve yerçekimiyle düşmez. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'me')) | unverified: Seviyede altın ya da düşman bulunur. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'g')) | unverified: Kahraman sağa yürüyebilir. (test kodu çalışmadı (oyunun hatası olmayabilir): TypeError: Cannot read properties of undefined (reading 'me'))
+**spec** uyarılar: Klavye dinleniyor ama W A S D, ok tuşları ve boşluk hiçbir şeyi değiştirmedi.
