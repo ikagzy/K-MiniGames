@@ -465,3 +465,18 @@ test('musicStyle makes the kit play a composed tune; a wrong mood or tempo makes
   run(named, 0.2);
   assert.strictEqual(K.music.current, 'castle');
 });
+
+test('the same seed in another mood is another tune that starts differently, and notes are not repeated again and again', () => {
+  const K = fresh();
+  const starts = new Set(K.music.moods.map((m) => K.music.compose({ mood: m, seed: 7 }).notes.split(' ').slice(0, 4).join(' ')));
+  assert.strictEqual(starts.size, K.music.moods.length, 'every mood opens differently');
+  const openings = new Set();
+  for (let s = 0; s < 40; s++) openings.add(K.music.compose({ mood: 'happy', seed: s }).notes.split(' ')[0].split(':')[0]);
+  assert.ok(openings.size >= 8, 'the first note changes with the seed: ' + openings.size);
+  let same = 0, pairs = 0;
+  for (const m of K.music.moods) for (let s = 0; s < 30; s++) {
+    const n = K.music.parse(K.music.compose({ mood: m, seed: s }).notes).filter((x) => x.freq);
+    for (let i = 1; i < n.length; i++) { pairs++; if (Math.abs(n[i].freq - n[i - 1].freq) < 0.01) same++; }
+  }
+  assert.ok(same / pairs < 0.1, 'repeated notes: ' + (100 * same / pairs).toFixed(1) + '%');
+});

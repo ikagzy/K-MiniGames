@@ -56,7 +56,10 @@
   M.compose = function (o) {
     o = o || {};
     var mood = MOODS[o.mood] ? o.mood : "happy", def = MOODS[mood];
-    var seed = typeof o.seed === "number" && isFinite(o.seed) ? o.seed : 1, rnd = seeded(seed);
+    var seed = typeof o.seed === "number" && isFinite(o.seed) ? o.seed : 1;
+    var tag = 0;   // the mood is part of the seed: the same seed in another mood is another tune, not the same one in another scale
+    for (var c = 0; c < mood.length; c++) tag = (tag * 31 + mood.charCodeAt(c)) % 100003;
+    var rnd = seeded(seed * 1009 + tag);
     var pick = function (list) { return list[Math.floor(rnd() * list.length) % list.length]; };
     var bpm = o.tempo === "slow" ? def.bpm[0] : o.tempo === "fast" ? def.bpm[2] : def.bpm[1];
     var root = 48 + pick([0, 2, 3, 5, 7, 9]), scale = def.scale;
@@ -67,26 +70,34 @@
     var lead = [];
 
     var bar = function (d, from, lo, hi, closing) {   // one bar of 4 beats; returns the last pitch index
-      var rhythm = closing ? pick([[2, 2], [1, 1, 2], [1, 3]]) : pick(RHYTHMS), at = 0, idx = from;
+      var rhythm = closing ? pick([[2, 2], [1, 1, 2], [1, 3]]) : pick(RHYTHMS), at = 0, idx = from, before = from;
       rhythm.forEach(function (beats, i) {
         var last = closing && i === rhythm.length - 1;
         if (last || at % 2 === 0) idx = nearestTone(idx + (last ? 0 : pick([-2, -1, 0, 1, 2])), d);   // a strong beat or the end: a chord tone
         else idx = idx + pick([-1, 1, -2, 2]);   // in between: a step
         idx = Math.max(lo, Math.min(hi, idx));
         if (last) idx = nearestTone(idx, d);
+        if (idx === before && rnd() < 0.9) {   // the same note again and again is dull: move to a neighbour, a chord tone if there is one
+          var near = [1, -1, 2, -2].map(function (s) { return before + s; }).filter(function (x) { return x >= lo && x <= hi; });
+          var tones = near.filter(function (x) { return isTone(x, d); });
+          idx = tones.length ? tones[0] : (near.length ? near[0] : idx);
+        }
+        before = idx;
         var rest = !last && at > 0 && rnd() < 0.08;
         lead.push((rest ? "R" : noteName(pitch(idx))) + ":" + beats);
         at += beats;
       });
       return idx;
     };
+    var at = 8 + Math.floor(rnd() * 5);   // the tune starts on a different note each time
     var section = function (low, high, vary) {
-      var idx = (low + high) >> 1, first = null;
+      var idx = Math.max(low, Math.min(high, at));
       prog.forEach(function (d, i) {
         var closing = i === 3;
         if (i === 2 && vary) { idx = bar(d, idx + pick([-3, 3]), low, high, false); return; }
         idx = bar(d, idx, low, high, closing);
       });
+      at = idx;
     };
     section(7, 14, false); section(7, 14, true); section(10, 17, false); section(7, 14, false);
 
