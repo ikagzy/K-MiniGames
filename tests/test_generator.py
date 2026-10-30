@@ -187,3 +187,54 @@ def test_a_reference_error_gets_a_hint_about_where_the_name_is_declared_and_used
     assert scope_hints(html, ["Uncaught TypeError: x"]) == []
     user = build_fix_messages(html, ["ReferenceError: game is not defined"])[1]["content"]
     assert "tanımsız" in user and "tanımlı" in user
+
+
+# --- the game library in the prompts -----------------------------------------------------------------------------
+
+def _legacy():
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).parent / "legacy_messages.json").read_text(encoding="utf-8"))
+
+
+def test_without_modules_the_messages_are_exactly_what_they_always_were():
+    from k_minigames import generator as g
+    snap = _legacy()
+    assert g.build_create_messages("tarif", [], memory="") == snap["create"]
+    assert g.build_create_messages("tarif", [], memory="not") == snap["create_mem"]
+    assert g.build_edit_messages("<html></html>", "değiş", [], ["a"], ["r"]) == snap["edit"]
+    assert g.build_fix_messages("<html></html>", ["hata"]) == snap["fix"]
+    assert g.build_create_messages("tarif", [], modules=()) == snap["create"]
+
+
+def test_with_modules_the_system_message_has_the_library_rules_and_only_the_chosen_guides():
+    from k_minigames import generator as g
+    system = g.build_create_messages("voleybol", [], modules=["core", "ai", "sports"])[0]["content"]
+    assert "K.expose" in system and "script src" in system and "kgame.sports.js" in system
+    assert "TEK bir dosyada, saf HTML" not in system   # the old rule would contradict the library
+    only_core = g.build_create_messages("kare", [], modules=["core"])[0]["content"]
+    assert "kgame.js" in only_core and "kgame.sports.js" not in only_core and "kgame.ai.js" not in only_core
+
+
+def test_modules_are_normalized_and_reach_edit_and_fix_too():
+    from k_minigames import generator as g
+    for messages in (g.build_edit_messages("<html></html>", "x", [], [], modules=["SPORTS", "yok"]),
+                     g.build_fix_messages("<html></html>", ["x"], modules=["SPORTS", "yok"])):
+        system = messages[0]["content"]
+        assert "kgame.sports.js" in system and "kgame.ai.js" in system   # sports needs ai, core is always there
+
+
+def test_the_generator_passes_the_modules_to_the_prompt():
+    from k_minigames.generator import Generator
+    seen = []
+
+    class Client:
+        def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
+            seen.append(messages[0]["content"])
+            return "```html\n<!doctype html><html></html>\n```"
+
+    gen = Generator(Client(), "m")
+    gen.create("d", [], modules=["core"])
+    gen.edit("<html></html>", "r", [], [], modules=["core"])
+    gen.fix("<html></html>", ["p"], modules=["core"])
+    assert len(seen) == 3 and all("kgame.js" in text for text in seen)

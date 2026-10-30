@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from k_minigames import kgamelib
 from k_minigames import memory as memory_notes
 from k_minigames.library import Texture
 from k_minigames.ollama_client import OllamaError
@@ -40,6 +41,22 @@ _RULES = (
     "- Dış ağ adresi kullanma: kodda http:// ya da https:// geçmesin, kütüphane ya da yazı tipi indirme.\n"
     "- Oyun klavye (ok tuşları, boşluk) ve fare ile oynansın; sayfa açılır açılmaz çalışmaya hazır olsun."
 )
+_RULES_LIB = (
+    "Sen bir oyun yazarısın. Kullanıcının tarif ettiği oyunu, aşağıda anlatılan K-MiniGames oyun kütüphanesiyle yaz: "
+    "yalnızca oyunun KURALLARINI ve ayarlarını yaz (dosya adı oyun.html). Kütüphane hazır olanı (döngü, fizik, girdi, "
+    "çarpışma, bot, spor kuralları) senin yerine yapar; onu yeniden yazma.\n"
+    "Kurallar:\n"
+    "- Cevabında önce tam oyunu ```html bloğu içinde ver: <!doctype html> ile başlayıp </html> ile biten, eksiksiz bir belge; "
+    "içinde bir <canvas></canvas> ve bir <script> olsun. Kütüphane dosyalarını <script src> ile ÇAĞIRMA, uygulama ekler.\n"
+    "- Sonra bir ```json bloğunda oyunun neye benzemesi gerektiğini 3-8 kısa Türkçe maddeyle yaz: "
+    '{"checklist": ["...", "..."]}\n'
+    "  Maddeler oyunun nasıl oynandığını anlatsın; teknik kuralları madde yapma.\n"
+    "- Oyun durumunu (skor, konum, can) K.expose({...}) ile aç; uygulama testleri bunu okur.\n"
+    "- Dokuları yalnızca assets/<dosya adı> yoluyla kullan ya da K.texture.make ile üret; listedekilerden başka dosya "
+    "uydurma.\n"
+    "- Dış ağ adresi kullanma: kodda http:// ya da https:// geçmesin.\n"
+    "- Oyun klavye ve fare ile oynansın; sayfa açılır açılmaz çalışmaya hazır olsun."
+)
 _TESTER_RULES = (
     "Sen bir test yazarısın. Verilen oyun için, kontrol listesindeki her madde adına bir JavaScript işlev GÖVDESİ yaz. "
     "Gövde `game` parametresini (= window.__game) alır ve maddenin doğru olup olmadığını true/false döndürür; gerekirse "
@@ -51,7 +68,11 @@ _TESTER_RULES = (
 )
 
 
-def _system(rules: str, memory: str) -> dict:
+def _system(rules: str, memory: str, modules=()) -> dict:
+    """The system message. With library modules the rules are the library rules followed by the modules' guides;
+    without them it is exactly what it always was."""
+    if modules:
+        rules = f"{_RULES_LIB}\n\n{kgamelib.guides(list(modules))}"
     head = memory_notes.block(memory)
     return {"role": "system", "content": f"{head}\n\n{rules}" if head else rules}
 
@@ -66,20 +87,20 @@ def _texture_lines(textures: list[Texture]) -> str:
     return "Kullanabileceğin dokular:\n" + "\n".join(lines)
 
 
-def build_create_messages(description: str, textures: list[Texture], *, memory: str = "") -> list[dict]:
+def build_create_messages(description: str, textures: list[Texture], *, memory: str = "", modules=()) -> list[dict]:
     user = f"Oyun tarifi:\n{description}\n\n{_texture_lines(textures)}"
-    return [_system(_RULES, memory), {"role": "user", "content": user}]
+    return [_system(_RULES, memory, modules), {"role": "user", "content": user}]
 
 
 def build_edit_messages(html: str, request: str, textures: list[Texture], checklist: list[str],
-                        resolved: list[str] = (), *, memory: str = "") -> list[dict]:
+                        resolved: list[str] = (), *, memory: str = "", modules=()) -> list[dict]:
     parts = [f"Mevcut oyun:\n```html\n{html}\n```", f"Kullanıcının isteği:\n{request}", _texture_lines(textures)]
     if checklist:
         parts.append("Oyunun kontrol listesi (bozma):\n" + "\n".join(f"- {c}" for c in checklist))
     if resolved:
         parts.append("Daha önce çözülen hatalar (bunları tekrarlama):\n" + "\n".join(f"- {r}" for r in resolved))
     parts.append("İsteği uygula ve oyunun tamamını yeniden ver; yeni ya da değişen kontrol listesini de yaz.")
-    return [_system(_RULES, memory), {"role": "user", "content": "\n\n".join(parts)}]
+    return [_system(_RULES, memory, modules), {"role": "user", "content": "\n\n".join(parts)}]
 
 
 _UNDEFINED = re.compile(r"ReferenceError: ([A-Za-z_$][\w$]*)")
@@ -127,11 +148,11 @@ def scope_hints(html: str, problems: list[str]) -> list[str]:
     return hints
 
 
-def build_fix_messages(html: str, problems: list[str], *, memory: str = "") -> list[dict]:
+def build_fix_messages(html: str, problems: list[str], *, memory: str = "", modules=()) -> list[dict]:
     problems = list(problems) + scope_hints(html, problems)
     user = ("Oyunda şu sorunlar bulundu. Hepsini düzelt, oyunun geri kalanını bozma ve oyunun tamamını yeniden ver:\n"
             + "\n".join(f"- {p}" for p in problems) + f"\n\nOyun:\n```html\n{html}\n```")
-    return [_system(_RULES, memory), {"role": "user", "content": user}]
+    return [_system(_RULES, memory, modules), {"role": "user", "content": user}]
 
 
 def build_test_messages(html: str, checklist: list[str], *, memory: str = "") -> list[dict]:
@@ -224,18 +245,18 @@ class Generator:
         return generated
 
     def create(self, description: str, textures: list[Texture], on_token: Callable | None = None,
-               cancel: Callable[[], bool] | None = None, *, memory: str = "") -> Generated:
-        return self._game(build_create_messages(description, textures, memory=memory), on_token, cancel)
+               cancel: Callable[[], bool] | None = None, *, memory: str = "", modules=()) -> Generated:
+        return self._game(build_create_messages(description, textures, memory=memory, modules=modules), on_token, cancel)
 
     def edit(self, html: str, request: str, textures: list[Texture], checklist: list[str],
              resolved: list[str] = (), on_token: Callable | None = None, cancel: Callable[[], bool] | None = None,
-             *, memory: str = "") -> Generated:
-        return self._game(build_edit_messages(html, request, textures, checklist, resolved, memory=memory),
-                          on_token, cancel)
+             *, memory: str = "", modules=()) -> Generated:
+        return self._game(build_edit_messages(html, request, textures, checklist, resolved, memory=memory,
+                                              modules=modules), on_token, cancel)
 
     def fix(self, html: str, problems: list[str], on_token: Callable | None = None,
-            cancel: Callable[[], bool] | None = None, *, memory: str = "") -> Generated:
-        return self._game(build_fix_messages(html, problems, memory=memory), on_token, cancel)
+            cancel: Callable[[], bool] | None = None, *, memory: str = "", modules=()) -> Generated:
+        return self._game(build_fix_messages(html, problems, memory=memory, modules=modules), on_token, cancel)
 
     def write_tests(self, html: str, checklist: list[str], cancel: Callable[[], bool] | None = None,
                     *, memory: str = "") -> list[str | None]:
