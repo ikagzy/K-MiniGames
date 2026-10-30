@@ -64,3 +64,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-55 | 2026-10-28 | k-ai-v1 (800 örnek, çeşitlendirilmiş veri): üretilmiş 0,963, elle yazılmış alan 0,841 ve tam 0,667 (3B 0,794/0,583); kgame.js pencereye sığdırma; sırada form modu ve kademeli model | e6998bd |
 | CP-56 | 2026-10-28 | Platform kitine Sonic özellikleri: spring, dashPad, rings (130 JS testi, tarayıcıda denendi); k-ai henüz bilmiyor, yeniden eğitim gerekli | b8cdf2d |
 | CP-57 | 2026-10-28 | hero.character ve özgün runner karakteri (turuncu tilki); Hız Koşusu demosu yeniden kuruldu; Mario benzeri tasarımlar bekliyor | 70641fe |
+| CP-58 | 2026-10-28 | Özgün varsayılan tasarımlar (kâşif, yaratık, mücevher blok, iksir, taş sütun), marka adları temizlendi, campaign (2-20 seviye, kademeli zorluk), 134 JS testi | 82ce684 |
