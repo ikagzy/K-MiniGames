@@ -11,3 +11,10 @@
 | yöntem | geçti | doğrulanamadı | kaldı | düzeltme | JS hatası | sorunlar | süre (sn) |
 |---|---|---|---|---|---|---|---|
 | new | 0 | 5 | 0 | 0 | 0 | - | 161 |
+
+## 2026-10-30 10:56 — qwen2.5-coder:14b, tarif: platform
+
+| yöntem | geçti | doğrulanamadı | kaldı | düzeltme | JS hatası | sorunlar | süre (sn) |
+|---|---|---|---|---|---|---|---|
+| old | 0 | 4 | 0 | 0 | 0 | probe_keys | 211 |
+| new | 1 | 4 | 0 | 3 | 0 | probe_mouse | 851 |
