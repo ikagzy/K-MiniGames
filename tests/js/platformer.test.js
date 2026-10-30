@@ -347,3 +347,72 @@ test('a campaign beats generate but custom level rows beat both', () => {
   assert.strictEqual(K.levels.fromSpec({ campaign: { count: 4 }, generate: [{ seed: 1 }] }).length, 4);
   assert.strictEqual(K.levels.fromSpec({ campaign: { count: 4 }, levels: [FLAT] }).length, 1);
 });
+
+// ---- variety: checkpoint, ice, moving platforms ----
+const PIT3 = ['.'.repeat(40), 'P' + '.'.repeat(37) + 'F', '#'.repeat(14) + '...' + '#'.repeat(23), '#'.repeat(14) + '...' + '#'.repeat(23)];
+
+test('checkpoint, ice and movingPlatforms are known features and pass the check', () => {
+  const K = fresh();
+  ['checkpoint', 'ice', 'movingPlatforms'].forEach((f) => assert.ok(K.feature.list('platformer').includes(f), f));
+  assert.deepStrictEqual(K.kit.check({ kit: 'platformer', features: ['checkpoint', 'ice', 'movingPlatforms', 'spring', 'dashPad', 'rings'] }), []);
+});
+
+test('after touching the checkpoint, dying sends the hero back to it, not to the start', () => {
+  const K = fresh();
+  const s = sonic(K, ['checkpoint']);
+  run(s, 0.3);
+  const cp = s.g.all('checkpoint')[0];
+  assert.ok(cp, 'the level has a checkpoint');
+  const startX = s.me.x;
+  s.me.x = cp.x; s.me.y = cp.y; s.me.vy = 0;
+  run(s, 0.2);
+  assert.ok(s.checkpoint && s.checkpoint.x === cp.cpX, 'the checkpoint was taken');
+  s.me.y = 2000;   // falls out of the world
+  run(s, 4);
+  assert.ok(s.hud.lives < 3, 'a life was lost');
+  assert.ok(s.me.x > startX + 200, 'the hero came back at the checkpoint: ' + s.me.x + ' (start ' + startX + ')');
+  const plain = sonic(fresh(), ['checkpoint']);
+  plain.me.y = 2000; run(plain, 4);
+  assert.ok(plain.me.x < 100, 'with no checkpoint taken the hero starts over');
+});
+
+test('on ice the hero keeps sliding after letting go, much longer than on normal ground', () => {
+  const K = fresh();
+  const slide = (tx) => {
+    const s = sonic(K, ['ice']);
+    run(s, 0.3);
+    s.me.x = tx * 32 + 4; s.me.y = s.me.y - 2;
+    K.press('d'); run(s, 0.5); K.press('d', false);
+    const v0 = s.me.vx;
+    run(s, 0.25);
+    return { v0, v1: s.me.vx, iced: s.g.all('tile').some((e) => e.texture === K.sprites.get('ice.top')) };
+  };
+  const normal = slide(5), ice = slide(24);
+  assert.ok(ice.iced, 'some ground is ice');
+  assert.ok(normal.v1 < normal.v0 * 0.2, 'normal ground stops fast: ' + normal.v1 + ' of ' + normal.v0);
+  assert.ok(ice.v1 > ice.v0 * 0.4, 'ice keeps the speed: ' + ice.v1 + ' of ' + ice.v0);
+});
+
+test('a moving platform floats over a pit, carries the hero and the pit no longer kills him', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'platformer', levels: [PIT3], features: ['movingPlatforms'], time: 100 });
+  run(s, 0.2);
+  const p = s.g.all('mplatform')[0];
+  assert.ok(p, 'a platform was placed over the pit');
+  s.me.x = p.x + 20; s.me.y = p.y - s.me.h - 2; s.me.vy = 0;
+  const x0 = p.x;
+  run(s, 1.5);
+  assert.strictEqual(s.hud.lives, 3, 'he did not fall');
+  assert.ok(Math.abs(s.me.y + s.me.h - p.y) < 3, 'he stands on it');
+  assert.ok(Math.abs(p.x - x0) > 5, 'the platform moved');
+  assert.ok(Math.abs((s.me.x + s.me.w / 2) - (p.x + p.w / 2)) < 40, 'and carried him along');
+});
+
+test('all the variety features together keep a generated campaign valid and runnable', () => {
+  const K = fresh();
+  const spec = { kit: 'platformer', features: ['checkpoint', 'ice', 'movingPlatforms', 'spring', 'dashPad', 'rings'], campaign: { count: 8, from: 1, to: 5, width: 80, seed: 4 }, generate: [{ seed: 1 }], time: 200 };
+  assert.deepStrictEqual(K.kit.check(spec), []);
+  const s = K.kit.run(spec);
+  run(s, 3);
+  assert.strictEqual(s.levels.count, 8);
+});

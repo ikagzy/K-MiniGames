@@ -3,7 +3,7 @@
                levels:[ ['....', 'P..F', '####'] ], features:['doubleJump'] })
    Kit; seviyeyi (ASCII, bkz. kgame.levels.js), kahramanı (koşma, zıplama, kaçırma payı, kısa/uzun zıplama), düşmanları (ezme),
    altın, blokları, güçlendirmeyi, bayrağı, kamerayı, arayüzü, sesi, ölme ve yeniden başlamayı kendisi kurar.
-   Özellikler: doubleJump, spring (yaylar), dashPad (hız zeminleri), rings (halka: vurulunca altınlar gider, ölmezsin). Önce kgame.js, sprites, animation, themes, levels, hud, audio2, items, enemies, kits yüklenmiş olmalı. */
+   Özellikler: doubleJump, spring, dashPad, rings (halka), checkpoint, ice (buz), movingPlatforms (hareketli platform). Önce kgame.js, sprites, animation, themes, levels, hud, audio2, items, enemies, kits yüklenmiş olmalı. */
 (function (root) {
   var K = root.K;
   var TILE = 32;
@@ -37,11 +37,12 @@
       var levels = K.levels.set(K.levels.fromSpec(spec));
       var hero = spec.hero;
       var state = { g: g, spec: spec, theme: theme, levels: levels, level: null, map: null, me: null, tiles: {}, frozen: false,
-                    jumpHooks: [], heroHooks: [], loadHooks: [], hurtHooks: [], speedMul: 1, invuln: 0, star: 0, qIndex: 0 };
+                    jumpHooks: [], heroHooks: [], loadHooks: [], hurtHooks: [], floorHooks: [], speedMul: 1, slip: 1, checkpoint: null, invuln: 0, star: 0, qIndex: 0 };
       var hud;
 
       // ---- screens ----
       var restart = function () {
+        state.checkpoint = null;
         hud.score = 0; hud.coins = 0; hud.lives = hero.lives; hud.time = spec.time; hud.over = false; hud.timeUp = false;
         levels.reset(); load(levels.current()); g.go("play");
       };
@@ -83,7 +84,8 @@
             g.add({ shape: "rect", x: c.x + 19, y: c.y - TILE * 3, w: 26, h: 26, color: "#3a3", tag: "flagcloth", texture: K.sprites.get("flag") });
           }
         });
-        spawnHero(lv.start || { x: 0, y: 0 });
+        var cp = state.checkpoint && state.checkpoint.level === lv.index ? state.checkpoint : null;   // a respawn after dying
+        spawnHero(cp || lv.start || { x: 0, y: 0 });
         state.speedMul = 1;
         state.loadHooks.forEach(function (h) { h(lv); });
         g.camera.x = 0; g.camera.y = lv.height - g.height;
@@ -101,7 +103,7 @@
           var jump = K.key("w") || K.key("ArrowUp") || K.key(" ");
           var top = hero.speed * state.speedMul * (K.key("Shift") ? 1.45 : 1);
           var target = ((right ? 1 : 0) - (left ? 1 : 0)) * top;
-          self.vx += (target - self.vx) * Math.min(1, (self.onFloor ? 14 : 7) * dt);
+          self.vx += (target - self.vx) * Math.min(1, (self.onFloor ? 14 * state.slip : 7) * dt);
           if (target === 0 && Math.abs(self.vx) < 4) self.vx = 0;
           coyote = self.onFloor ? 0.1 : coyote - dt;
           if (jump && !held) buffer = 0.12; else buffer -= dt;
@@ -176,6 +178,7 @@
           if (me.dying) { if (me.y > lv.height + 200) me.vy = 0; return; }
           var before = me.vy;
           g.collideTiles(me, map);
+          state.floorHooks.forEach(function (h) { h(me, dt); });   // things to stand on that are not tiles
           g.all().forEach(function (e) { if (e !== me && e.collides) g.collideTiles(e, map); });
           if (before < -30 && me.vy === 0) {   // the head hit something: a block above?
             var tx = Math.floor(me.cx / TILE), ty = Math.floor((me.top - 3) / TILE), tile = state.tiles[tx + "," + ty];
@@ -266,6 +269,96 @@
         if (state.frozen) return;
         if (boost <= 0) K.sfx("powerup");
         boost = opt.seconds; me.vx = Math.max(me.vx, state.spec.hero.speed * opt.speed);
+      });
+    }
+  });
+
+  // ---- variety features: checkpoint, ice, moving platforms ----
+  K.sprites.define("checkpoint", ["..yy..", ".yyyy.", ".yYYy.", ".yyyy.", "..yy..", "..ll..", "..ll..", "..ll..", "..ll..", ".llll."]);
+  K.sprites.define("checkpoint.on", ["..ww..", ".wffw.", ".wffw.", ".wffw.", "..ww..", "..ll..", "..ll..", "..ll..", "..ll..", ".llll."]);
+  K.sprites.define("platform", ["LLLLLLLLLLLL", "llllllllllll", "LLLLLLLLLLLL"]);
+  (function () {
+    var top = ["wwwwwwwwwwwwwwww", "fwfffffffwffffff"], body = [], r;
+    for (r = 2; r < 16; r++) { top.push(r % 3 ? "ffffffffffffffff" : "fffwfffffffffwff"); }
+    for (r = 0; r < 16; r++) { body.push(r % 4 ? "ffffffffffffffff" : "ffwfffffffwfffff"); }
+    K.sprites.define("ice.top", top);
+    K.sprites.define("ice.body", body);
+  })();
+
+  // A middle spot of the level where dying sends the hero back to, instead of the start.
+  K.feature.define("checkpoint", {
+    kits: ["platformer"],
+    apply: function (state) {
+      var g = state.g;
+      state.loadHooks.push(function (lv) {
+        var all = spots(lv, 1, 0), best = null;
+        all.forEach(function (c) { if (!best || Math.abs(c.x - lv.width / 2) < Math.abs(best.x - lv.width / 2)) best = c; });
+        if (!best) return;
+        var on = !!(state.checkpoint && state.checkpoint.level === lv.index);
+        g.add({ shape: "rect", x: best.x + 8, y: best.y - 40, w: 16, h: 40, color: "#ffd23f", tag: "checkpoint",
+                texture: K.sprites.get(on ? "checkpoint.on" : "checkpoint"), cpX: best.x, cpY: best.y - 32 });
+      });
+      g.onCollide("player", "checkpoint", function (me, cp) {
+        if (state.checkpoint && state.checkpoint.level === state.level.index && state.checkpoint.x === cp.cpX) return;
+        state.checkpoint = { level: state.level.index, x: cp.cpX, y: cp.cpY };
+        cp.texture = K.sprites.get("checkpoint.on"); K.sfx("powerup");
+      });
+    }
+  });
+
+  // Slippery patches of ground: the hero keeps sliding when he lets go and turns slowly.
+  K.feature.define("ice", {
+    kits: ["platformer"], options: { slip: 0.12, patch: 20 },
+    apply: function (state, opt) {
+      var g = state.g, ice = {};
+      state.loadHooks.push(function (lv) {
+        ice = {};
+        var flag = lv.of("flag")[0], tiles = {};
+        g.all("tile").forEach(function (e) { tiles[Math.round(e.x / TILE) + "," + Math.round(e.y / TILE)] = e; });
+        lv.cells.forEach(function (c) {
+          if (c.kind !== "ground" || lv.map.solidAt(c.x + 1, c.y - TILE + 1)) return;
+          if (c.tx < 12 || (flag && c.x > flag.x - 160) || Math.floor(c.tx / opt.patch) % 2 !== 1) return;
+          ice[c.tx] = true;
+          var e = tiles[c.tx + "," + c.ty];
+          if (e) e.texture = K.sprites.get("ice.top");
+        });
+      });
+      state.heroHooks.push(function (me) { state.slip = me.onFloor && ice[Math.floor((me.x + me.w / 2) / TILE)] ? opt.slip : 1; });
+    }
+  });
+
+  // Platforms that slide over the pits (and carry the hero), so a pit is crossed by timing, not only by jumping.
+  K.feature.define("movingPlatforms", {
+    kits: ["platformer"], options: { speed: 1.3 },
+    apply: function (state, opt) {
+      var g = state.g;
+      state.loadHooks.push(function (lv) {
+        var cols = {}, top = Infinity, w = Math.ceil(lv.width / TILE), run = null, runs = [], tx;
+        lv.cells.forEach(function (c) { if (c.kind === "ground") { cols[c.tx] = true; top = Math.min(top, c.y); } });
+        for (tx = 0; tx <= w; tx++) {
+          if (!cols[tx] && tx < w) { if (!run) run = { from: tx, to: tx }; run.to = tx; } else if (run) { runs.push(run); run = null; }
+        }
+        runs.forEach(function (r, i) {
+          var len = r.to - r.from + 1;
+          if (len < 2 || r.from < 4 || r.to > w - 6) return;
+          var mid = (r.from + r.to + 1) * TILE / 2, reach = Math.max(20, len * TILE / 2 - 10);
+          g.add({ shape: "rect", x: mid - 32, y: top, w: 64, h: 12, color: "#999", tag: "mplatform", texture: K.sprites.get("platform"),
+                  home: mid - 32, reach: reach, t: i * 1.7, dx: 0,
+                  onUpdate: function (self, dt) {
+                    if (state.frozen) { self.dx = 0; return; }
+                    self.t += dt * opt.speed;
+                    var nx = self.home + Math.sin(self.t) * self.reach;
+                    self.dx = nx - self.x; self.x = nx;
+                  } });
+        });
+      });
+      state.floorHooks.push(function (me) {
+        if (me.vy < 0 || state.frozen) return;
+        g.all("mplatform").forEach(function (p) {
+          if (me.x + me.w > p.x && me.x < p.x + p.w && me.y + me.h >= p.y - 4 && me.y + me.h <= p.y + 14) {
+            me.y = p.y - me.h; me.vy = 0; me.onFloor = true; me.x += p.dx || 0;
+          }
+        });
       });
     }
   });

@@ -94,10 +94,13 @@
           "doubleJump",
           "spring",
           "dashPad",
-          "rings"
+          "rings",
+          "checkpoint",
+          "ice",
+          "movingPlatforms"
         ]
       },
-      "maxItems": 4
+      "maxItems": 6
     },
     "campaign": {
       "type": "object",
