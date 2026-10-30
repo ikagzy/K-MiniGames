@@ -72,6 +72,18 @@
   S.define("hero.die", ["..........", "...rrrr...", "..rrrrrrr.", "..nnsssns.", ".nsnkskns.", "..nssssnn.", "..sskkkss.", "s.rrbrrr.s", "ssrrbrbrrs",
     "rrrrbbbbrr", "..bbybyb..", "..bbbbbb..", ".bbb..bbb.", ".nnn..nnn."]);
 
+  // ---- runner (an original fast hero: orange fox, purple scarf, yellow boots) ----
+  S.define("runner.idle", ["..o....o..", ".ooo..ooo.", ".oooooooo.", ".owkoowko.", ".oooeeooo.", "..oeekeeo.", "...pppp...", "..opppp.o.",
+    ".ooeeeeoo.", ".ooeeeeoo.", "..oooooo..", "..oo..oo..", "..yy..yy..", ".yyy..yyy."]);
+  S.define("runner.run1", ["..o....o..", ".ooo..ooo.", ".oooooooo.", ".owkoowko.", ".oooeeooo.", "..oeekeeo.", "...pppp...", "..opppppo.",
+    "ooeeeeeoo.", "o.eeeeeo..", "..ooooo...", ".oo...oo..", "yy.....yy.", "yy......yy"]);
+  S.define("runner.run2", ["..o....o..", ".ooo..ooo.", ".oooooooo.", ".owkoowko.", ".oooeeooo.", "..oeekeeo.", "...pppp...", ".opppppo..",
+    ".ooeeeeoo.", "..eeeeeoo.", "..ooooo...", "..oo.oo...", "..yy..yy..", "..yyy.yyy."]);
+  S.define("runner.jump", ["..o....o..", ".ooo..ooo.", ".oooooooo.", ".owkoowko.", ".oooeeooo.", "..oeekeeo.", "...pppp...", "o.opppp.o.",
+    "oooeeeeooo", "oo.eeee.oo", "..oooooo..", ".yy....yy.", ".yy....yy.", ".........."]);
+  S.define("runner.die", ["..o....o..", ".ooo..ooo.", ".oooooooo.", ".okkookko.", ".oooeeooo.", "..oeekeeo.", "...pppp...", "o.opppp.o.",
+    "oooeeeeooo", "..oeeeeo..", "..oooooo..", ".yy....yy.", ".yy....yy.", ".........."]);
+
   // ---- walking enemy (brown) ----
   S.define("walker.1", ["...dddd...", "..dddddd..", ".dddddddd.", ".dwkddkwd.", ".dwkddkwd.", "dddddddddd", ".ddsssssd.", "..sssssss.", "..nnn.nnn.", ".nnn...nnn"]);
   S.define("walker.2", ["...dddd...", "..dddddd..", ".dddddddd.", ".dwkddkwd.", ".dwkddkwd.", "dddddddddd", ".ddsssssd.", "..sssssss.", "...nn.nn..", "..nnn.nnn."]);

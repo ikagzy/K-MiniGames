@@ -19,6 +19,8 @@
 
     check: function (spec) {
       var errors = [], all = K.levels.fromSpec(spec);
+      var who = (spec.hero && spec.hero.character) || "hero";
+      if (!K.sprites.has(who + ".idle")) errors.push("bilinmeyen kahraman: " + who + " (var olanlar: hero, runner)");
       all.forEach(function (rows, i) {
         if (!Array.isArray(rows)) { errors.push("seviye " + (i + 1) + " bir satır listesi olmalı"); return; }
         var lv = K.levels.parse(rows);
@@ -110,7 +112,8 @@
           held = jump;
           state.heroHooks.forEach(function (h) { h(self, dt); });
         };
-        state.anim = K.anim.attach(me, { sprites: { idle: ["hero.idle"], run: ["hero.run1", "hero.run2"], jump: ["hero.jump"], die: ["hero.die"] }, fps: { run: 10 } });
+        var who = hero.character || "hero";
+        state.anim = K.anim.attach(me, { sprites: { idle: [who + ".idle"], run: [who + ".run1", who + ".run2"], jump: [who + ".jump"], die: [who + ".die"] }, fps: { run: 10 } });
         state.me = me;
       }
 

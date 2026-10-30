@@ -53,6 +53,10 @@
     "hero": {
       "type": "object",
       "properties": {
+        "character": {
+          "type": "string",
+          "enum": ["hero", "runner"]
+        },
         "speed": {
           "type": "integer",
           "minimum": 80,

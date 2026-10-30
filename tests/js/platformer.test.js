@@ -306,3 +306,12 @@ test('all the Sonic features together keep a generated level playable to the end
   run(s, 3);
   assert.ok(s.g.all('spring').length + s.g.all('dashpad').length > 0);
 });
+
+test('the hero can be another character; an unknown one makes the spec invalid', () => {
+  const K = fresh();
+  assert.deepStrictEqual(K.kit.check({ kit: 'platformer', hero: { character: 'runner' } }), []);
+  assert.ok(K.kit.check({ kit: 'platformer', hero: { character: 'yok' } })[0].includes('bilinmeyen kahraman'));
+  const s = K.kit.run({ kit: 'platformer', hero: { character: 'runner' }, levels: [LONG], time: 100 });
+  run(s, 0.3);
+  assert.ok(K.sprites.has('runner.run1') && K.sprites.has('runner.die'));
+});
