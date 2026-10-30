@@ -28,8 +28,9 @@ MODULES: dict[str, Module] = {
     "sports": Module("sports", ("kgame.sports.js",), "sports.guide.md", ("core", "ai")),
 }
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
-_TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc=[\"']kgame[\w.\-]*\.js[\"'][^>]*>\s*</script>[ \t]*\r?\n?", re.I)
+_TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
 _FIRST_SCRIPT = re.compile(r"<script\b", re.I)
+_COMMENT = re.compile(r"<!--.*?-->", re.S)
 
 
 def normalize(names: Iterable[str] | None) -> list[str]:
@@ -75,11 +76,16 @@ def ensure_scripts(html: str, modules: list[str]) -> str:
     itself (in any order, or twice) are replaced."""
     tags = "".join(f'<script src="{name}"></script>\n' for name in _files(modules))
     html = _TAG.sub("", html)
-    first = _FIRST_SCRIPT.search(html)
+    comments = [m.span() for m in _COMMENT.finditer(html)]
+
+    def outside(match) -> bool:   # a word inside an HTML comment is not a place to put the tags
+        return not any(a <= match.start() < b for a, b in comments)
+
+    first = next((m for m in _FIRST_SCRIPT.finditer(html) if outside(m)), None)
     if first:
         return html[:first.start()] + tags + html[first.start():]
     for pattern in (r"</head>", r"<body[^>]*>"):
-        match = re.search(pattern, html, re.I)
+        match = next((m for m in re.finditer(pattern, html, re.I) if outside(m)), None)
         if match:
             at = match.start() if pattern == "</head>" else match.end()
             return html[:at] + tags + html[at:]

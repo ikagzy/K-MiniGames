@@ -203,19 +203,33 @@ async function probeLogic() {
   }
   if (!bot || ball === bot) return;
   var moved = track[bot.path] && track[bot.path].length > 5;
-  var rx = ball.ref.x, ry = ball.ref.y, answers = 0, tried = 0;
-  var spots = [[0, -160], [0, 160], [-160, 0], [160, 0]];
-  var reactions = [];
-  for (var i = 0; i < spots.length; i++) {
-    var before = [bot.ref.x, bot.ref.y];
-    ball.ref.x = bot.ref.x + spots[i][0]; ball.ref.y = bot.ref.y + spots[i][1];
-    await sleep(350);
-    reactions.push([bot.ref.x - before[0], bot.ref.y - before[1]]);
+  var rx = ball.ref.x, ry = ball.ref.y, toward = 0, away = 0, tested = 0, travelled = 0;
+  var cv = canvases()[0], W = cv ? cv.width : 1e9, H = cv ? cv.height : 1e9;
+  // On each axis the ball is moved to the two sides in turn (up, down, up, down; side, other side, ...): a bot that
+  // follows the ball turns round every time, one that sways on its own rhythm cannot keep up with the switching.
+  for (var axis = 0; axis < 2; axis++) {
+    var base = [bot.ref.x, bot.ref.y], sides = [-1, 1, -1, 1];
+    // how far the ball can be put to either side on this axis (up to 160) without leaving the court or touching the floor
+    var room = axis === 0 ? Math.min(base[1], H * 0.85 - base[1]) : Math.min(base[0], W - base[0]);
+    var gap = Math.min(160, room);
+    if (gap < 50) continue;   // no fair test on this axis
+    var aim = [0, 0], pin = setInterval(function () { ball.ref.x = aim[0]; ball.ref.y = aim[1]; ball.ref.vx = 0; ball.ref.vy = 0; }, 16);
+    for (var k = 0; k < sides.length; k++) {
+      aim = [base[0] + (axis === 0 ? 0 : sides[k] * gap), base[1] + (axis === 0 ? sides[k] * gap : 0)];
+      await sleep(400);   // a slow bot first finishes its old move (it only looks at the ball now and then)
+      var mid = [bot.ref.x, bot.ref.y];
+      await sleep(300);
+      var along = (axis === 0 ? bot.ref.y - mid[1] : bot.ref.x - mid[0]) * sides[k];   // toward (+) or away from (-) the ball
+      travelled += Math.abs(bot.ref.x - mid[0]) + Math.abs(bot.ref.y - mid[1]);
+      if (along > 2) toward++; else if (along < -2) away++;
+    }
+    clearInterval(pin);
+    tested++;
   }
   ball.ref.x = rx; ball.ref.y = ry;
-  function opposite(a, b) { return Math.abs(a) > 3 && Math.abs(b) > 3 && (a > 0) !== (b > 0); }
-  var follows = opposite(reactions[0][1], reactions[1][1]) || opposite(reactions[2][0], reactions[3][0]);
-  var still = reactions.every(function (r) { return Math.abs(r[0]) < 2 && Math.abs(r[1]) < 2; });
+  if (!tested) return;   // no axis was a fair test (a very small court): say nothing
+  var follows = toward > 0 && away === 0;
+  var still = travelled < 2;
   if (!follows) await send({type: 'probe', name: 'bot', path: bot.path, alive: !!moved, still: still});
 }
 async function runProbes() {
@@ -228,13 +242,13 @@ async function runProbes() {
     if (cs.length) { var info = canvasInfo(cs[0]); blank = !!info && info.colors <= 1; }
     else { blank = !document.body || ((document.body.innerText || '').trim() === '' && document.body.getElementsByTagName('*').length < 3); }
     if (blank) await send({type: 'probe', name: 'blank'});
+    await probeLogic();   // first: a game that is played for a while can end, and a finished game stands still
     await probeKeys();
     await probeMouse();
-    await probeLogic();
     var last = state(), grown = [];
     for (var p in last.lengths) { if (last.lengths[p] > 300 && last.lengths[p] > (first.lengths[p] || 1) * 5) grown.push(p); }
     if (grown.length) await send({type: 'probe', name: 'growth', paths: grown.slice(0, 3)});
-  } catch (e) {}
+  } catch (e) { await send({type: 'probe_error', message: String(e && e.stack || e).slice(0, 300)}); }   // a probe that breaks says so (the checker ignores it)
 }
 async function runAll() {
   for (var i = 0; i < TESTS.length; i++) {

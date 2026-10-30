@@ -32,9 +32,10 @@
   }
   K.key = function (name) { return !!keys[norm(name)]; };
   K.press = function (name, down) { keys[norm(name)] = down !== false; };
-  K.mouse = { x: 0, y: 0, down: false };
+  K.mouse = { x: 0, y: 0, down: false, clicks: 0 };   // clicks counts presses, so one that is over within a frame is not lost
   K.setMouse = function (x, y, down) {
     K.mouse.x = x; K.mouse.y = y;
+    if (down === true && !K.mouse.down) K.mouse.clicks++;
     if (down !== undefined) K.mouse.down = !!down;
   };
   if (hasDom) {
@@ -105,15 +106,17 @@
   var timers = [], tweens = [], timerId = 0;
   K.timer = {
     after: function (ms, fn) { timers.push({ id: ++timerId, left: ms, interval: 0, fn: fn }); return timerId; },
-    every: function (ms, fn) { timers.push({ id: ++timerId, left: ms, interval: ms, fn: fn }); return timerId; },
+    every: function (ms, fn) { ms = Math.max(1, ms); timers.push({ id: ++timerId, left: ms, interval: ms, fn: fn }); return timerId; },
+    reset: function () { timers = []; tweens = []; },
     clear: function (id) { timers = timers.filter(function (t) { return t.id !== id; }); },
     tick: function (dt) {
       var ms = dt * 1000;
       timers.slice().forEach(function (t) {
         if (timers.indexOf(t) < 0) return;
         t.left -= ms;
-        while (t.left <= 0) {
+        while (t.left <= 0 && timers.indexOf(t) >= 0) {   // a timer that cleared itself stops here
           t.fn();
+          if (timers.indexOf(t) < 0) return;
           if (!t.interval) { K.timer.clear(t.id); return; }
           t.left += t.interval;
         }
@@ -222,6 +225,7 @@
     g.camera = { x: 0, y: 0, zoom: 1 };
     g.ui = { items: {}, text: null, bar: null };
     g.running = false;
+    K.timer.reset();   // a new game starts without the timers of an earlier one
     g._follow = null;
     g._shake = { power: 0, left: 0, x: 0, y: 0 };
     g.canvas = opts.canvas || null;
@@ -250,9 +254,11 @@
     };
   }
 
+  var entityId = 0;
   function makeEntity(g, spec) {
     var e = {};
     for (var k in spec) e[k] = spec[k];
+    e._id = ++entityId;   // a stable name for contact keys (list positions move when entities die)
     e.shape = e.shape || "rect";
     e.x = e.x || 0; e.y = e.y || 0; e.vx = e.vx || 0; e.vy = e.vy || 0;
     if (e.shape === "circle") { e.r = e.r || 10; e.w = e.h = e.r * 2; }
@@ -298,8 +304,8 @@
       members(g, rule.a).forEach(function (a) {
         members(g, rule.b).forEach(function (b) {
           if (a === b) return;
-          var key = g.entities.indexOf(a) + ":" + g.entities.indexOf(b);
           if (!K.overlap(a, b)) return;
+          var key = a._id + ":" + b._id;
           seen[key] = true;
           if (!rule.active[key]) { rule.active[key] = true; rule.fn(a, b); }
         });
@@ -353,7 +359,7 @@
       runRules(g);
       g.entities = g.entities.filter(function (e) { return !e.dead; });
     }
-    K.timer.tick(dt);
+    if (g.current === "play" || (sc && sc.timers)) K.timer.tick(dt);   // timers rest on other screens (game over) unless asked
     if (sc && sc.update) sc.update(g, dt);
     if (g._follow) {
       var f = g._follow, z = g.camera.zoom;

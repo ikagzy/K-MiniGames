@@ -66,3 +66,18 @@ def test_guides_joins_the_selected_modules_guides():
     assert "kgame.js" in text and "kgame.ai.js" not in text
     both = kgamelib.guides(["core", "ai"])
     assert both.index("kgame.js") < both.index("kgame.ai.js")
+
+
+def test_a_script_word_inside_an_html_comment_is_not_the_place_for_the_tags():
+    page = ("<!doctype html><html><head><!-- Kütüphane <script> etiketlerini uygulama ekler --></head>"
+            "<body><canvas></canvas><script>const g = K.game();</script></body></html>")
+    out = kgamelib.ensure_scripts(page, ["core"])
+    assert out.index('<script src="kgame.js">') > out.index("-->")
+    assert out.index('<script src="kgame.js">') < out.index("const g = K.game()")
+
+
+def test_other_spellings_of_the_library_tags_are_replaced_not_doubled():
+    page = ("<html><head><script src='./kgame.js'></script><script src=kgame.ai.js></script></head>"
+            "<body><script>const g = K.game();</script></body></html>")
+    out = kgamelib.ensure_scripts(page, ["core", "ai"])
+    assert out.count("kgame.js") == 1 and out.count("kgame.ai.js") == 1

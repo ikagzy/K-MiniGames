@@ -17,9 +17,8 @@ def test_two_blocks_are_read_and_text_around_them_is_ignored():
     assert parse_patches(text) == [Patch('"speed": 200', '"speed": 300'), Patch("g.run();", "g.run();\ng.shake(1, 1);")]
 
 
-def test_a_half_block_is_dropped_and_an_empty_replacement_deletes():
-    text = "<<<<<<< BUL\nabc\n=======\nxyz\n" + "\n" + block("silinecek", "")
-    assert parse_patches(text) == [Patch("silinecek", "")]
+def test_an_empty_replacement_deletes_and_text_without_blocks_has_none():
+    assert parse_patches(block("silinecek", "")) == [Patch("silinecek", "")]
     assert parse_patches("hiçbir şey yok") == []
 
 
@@ -77,3 +76,11 @@ def test_an_answer_without_blocks_also_falls_back_and_a_short_or_old_game_skips_
     old = ScriptedClient(FULL)
     Generator(old, "m").edit(PAGE, "x", [], [])   # no modules: the old way
     assert len(old.messages) == 1 and "<<<<<<< BUL" not in old.messages[0][0]["content"]
+
+
+def test_a_cut_off_block_means_no_patches_at_all_so_the_edit_is_not_half_applied():
+    two_and_a_half = block('"speed": 200', '"speed": 300') + "\n" + block("g.run();", "g.run();\ng.shake(1, 1);") + \
+        "\n<<<<<<< BUL\nconst me\n=======\nconst me2"
+    assert parse_patches(two_and_a_half) == []
+    restarted = "<<<<<<< BUL\nabc\n=======\nxyz\n" + block("silinecek", "")
+    assert parse_patches(restarted) == []

@@ -105,11 +105,13 @@
   // Vuran, topa yeterince yakınsa topu hedefe doğru gönderir (hem x hem y hızı verir, voleybolda hep biraz yukarı).
   sports.hit = function (g, ball, hitter, target, o) {
     o = o || {};
-    var power = o.power || 650, reach = o.reach === undefined ? 60 : o.reach, lift = o.lift === undefined ? 0.35 : o.lift;
+    var side = !ball.court || ball.court.heavy;   // a side view lifts the ball; a top-down game does not
+    var power = o.power || 650, reach = o.reach === undefined ? 60 : o.reach, lift = o.lift === undefined ? (side ? 0.35 : 0) : o.lift;
     if (Math.hypot(ball.cx - hitter.cx, ball.cy - hitter.cy) > reach + ball.r) return false;
     var dx = target.x - ball.cx, dy = target.y - ball.cy, len = Math.hypot(dx, dy) || 1;
     ball.vx = dx / len * power;
-    ball.vy = Math.min(dy / len * power, -power * lift);
+    ball.vy = dy / len * power;
+    if (lift > 0) ball.vy = Math.min(ball.vy, -power * lift);
     ball.touches = (ball.touches || 0) + 1;
     ball.lastHitter = hitter;
     K.sfx("hit");
@@ -119,11 +121,11 @@
 
   // Fare tuşuna her basışta (basılı tutarken değil) vuran, topa yakınsa topu fare konumuna gönderir.
   sports.hitOnClick = function (g, ball, hitter, o) {
-    var was = false;
+    var seen = K.mouse.clicks;
     return g.add({ shape: "rect", x: -100, y: -100, w: 1, h: 1, hidden: true, tag: "_clicker", onUpdate: function () {
-      var down = K.mouse.down;
-      if (down && !was) sports.hit(g, ball, hitter, K.mouse, o);
-      was = down;
+      if (K.mouse.clicks === seen) return;
+      seen = K.mouse.clicks;
+      sports.hit(g, ball, hitter, K.mouse, o);
     } });
   };
 
@@ -136,7 +138,7 @@
       wait -= dt;
       if (wait > 0) return;
       var c = ball.court, t = typeof o.target === "function" ? o.target() : o.target;
-      if (!t) t = { x: c && c.sideOf(bot.cx) === "right" ? c.width * 0.25 : (c ? c.width * 0.75 : g.width / 2), y: 100 };
+      if (!t) t = { x: c && c.sideOf(bot.cx) === "right" ? c.width * 0.25 : (c ? c.width * 0.75 : g.width / 2), y: c && !c.heavy ? c.height / 2 : 100 };
       var aim = { x: t.x + K.rand(-1, 1) * level.error * 3, y: t.y };
       if (sports.hit(g, ball, bot, aim, { power: o.power || 550, reach: o.reach })) wait = o.cooldown || 0.5;
     } });

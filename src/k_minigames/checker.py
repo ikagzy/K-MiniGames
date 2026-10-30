@@ -10,7 +10,7 @@ from k_minigames.library import Game
 from k_minigames.testlist import TestItem
 
 PER_TEST_SECONDS = 4
-PROBE_SECONDS = 20   # the probes press every key, click, and watch the ball and the bot for a few seconds
+PROBE_SECONDS = 30   # the probes press every key, click, and watch the ball and the bot for a few seconds
 _KEY_WORDS = re.compile(r"tuş|klavye|wasd|\boklar?\b|zıpl|boşluk|hareket", re.I)
 _MOUSE_WORDS = re.compile(r"tıkl|fare|mouse|\bvur", re.I)
 _BOT_WORDS = re.compile(r"\bbot|cpu|rakip|yapay zek|düşman|takip", re.I)

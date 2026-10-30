@@ -70,6 +70,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--model", default="qwen2.5-coder:14b")
     parser.add_argument("--recipe", default="volleyball", choices=sorted(RECIPES))
     parser.add_argument("--runs", type=int, default=1)
+    parser.add_argument("--modes", default="old,new", help="hangi yöntemler: old,new")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     if args.dry_run:
@@ -84,7 +85,7 @@ def main(argv: list[str]) -> int:
         return 1
     rows = []
     for run in range(args.runs):
-        for mode in MODES:
+        for mode in args.modes.split(","):
             print(f"koşu {run + 1}/{args.runs}: {args.recipe} ({mode}) ...", flush=True)
             row = one_run(args.model, args.recipe, mode)
             print(row, flush=True)

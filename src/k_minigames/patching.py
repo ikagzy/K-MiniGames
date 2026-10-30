@@ -13,14 +13,16 @@ class Patch:
 
 
 def parse_patches(text: str) -> list[Patch]:
-    """The complete blocks in the answer. Text around them is ignored; a block that is cut off (a new block starts
-    before it ended) is dropped, and the new one is still read."""
+    """The complete blocks in the answer; text around them is ignored. A block that is cut off (the answer ends or a
+    new block starts before it ended) makes the whole answer untrusted: no patches, so the edit is not half applied."""
     patches: list[Patch] = []
     find: list[str] | None = None
     replace: list[str] | None = None
     for line in (text or "").splitlines():
         mark = line.strip()
         if mark == _START:
+            if find is not None:
+                return []
             find, replace = [], None
         elif mark == _MIDDLE and find is not None and replace is None:
             replace = []
@@ -31,7 +33,7 @@ def parse_patches(text: str) -> list[Patch]:
             replace.append(line)
         elif find is not None:
             find.append(line)
-    return patches
+    return [] if find is not None else patches
 
 
 def apply_patches(html: str, patches: list[Patch]) -> str | None:
