@@ -66,3 +66,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-57 | 2026-10-28 | hero.character ve özgün runner karakteri (turuncu tilki); Hız Koşusu demosu yeniden kuruldu; Mario benzeri tasarımlar bekliyor | 70641fe |
 | CP-58 | 2026-10-28 | Özgün varsayılan tasarımlar (kâşif, yaratık, mücevher blok, iksir, taş sütun), marka adları temizlendi, campaign (2-20 seviye, kademeli zorluk), 134 JS testi | 82ce684 |
 | CP-59 | 2026-10-28 | Platform çeşitliliği: checkpoint, ice (buz), movingPlatforms; floorHooks/slip/checkpoint kancaları; 139 JS testi; boss yapılmadı | c64f2b7 |
+| CP-60 | 2026-10-28 | Müzik üreteci: K.music.compose (6 ruh hali, tempo, seed), iki sesli motor, musicStyle alanı; kulakla doğrulanmadı; 142 JS testi | 3cc159a |
