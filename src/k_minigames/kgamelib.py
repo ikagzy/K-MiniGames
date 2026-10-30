@@ -1,0 +1,86 @@
+"""The game library: JavaScript files (assets/lib) that the model's game builds on, so it writes only the rules.
+
+Each module is a file plus a short guide that is shown to the model. The files are copied into the game's folder (the
+game opens them with relative paths, so the folder can be moved); the app adds the <script> tags itself."""
+import re
+import shutil
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+
+from k_minigames.library import Game
+
+LIB_DIR = Path(__file__).resolve().parent / "assets" / "lib"
+LIB_VERSION = "1"
+
+
+@dataclass(frozen=True)
+class Module:
+    name: str
+    files: tuple[str, ...]
+    guide: str
+    needs: tuple[str, ...] = ()
+
+
+MODULES: dict[str, Module] = {
+    "core": Module("core", ("kgame.js",), "core.guide.md"),
+    "ai": Module("ai", ("kgame.ai.js",), "ai.guide.md", ("core",)),
+    "sports": Module("sports", ("kgame.sports.js",), "sports.guide.md", ("core", "ai")),
+}
+_ORDER = list(MODULES)   # dependency order: a module comes after what it needs
+_TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc=[\"']kgame[\w.\-]*\.js[\"'][^>]*>\s*</script>[ \t]*\r?\n?", re.I)
+_FIRST_SCRIPT = re.compile(r"<script\b", re.I)
+
+
+def normalize(names: Iterable[str] | None) -> list[str]:
+    """The module names the library knows, with what they need, in dependency order; `core` is always there."""
+    wanted: set[str] = {"core"}
+    for name in names or []:
+        key = name.strip().lower() if isinstance(name, str) else ""
+        if key in MODULES:
+            wanted.add(key)
+    changed = True
+    while changed:   # add what the chosen modules need
+        changed = False
+        for name in list(wanted):
+            for need in MODULES[name].needs:
+                if need not in wanted:
+                    wanted.add(need)
+                    changed = True
+    return [name for name in _ORDER if name in wanted]
+
+
+def all_files() -> set[str]:
+    return {name for module in MODULES.values() for name in module.files}
+
+
+def _files(modules: list[str]) -> list[str]:
+    return [name for module in normalize(modules) for name in MODULES[module].files]
+
+
+def install(game: Game, modules: list[str]) -> list[str]:
+    """Copy the files of the modules into the game's folder (an older copy is replaced)."""
+    names = _files(modules)
+    for name in names:
+        shutil.copyfile(LIB_DIR / name, game.folder / name)
+    return names
+
+
+def guides(modules: list[str]) -> str:
+    return "\n\n".join((LIB_DIR / MODULES[m].guide).read_text(encoding="utf-8").strip() for m in normalize(modules))
+
+
+def ensure_scripts(html: str, modules: list[str]) -> str:
+    """The library's <script> tags exactly once, in order, before the game's own first script. Tags the model wrote
+    itself (in any order, or twice) are replaced."""
+    tags = "".join(f'<script src="{name}"></script>\n' for name in _files(modules))
+    html = _TAG.sub("", html)
+    first = _FIRST_SCRIPT.search(html)
+    if first:
+        return html[:first.start()] + tags + html[first.start():]
+    for pattern in (r"</head>", r"<body[^>]*>"):
+        match = re.search(pattern, html, re.I)
+        if match:
+            at = match.start() if pattern == "</head>" else match.end()
+            return html[:at] + tags + html[at:]
+    return tags + html
