@@ -3,7 +3,7 @@
                levels:[ ['....', 'P..F', '####'] ], features:['doubleJump'] })
    Kit; seviyeyi (ASCII, bkz. kgame.levels.js), kahramanı (koşma, zıplama, kaçırma payı, kısa/uzun zıplama), düşmanları (ezme),
    altın, blokları, güçlendirmeyi, bayrağı, kamerayı, arayüzü, sesi, ölme ve yeniden başlamayı kendisi kurar.
-   Özellikler: doubleJump. Önce kgame.js, sprites, animation, themes, levels, hud, audio2, items, enemies, kits yüklenmiş olmalı. */
+   Özellikler: doubleJump, spring (yaylar), dashPad (hız zeminleri), rings (halka: vurulunca altınlar gider, ölmezsin). Önce kgame.js, sprites, animation, themes, levels, hud, audio2, items, enemies, kits yüklenmiş olmalı. */
 (function (root) {
   var K = root.K;
   var TILE = 32;
@@ -35,7 +35,7 @@
       var levels = K.levels.set(K.levels.fromSpec(spec));
       var hero = spec.hero;
       var state = { g: g, spec: spec, theme: theme, levels: levels, level: null, map: null, me: null, tiles: {}, frozen: false,
-                    jumpHooks: [], heroHooks: [], invuln: 0, star: 0, qIndex: 0 };
+                    jumpHooks: [], heroHooks: [], loadHooks: [], hurtHooks: [], speedMul: 1, invuln: 0, star: 0, qIndex: 0 };
       var hud;
 
       // ---- screens ----
@@ -81,6 +81,8 @@
           }
         });
         spawnHero(lv.start || { x: 0, y: 0 });
+        state.speedMul = 1;
+        state.loadHooks.forEach(function (h) { h(lv); });
         g.camera.x = 0; g.camera.y = lv.height - g.height;
         g.follow(state.me, 0.12);
         if (spec.music) K.music.play(spec.music);
@@ -94,7 +96,7 @@
           if (state.frozen) return;
           var left = K.key("a") || K.key("ArrowLeft"), right = K.key("d") || K.key("ArrowRight");
           var jump = K.key("w") || K.key("ArrowUp") || K.key(" ");
-          var top = hero.speed * (K.key("Shift") ? 1.45 : 1);
+          var top = hero.speed * state.speedMul * (K.key("Shift") ? 1.45 : 1);
           var target = ((right ? 1 : 0) - (left ? 1 : 0)) * top;
           self.vx += (target - self.vx) * Math.min(1, (self.onFloor ? 14 : 7) * dt);
           if (target === 0 && Math.abs(self.vx) < 4) self.vx = 0;
@@ -120,6 +122,7 @@
       function hurt() {
         var me = state.me;
         if (state.frozen || state.invuln > 0 || state.star > 0) return;
+        for (var i = 0; i < state.hurtHooks.length; i++) if (state.hurtHooks[i](me)) return;   // a feature took the hit (rings)
         if (me.big) { me.big = false; me.y += 12; me.h = 30; me.w = 22; state.invuln = 1.5; K.sfx("bump"); }
         else die();
       }
@@ -202,6 +205,77 @@
         return true;
       });
       state.heroHooks.push(function (me) { if (me.onFloor) left = opt.jumps; });
+    }
+  });
+
+  // ---- speed features (Sonic style): springs, dash pads, rings ----
+  K.sprites.define("spring", ["rrrrrrrrrr", "RRRRRRRRRR", "..L.ll.L..", "..ll..ll..", "..L.ll.L..", "LLLLLLLLLL"]);
+  K.sprites.define("dashpad", ["oooooooooo", "oyyoyyoyyo", "oooooooooo", "LLLLLLLLLL"]);
+
+  // Flat, empty ground spots of a level (nothing standing on it or right above it), in order from left to right, kept away
+  // from the start and the flag. Each feature takes every `every`-th spot from its own `offset`, so two features never share one.
+  function spots(lv, every, offset) {
+    var busy = {}, flat = {}, out = [];
+    lv.cells.forEach(function (c) { if (c.kind === "ground") flat[c.tx + "," + c.ty] = c; else busy[c.tx + "," + c.ty] = true; });
+    var start = lv.start ? lv.start.x : 0, flag = lv.of("flag")[0];
+    Object.keys(flat).map(function (k) { return flat[k]; }).sort(function (a, b) { return a.tx - b.tx; }).forEach(function (c) {
+      var above = c.tx + "," + (c.ty - 1), above2 = c.tx + "," + (c.ty - 2);
+      if (flat[above] || busy[above] || busy[above2]) return;
+      if (!flat[(c.tx - 1) + "," + c.ty] || !flat[(c.tx + 1) + "," + c.ty]) return;   // a flat stretch, not a ledge
+      if (Math.abs(c.x - start) < 160 || (flag && Math.abs(c.x - flag.x) < 160)) return;
+      out.push(c);
+    });
+    return out.filter(function (c, i) { return i % every === offset % every; });
+  }
+
+  K.feature.define("spring", {
+    kits: ["platformer"], options: { every: 14, power: 1.75 },
+    apply: function (state, opt) {
+      var g = state.g, wait = 0;
+      state.loadHooks.push(function (lv) {
+        spots(lv, opt.every, 3).forEach(function (c) {
+          g.add({ shape: "rect", x: c.x + 2, y: c.y - 14, w: 28, h: 14, color: "#d32f2f", tag: "spring", texture: K.sprites.get("spring") });
+        });
+      });
+      state.heroHooks.push(function (me, dt) { wait -= dt; });
+      g.onCollide("player", "spring", function (me) {
+        if (wait > 0 || state.frozen) return;
+        wait = 0.3; me.vy = -state.spec.hero.jump * opt.power; me.onFloor = false; K.sfx("jump");
+      });
+    }
+  });
+
+  K.feature.define("dashPad", {
+    kits: ["platformer"], options: { every: 11, speed: 2.2, seconds: 1.2 },
+    apply: function (state, opt) {
+      var g = state.g, boost = 0;
+      state.loadHooks.push(function (lv) {
+        boost = 0;
+        spots(lv, opt.every, 7).forEach(function (c) {
+          g.add({ shape: "rect", x: c.x, y: c.y - 8, w: 32, h: 8, color: "#f28c28", tag: "dashpad", texture: K.sprites.get("dashpad") });
+        });
+      });
+      state.heroHooks.push(function (me, dt) {
+        if (boost > 0) { boost -= dt; state.speedMul = opt.speed; } else state.speedMul = 1;
+      });
+      g.onCollide("player", "dashpad", function (me) {
+        if (state.frozen) return;
+        if (boost <= 0) K.sfx("powerup");
+        boost = opt.seconds; me.vx = Math.max(me.vx, state.spec.hero.speed * opt.speed);
+      });
+    }
+  });
+
+  // Rings: a hit does not kill; it costs all the coins (the hero blinks and hops). With no coins a hit works as usual.
+  K.feature.define("rings", {
+    kits: ["platformer"], options: { seconds: 2 },
+    apply: function (state, opt) {
+      state.hurtHooks.push(function (me) {
+        var hud = state.hud;
+        if (hud.coins <= 0) return false;
+        hud.coins = 0; state.invuln = opt.seconds; me.vy = -260; me.vx = -Math.sign(me.vx || 1) * 160; K.sfx("bump");
+        return true;
+      });
     }
   });
 

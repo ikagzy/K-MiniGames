@@ -231,3 +231,78 @@ test('a feature listed twice is applied once', () => {
   const s = K.kit.run({ kit: 'platformer', features: ['doubleJump', 'doubleJump', { name: 'doubleJump' }] });
   assert.strictEqual(s.jumpHooks.length, 1);
 });
+
+// ---- Sonic features: springs, dash pads, rings ----
+const LONG = ['.'.repeat(80), 'P' + '.'.repeat(77) + 'F', '#'.repeat(80), '#'.repeat(80)];
+const sonic = (K, features, extra) => K.kit.run(Object.assign({ kit: 'platformer', levels: [LONG], features, time: 100 }, extra || {}));
+
+test('spring, dashPad and rings are known features of the platformer and pass the check', () => {
+  const K = fresh();
+  ['spring', 'dashPad', 'rings'].forEach((f) => assert.ok(K.feature.list('platformer').includes(f), f));
+  assert.deepStrictEqual(K.kit.check({ kit: 'platformer', features: ['spring', 'dashPad', 'rings', 'doubleJump'] }), []);
+});
+
+test('springs and dash pads stand on flat ground, away from the start and the flag, and never on the same spot', () => {
+  const K = fresh();
+  const s = sonic(K, ['spring', 'dashPad']);
+  run(s, 0.1);
+  const springs = s.g.all('spring'), pads = s.g.all('dashpad');
+  assert.ok(springs.length >= 2 && pads.length >= 2, springs.length + ' springs, ' + pads.length + ' pads');
+  const all = springs.concat(pads);
+  all.forEach((e) => { assert.ok(e.x > 160 && e.x < 80 * 32 - 160, 'away from the ends: ' + e.x); });
+  assert.strictEqual(new Set(all.map((e) => Math.round(e.x / 32))).size, all.length, 'no two on one spot');
+});
+
+test('a spring throws the hero much higher than a jump, and a level without the feature has none', () => {
+  const K = fresh();
+  const s = sonic(K, ['spring']);
+  run(s, 0.3);
+  const sp = s.g.all('spring')[0];
+  s.me.x = sp.x + 2; s.me.y = sp.y - s.me.h; s.me.vy = 0;
+  let top = s.me.y;
+  run(s, 1, () => { top = Math.min(top, s.me.y); });
+  assert.ok(sp.y - top > 160, 'rose ' + (sp.y - top) + ' px');   // a normal jump of 430 reaches about 84 px
+  const plain = sonic(fresh(), []);
+  run(plain, 0.1);
+  assert.strictEqual(plain.g.all('spring').length, 0);
+});
+
+test('a dash pad makes a running hero much faster for a while, then the speed comes back', () => {
+  const plain = sonic(fresh(), []);
+  const K = fresh();
+  const s = sonic(K, ['dashPad']);
+  run(plain, 0.3); run(s, 0.3);
+  const pad = s.g.all('dashpad')[0];
+  K.press('d');
+  plain.me.x = pad.x - 40; s.me.x = pad.x - 40;
+  run(plain, 0.8); run(s, 0.8);
+  assert.ok(s.speedMul > 2, 'boost is on: ' + s.speedMul);
+  assert.ok(s.me.vx > plain.me.vx * 1.8, 'with the pad ' + s.me.vx + ', without ' + plain.me.vx);
+  K.press('d', false);
+  run(s, 2);
+  assert.strictEqual(s.speedMul, 1, 'the boost ended');
+});
+
+test('with rings a hit costs the coins but not the life; with no coins a hit works as usual', () => {
+  const K = fresh();
+  const s = sonic(K, ['rings']);
+  run(s, 0.3);
+  s.hud.coins = 7;
+  s.g.add({ shape: 'rect', x: s.me.x, y: s.me.y, w: 30, h: 30, tag: 'hazard' });
+  run(s, 0.1);
+  assert.strictEqual(s.hud.coins, 0, 'the coins are gone');
+  assert.strictEqual(s.hud.lives, 3);
+  assert.ok(!s.me.dying);
+  run(s, 2.5);   // the blinking is over
+  s.g.add({ shape: 'rect', x: s.me.x, y: s.me.y, w: 30, h: 30, tag: 'hazard' });
+  run(s, 0.1);
+  assert.ok(s.me.dying, 'without coins it is a normal hit');
+});
+
+test('all the Sonic features together keep a generated level playable to the end for a running bot', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'platformer', features: ['spring', 'dashPad', 'rings', 'doubleJump'], hero: { speed: 260 }, generate: [{ seed: 5, width: 60, difficulty: 2 }], time: 200 });
+  assert.deepStrictEqual(K.kit.check(s.spec), []);
+  run(s, 3);
+  assert.ok(s.g.all('spring').length + s.g.all('dashpad').length > 0);
+});
