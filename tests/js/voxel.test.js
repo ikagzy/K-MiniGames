@@ -485,3 +485,80 @@ test('the hotbar is a window over everything you hold, so new tools show up, and
   assert.strictEqual(s.selectedBlock(), all[start], 'key 1 is the first slot shown');
   s.select(0); assert.strictEqual(s.windowStart(), 0);
 });
+
+test('every thing you can hold has a picture: a cube from its textures for a block, pixel art in 16 rows of 16 for the rest', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const never = new Set([14, 16, 17, 18, 19]);   // water and the field and crops are never carried
+  for (const id of Object.keys(D.NAME).map(Number).filter((n) => !never.has(n))) {
+    assert.ok(D.hasIcon(id), D.NAME[id] + ' (' + id + ') has an icon');
+    if (!D.isBlock(id)) {
+      const ic = D.icon(id);
+      assert.strictEqual(ic.rows.length, 16, D.NAME[id]); ic.rows.forEach((r) => assert.strictEqual(r.length, 16, D.NAME[id] + ': ' + r));
+      for (const ch of new Set(ic.rows.join('').replace(/\./g, ''))) assert.ok(ic.pal[ch], D.NAME[id] + ' uses an undefined colour letter ' + ch);
+    }
+  }
+  const pickaxes = [50, 51, 52, 53, 54].map((id) => JSON.stringify(D.icon(id).pal.h));
+  assert.strictEqual(new Set(pickaxes).size, 5, 'each tier has its own colour');
+  assert.notDeepStrictEqual(D.icon(50).rows, D.icon(55).rows, 'a pickaxe does not look like an axe');
+  assert.notDeepStrictEqual(D.icon(42).pal.a, D.icon(43).pal.a, 'iron and gold ingots differ');
+});
+
+test('health and hunger: both start full, hunger drains slowly, full hunger heals, an empty one hurts but never kills, eating fills it', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0 });
+  run(s, 1.5);
+  assert.strictEqual(s.health, 20); assert.strictEqual(s.food, 20);
+  run(s, 50); assert.strictEqual(s.food, 19, 'a point of hunger goes in about 45 seconds');
+  s.food = 20; s.health = 10;
+  run(s, 9); assert.strictEqual(s.health, 12, 'a well fed player heals a point every four seconds');
+  s.food = 10; s.health = 10; run(s, 9); assert.strictEqual(s.health, 10, 'a half hungry one does not heal');
+  s.food = 0; s.health = 20; s.hungerT = 0;
+  run(s, 30); assert.ok(s.health < 20 && s.health >= 1, 'starving hurts: ' + s.health);
+  run(s, 200); assert.strictEqual(s.health, 1, 'but it stops at one point, it does not kill');
+  // eating
+  s.food = 10; s.addItem(23, 2); s.select(s.hotbar().indexOf(23));
+  assert.strictEqual(s.selectedBlock(), 23);
+  assert.strictEqual(s.placeBlock(), true, 'a right click with bread eats it');
+  assert.strictEqual(s.food, 15); assert.strictEqual(s.inv.count[23], 1);
+  s.food = 20; assert.strictEqual(s.placeBlock(), false, 'a full stomach does not eat'); assert.strictEqual(s.inv.count[23], 1);
+  s.addItem(81, 1); s.food = 5; s.select(s.hotbar().indexOf(81)); assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.food, 13, 'cooked meat gives 8');
+  s.select(s.hotbar().indexOf(7)); s.food = 5; assert.strictEqual(s.selectedBlock(), 7);
+  assert.strictEqual(s.eat(7), false, 'planks are not food');
+});
+
+test('damage: a fall of more than three blocks hurts, a short one does not, creative is never hurt, and dying puts you back at the spawn with your things', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0 });
+  run(s, 1.5);
+  const stand = s.p.y;
+  s.p.y += 2; s.p.peak = s.p.y; run(s, 1.5);
+  assert.strictEqual(s.health, 20, 'a two block fall is free');
+  s.p.y += 10; s.p.peak = s.p.y; run(s, 3);
+  assert.ok(s.health <= 14 && s.health >= 11, 'a ten block fall costs about seven: ' + s.health);
+  assert.ok(s.hurtFlash > 0 || s.health < 20);
+  s.health = 20; s.setCreative(true); s.p.y += 15; s.p.peak = s.p.y; run(s, 3);
+  assert.strictEqual(s.health, 20, 'creative is not hurt');
+  assert.strictEqual(s.hurt(5), false);
+  s.setCreative(false);
+  const stone = s.inv.count[3];
+  s.p.x += 3; s.health = 3;
+  assert.strictEqual(s.hurt(5, 'test'), true);
+  assert.strictEqual(s.health, 20, 'back with full health'); assert.strictEqual(s.deaths, 1);
+  assert.ok(Math.abs(s.p.x - s.world.spawn.x) < 0.01, 'at the spawn');
+  assert.strictEqual(s.inv.count[3], stone, 'the inventory is kept');
+  assert.ok(/Öldün/.test(s.message));
+  run(s, 5); assert.strictEqual(s.message, '', 'the message goes away');
+  assert.ok(stand > 0);
+});
+
+test('drowning: staying under water too long hurts, breathing in the air brings the air back', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1.5);
+  const px = Math.floor(s.p.x), pz = Math.floor(s.p.z), py = Math.floor(s.p.y);
+  for (let dy = 0; dy < 3; dy++) s.set(px, py + dy, pz, 14, false);   // a column of water around the head
+  run(s, 6); assert.ok(s.air < 6 && s.health === 20, 'the air runs down first: ' + s.air);
+  run(s, 12); assert.ok(s.health < 20, 'then it hurts: ' + s.health);
+  for (let dy = 0; dy < 3; dy++) s.set(px, py + dy, pz, 0, false);
+  s.p.y += 0.1; run(s, 3); assert.strictEqual(s.air, 10, 'air is full again');
+});

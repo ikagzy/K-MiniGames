@@ -33,6 +33,8 @@
   };
   var TIER_COLOR = [[176, 140, 84], [128, 128, 128], [220, 220, 226], [250, 220, 70], [90, 230, 230]];
   TOOLS.forEach(function (t) { for (var i = 0; i < 5; i++) { NAME[t[2] + i] = TIERS[i] + " " + t[1]; COLOR[t[2] + i] = [TIER_COLOR[i]]; } });
+  NAME[80] = "çiğ et"; COLOR[80] = [[210, 110, 110]]; NAME[81] = "pişmiş et"; COLOR[81] = [[150, 90, 50]];
+  D.FOOD = { 23: 5, 80: 3, 81: 8 };   // what eating fills (of 20): bread, raw meat, cooked meat
   NAME[22] = "odun çapa"; COLOR[22] = [TIER_COLOR[0]];
   for (var h = 1; h < 5; h++) { NAME[HOE_FIRST + h - 1] = TIERS[h] + " çapa"; COLOR[HOE_FIRST + h - 1] = [TIER_COLOR[h]]; }
   D.hoeId = function (tier) { return tier === 0 ? 22 : HOE_FIRST + tier - 1; };
@@ -44,6 +46,38 @@
     if (id >= HOE_FIRST && id < HOE_FIRST + 4) return { kind: "hoe", tier: id - HOE_FIRST + 1 };
     return null;
   };
+
+  // ---- item icons: 16x16 pixel art in rows; h = the tool tier colour, d = handle brown, a = the item colour, b = darker, c = lighter, k = near black ----
+  var P = {
+    pickaxe: ["................", "....hhhhhhhh....", "...hhhhhhhhhh...", "..hhh..dd..hhh..", "..hh...dd...hh..", "......dd........", "......dd........", ".....dd.........", ".....dd.........", "....dd..........", "....dd..........", "...dd...........", "...dd...........", "..dd............", "................", "................"],
+    axe: ["................", ".....hhhh.......", "....hhhhhh......", "....hhhhhhd.....", "....hhhhhdd.....", "....hhhhdd......", ".....hhdd.......", "......dd........", ".....dd.........", ".....dd.........", "....dd..........", "....dd..........", "...dd...........", "...dd...........", "................", "................"],
+    shovel: ["..........hhh...", ".........hhhhh..", ".........hhhhh..", ".........hhhhh..", "..........hhh...", ".........dd.....", "........dd......", "........dd......", ".......dd.......", "......dd........", "......dd........", ".....dd.........", "....dd..........", "....dd..........", "................", "................"],
+    sword: ["..............hh", ".............hhh", "............hhh.", "...........hhh..", "..........hhh...", ".........hhh....", "........hhh.....", ".d.....hhh......", "..d...hhh.......", "...dd.hh........", "....ddh.........", "....dd..........", "...dd.d.........", "..dd............", "................", "................"],
+    hoe: ["................", "....hhhhhhh.....", "...hhhhhhhhh....", "...hh.....hhd...", "...h.......dd...", "..........dd....", ".........dd.....", ".........dd.....", "........dd......", "........dd......", ".......dd.......", ".......dd.......", "......dd........", "......dd........", "................", "................"],
+    torch: ["................", "......aa........", ".....acca.......", ".....acca.......", "......aa........", "......dd........", "......dd........", "......dd........", "......dd........", "......dd........", "......dd........", "......dd........", "......dd........", "......dd........", "................", "................"],
+    stick: ["................", "...............d", "..............dd", ".............dd.", "............dd..", "...........dd...", "..........dd....", ".........dd.....", "........dd......", ".......dd.......", "......dd........", ".....dd.........", "....dd..........", "...dd...........", "..d.............", "................"],
+    coal: ["................", "................", "......kkkk......", "....kkkkkkkk....", "...kkcckkkkkk...", "...kkckkkkkkk...", "..kkkkkkkkkkkk..", "..kkkkkkkkcckk..", "..kkkkkkkkkckk..", "...kkkkkkkkkk...", "....kkkkkkkk....", ".....kkkkkk.....", "................", "................", "................", "................"],
+    ingot: ["................", "................", "................", "................", "...ccccccccccc..", "..cccccccccccab.", ".ccccccccccaabb.", ".aaaaaaaaaaabb..", ".aaaaaaaaaaabb..", ".aaaaaaaaaaab...", ".bbbbbbbbbbb....", "................", "................", "................", "................", "................"],
+    diamond: ["................", "................", "....cccccccc....", "...caaaaaaaac...", "..caaaccaaaaac..", ".caaacccaaaaaac.", ".caaaaaaaaaabbc.", "..caaaaaaaabbc..", "...caaaaaabbc...", "....caaaabbc....", ".....caabbc.....", "......cbc.......", ".......c........", "................", "................", "................"],
+    seeds: ["................", "................", "................", "....aa..........", "...abba.........", "....aa....aa....", "..........abba..", "..aa.......aa...", ".abba...........", "..aa...aa.......", "......abba......", ".......aa.......", "................", "................", "................", "................"],
+    wheat: ["................", "......a.........", ".....aca........", "....aaca.a......", ".....acaaca.....", "..a..aca.ca.....", ".aca.aca.a......", "..aacaca........", "...aaca.........", ".....ca.........", ".....ca.........", ".....bb.........", ".....bb.........", "................", "................", "................"],
+    bread: ["................", "................", "................", "................", "....cccccccc....", "..ccaaaaaaaacc..", ".caaaaacaaaaaac.", ".caacaaaaacaaac.", ".caaaaaaaaaaaac.", "..bbaaaaaaaabb..", "...bbbbbbbbbb...", "................", "................", "................", "................", "................"],
+    meat: ["................", "................", "......aaaa......", "....aaaaaaaa....", "...aaccaaaaaa...", "..aaaccaaaaaaa..", "..aaaaaaaaaabb..", "..aaaaaaaaabbk..", "...aaaaaabbbb...", ".....bbbbbk.....", "........kk......", ".......kkw......", "........w.......", "................", "................", "................"]
+  };
+  var TIER_RGB = [[176, 140, 84], [128, 128, 128], [220, 220, 226], [250, 220, 70], [90, 230, 230]];
+  // rows and a palette for an item: { rows: [...], pal: { h: [r,g,b], ... } } or null for blocks (those are drawn as cubes from their textures)
+  D.icon = function (id) {
+    var t = D.toolOf(id), c = (COLOR[id] || [[255, 0, 255]])[0];
+    var shade = function (rgb, f) { return [Math.min(255, rgb[0] * f), Math.min(255, rgb[1] * f), Math.min(255, rgb[2] * f)]; };
+    var pal = { a: c, b: shade(c, 0.7), c: shade(c, 1.25), d: [120, 84, 46], k: [34, 34, 38], w: [235, 235, 235] };
+    if (t) { pal.h = TIER_RGB[t.tier]; pal.b = shade(pal.h, 0.7); return { rows: P[t.kind], pal: pal }; }
+    var kind = { 33: "torch", 40: "stick", 41: "coal", 42: "ingot", 43: "ingot", 44: "diamond", 20: "seeds", 21: "wheat", 23: "bread", 80: "meat", 81: "meat" }[id];
+    if (id === 41) pal.a = [34, 34, 38];
+    if (id === 80) pal.a = [215, 110, 110];
+    if (id === 81) pal.a = [160, 95, 55];
+    return kind ? { rows: P[kind], pal: pal } : null;
+  };
+  D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
   // a block can be put down: the ground and plant blocks, and the new building blocks (not tools, food or materials)
   D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 33); };
 
@@ -105,7 +139,7 @@
     });
   }
   // smelting: [from, to]; each coal does eight
-  D.smelts = [[ID.COBBLE, ID.STONE, "taş"], [ID.SAND, ID.GLASS, "cam"], [ID.IRON_ORE, ID.IRON_INGOT, "demir külçe"], [ID.GOLD_ORE, ID.GOLD_INGOT, "altın külçe"]];
+  D.smelts = [[ID.COBBLE, ID.STONE, "taş"], [ID.SAND, ID.GLASS, "cam"], [ID.IRON_ORE, ID.IRON_INGOT, "demir külçe"], [ID.GOLD_ORE, ID.GOLD_INGOT, "altın külçe"], [80, 81, "pişmiş et"]];
   D.smelts.forEach(function (s) { add("eritme: " + s[2], "furnace", [[s[0], 1]], [s[1], 1]); });
   D.recipeIndex = function (name) { for (var i = 0; i < R.length; i++) if (R[i].name === name) return i; return -1; };
 

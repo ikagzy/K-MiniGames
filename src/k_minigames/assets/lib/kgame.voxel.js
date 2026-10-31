@@ -189,7 +189,8 @@
       var saveKey = "sandbox." + spec.biome + "." + spec.size + "." + seed;
       var state = { g: g, spec: spec, world: w, edits: [], hits: [], heroHooks: [], canFly: false, flying: false, sprintMul: 1, time: spec.time === "night" ? 0.5 : 0.1,
                     creative: false, inv: { order: [], count: {} }, slot: 0, showInv: false, showHelp: false, visited: {}, lockHint: true, breakDelay: 0,
-                    p: { x: w.spawn.x, y: w.spawn.y, z: w.spawn.z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: false } };
+                    p: { x: w.spawn.x, y: w.spawn.y, z: w.spawn.z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: false, peak: w.spawn.y },
+                    health: 20, food: 20, air: 10, hungerT: 0, regenT: 0, starveT: 0, drownT: 0, hurtFlash: 0, deaths: 0, message: "", messageT: 0 };
       var tune = spec.music;
       if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
       state.hud = { placed: 0, broken: 0, depth: 0, explored: 0, harvested: 0 };
@@ -296,7 +297,16 @@
         if (m.progress >= m.need) { state.breakBlock(); m.key = ""; m.progress = 0; return true; }
         return false;
       };
+      state.eat = function (id) {   // food fills the hunger bar, only when it is not full
+        var gain = D.FOOD[id];
+        if (!gain || state.food >= 20 || (!state.creative && !(inv.count[id] > 0))) return false;
+        state.food = Math.min(20, state.food + gain);
+        if (!state.creative) inv.count[id]--;
+        if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1);
+        K.sfx("coin"); return true;
+      };
       state.placeBlock = function () {
+        if (D.FOOD[state.selectedBlock()]) return state.eat(state.selectedBlock());
         var t = target(), id = state.selectedBlock();
         if (!t || !id || (!state.creative && !(inv.count[id] > 0))) return false;
         if (D.toolOf(id) && D.toolOf(id).kind === "hoe") {   // the hoe turns the top of grass or soil into a field
@@ -361,6 +371,37 @@
           for (var by = Math.floor(y); by <= Math.floor(y + 1.79); by++) if (solid(get(bx, by, bz))) return true;
         return false;
       }
+      state.say = function (text) { state.message = text; state.messageT = 4; };
+      state.hurt = function (n, why) {
+        if (state.creative || n <= 0) return false;
+        state.health -= n; state.hurtFlash = 0.35; K.sfx("hit");
+        if (state.health <= 0) state.die(why);
+        return true;
+      };
+      state.die = function (why) {   // you come back at the spawn with everything you carry
+        var p = state.p;
+        state.deaths++; state.health = 20; state.food = 20; state.air = 10; state.hungerT = state.regenT = state.starveT = state.drownT = 0;
+        p.x = w.spawn.x; p.y = w.spawn.y; p.z = w.spawn.z; p.vx = p.vy = p.vz = 0; p.peak = p.y;
+        state.say("Öldün" + (why ? " (" + why + ")" : "") + ". Doğma noktasında yeniden doğdun.");
+      };
+      state.landed = function (p) {   // falling more than three blocks hurts, a block of height per point
+        var drop = p.peak - p.y;
+        if (drop > 3.3 && !state.canFly) state.hurt(Math.floor(drop - 3), "düşme");
+        else if (drop > 3.3 && !state.flying) state.hurt(Math.floor(drop - 3), "düşme");
+        p.peak = p.y;
+      };
+      state.vitals = function (dt) {
+        var p = state.p;
+        state.hungerT += dt * (K.key("Shift") ? 1.8 : 1);
+        if (state.hungerT >= 45) { state.hungerT = 0; if (!state.creative) state.food = Math.max(0, state.food - 1); }
+        if (state.food >= 18 && state.health < 20) { state.regenT += dt; if (state.regenT >= 4) { state.regenT = 0; state.health++; } } else state.regenT = 0;
+        if (state.food <= 0) { state.starveT += dt; if (state.starveT >= 4) { state.starveT = 0; if (state.health > 1) state.hurt(1, "açlık"); } } else state.starveT = 0;
+        var head = get(Math.floor(p.x), Math.floor(p.y + 1.6), Math.floor(p.z)) === WATER;
+        if (head && !state.creative) { state.air = Math.max(0, state.air - dt); if (state.air <= 0) { state.drownT += dt; if (state.drownT >= 1) { state.drownT = 0; state.hurt(2, "boğulma"); } } }
+        else { state.air = Math.min(10, state.air + 4 * dt); state.drownT = 0; }
+        if (state.hurtFlash > 0) state.hurtFlash -= dt;
+        if (state.messageT > 0) { state.messageT -= dt; if (state.messageT <= 0) state.message = ""; }
+      };
       var lastSpace = -9, spaceHeld = false;
       state.step = function (dt) {
         var p = state.p, flying = state.canFly && state.flying;
@@ -385,13 +426,14 @@
           if (inWater) p.vy = Math.max(p.vy, -3);
           if (space && (p.onGround || inWater)) { p.vy = inWater ? 3.2 : 8.2; p.onGround = false; }
         }
+        p.peak = (p.onGround || inWater || flying) ? p.y : Math.max(p.peak, p.y);
         var nx = p.x + p.vx * dt; if (!collides(nx, p.y, p.z)) p.x = nx;
         var nz = p.z + p.vz * dt; if (!collides(p.x, p.y, nz)) p.z = nz;
         var ny = p.y + p.vy * dt;
         if (!collides(p.x, ny, p.z)) { p.y = ny; p.onGround = false; }
-        else { if (p.vy < 0) { p.onGround = true; if (flying && !space) state.flying = false; } p.vy = 0; }
+        else { if (p.vy < 0) { p.onGround = true; if (flying && !space) state.flying = false; state.landed(p); } p.vy = 0; }
         p.x = Math.max(0.35, Math.min(S - 0.35, p.x)); p.z = Math.max(0.35, Math.min(S - 0.35, p.z));
-        if (p.y < -10) { p.x = w.spawn.x; p.y = w.spawn.y + 8; p.z = w.spawn.z; p.vy = 0; }
+        if (p.y < -10) { p.x = w.spawn.x; p.y = w.spawn.y + 8; p.z = w.spawn.z; p.vy = 0; p.peak = p.y; }
         state.hud.depth = Math.max(0, Math.round(w.heightAt(Math.floor(p.x), Math.floor(p.z)) - p.y));
         // the chunks around the player are made ahead of the walk, two at most each frame, and the visited ones are remembered
         w.ensureAround(Math.floor(p.x), Math.floor(p.z), LOAD, 2);
@@ -401,6 +443,7 @@
         if (spec.time === "cycle") state.time = (state.time + dt / 180) % 1;
         state.time0 += dt;
         state.grow(dt);
+        state.vitals(dt);
         state.heroHooks.forEach(function (h) { h(p, dt); });
       };
       state.time0 = 0;
@@ -444,6 +487,37 @@
 
       // ---- drawing the screen: the picture, the crosshair, the hotbar, the inventory, the map ----
       var small = null, smallCtx = null, image = null;
+      var icons = {};
+      function tile(id, face) {   // a 16x16 canvas of a block face
+        var tex = texture(id, face), cv = document.createElement("canvas"); cv.width = cv.height = 16;
+        var cx = cv.getContext("2d"), im = cx.createImageData(16, 16);
+        for (var i = 0; i < 256; i++) { im.data[i * 4] = tex[i * 3]; im.data[i * 4 + 1] = tex[i * 3 + 1]; im.data[i * 4 + 2] = tex[i * 3 + 2]; im.data[i * 4 + 3] = 255; }
+        cx.putImageData(im, 0, 0); return cv;
+      }
+      function iconOf(id) {   // 32x32: a little cube for a block, a pixel-art picture for a tool or a material
+        if (typeof document === "undefined") return null;
+        if (icons[id] !== undefined) return icons[id];
+        var cv = document.createElement("canvas"); cv.width = cv.height = 32;
+        var cx = cv.getContext("2d");
+        if (!cx) return icons[id] = null;
+        cx.imageSmoothingEnabled = false;
+        if (D.isBlock(id) && id !== TORCH) {   // a torch is drawn as a torch, not as a cube
+          var top = tile(id, 0), side = tile(id, 1);
+          cx.setTransform(1, 0.5, -1, 0.5, 16, 0); cx.drawImage(top, 0, 0);
+          cx.setTransform(1, 0.5, 0, 1, 0, 8); cx.drawImage(side, 0, 0); cx.fillStyle = "rgba(0,0,0,0.22)"; cx.fillRect(0, 0, 16, 16);
+          cx.setTransform(1, -0.5, 0, 1, 16, 16); cx.drawImage(side, 0, 0); cx.fillStyle = "rgba(0,0,0,0.42)"; cx.fillRect(0, 0, 16, 16);
+          cx.setTransform(1, 0, 0, 1, 0, 0);
+        } else {
+          var ic = D.icon(id);
+          if (!ic) return icons[id] = null;
+          ic.rows.forEach(function (row, y) { for (var x = 0; x < 16; x++) { var col = ic.pal[row.charAt(x)]; if (col) { cx.fillStyle = "rgb(" + (col[0] | 0) + "," + (col[1] | 0) + "," + (col[2] | 0) + ")"; cx.fillRect(x * 2, y * 2, 2, 2); } } });
+        }
+        return icons[id] = cv;
+      }
+      function drawIcon(c, id, x, y, size) {
+        var ic = iconOf(id);
+        if (ic) { c.imageSmoothingEnabled = false; c.drawImage(ic, x, y, size, size); } else swatch(c, id, x, y, size);
+      }
       function swatch(c, id, x, y, size) {
         var col = (COLORS[id] || [[255, 0, 255]])[0];
         c.fillStyle = "rgb(" + col[0] + "," + col[1] + "," + col[2] + ")"; c.fillRect(x, y, size, size);
@@ -461,11 +535,24 @@
           c.strokeStyle = start + i === Math.min(state.slot, Math.max(0, all.length - 1)) && all.length ? "#fff" : "rgba(255,255,255,0.3)"; c.lineWidth = start + i === state.slot ? 3 : 1;
           c.strokeRect(x0 + i * slot, y0, slot - 3, slot - 3);
           if (bar[i]) {
-            swatch(c, bar[i], x0 + i * slot + 6, y0 + 6, slot - 15);
+            drawIcon(c, bar[i], x0 + i * slot + 4, y0 + 2, slot - 9);
             c.fillStyle = "#fff"; c.font = "12px sans-serif"; c.fillText(state.creative ? "∞" : String(inv.count[bar[i]]), x0 + i * slot + 4, y0 + slot - 7);
           }
           c.fillStyle = "rgba(255,255,255,0.7)"; c.font = "10px sans-serif"; c.fillText(String(i + 1), x0 + i * slot + 3, y0 + 11);
         }
+        if (state.nameT > 0 && state.selectedBlock()) { c.fillStyle = "rgba(0,0,0,0.55)"; c.fillRect(g.width / 2 - 90, y0 - 52, 180, 24); c.fillStyle = "#fff"; c.font = "bold 16px sans-serif"; c.textAlign = "center"; c.fillText(NAMES[state.selectedBlock()], g.width / 2, y0 - 34); c.textAlign = "left"; }
+        var hx = g.width / 2 - 9 * slot / 2, hy = y0 - 16;   // hearts on the left, hunger on the right, air bubbles above it when swimming
+        for (var hi = 0; hi < 10; hi++) {
+          var pts = Math.max(0, Math.min(2, state.health - hi * 2));
+          c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(hx + hi * 15, hy, 13, 12);
+          c.fillStyle = pts === 2 ? "#e53935" : pts === 1 ? "#ef9a9a" : "rgba(60,0,0,0.6)"; c.fillRect(hx + hi * 15 + 2, hy + 2, 9, 8);
+          var fp = Math.max(0, Math.min(2, state.food - hi * 2)), fx = hx + 9 * slot - 14 - hi * 15;
+          c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(fx, hy, 13, 12);
+          c.fillStyle = fp === 2 ? "#ef9d36" : fp === 1 ? "#d9b27c" : "rgba(60,40,0,0.6)"; c.fillRect(fx + 2, hy + 2, 9, 8);
+        }
+        if (state.air < 10) for (var ai = 0; ai < Math.ceil(state.air); ai++) { c.fillStyle = "#81d4fa"; c.fillRect(hx + 9 * slot - 14 - ai * 15 + 3, hy - 14, 8, 8); }
+        if (state.hurtFlash > 0) { c.fillStyle = "rgba(200,0,0," + Math.min(0.45, state.hurtFlash) + ")"; c.fillRect(0, 0, g.width, g.height); }
+        if (state.message) { c.fillStyle = "rgba(0,0,0,0.6)"; c.fillRect(g.width / 2 - 230, 118, 460, 28); c.fillStyle = "#fff"; c.font = "15px sans-serif"; c.fillText(state.message, g.width / 2 - 220, 138); }
         // the map of the visited chunks (the one you stand in is white)
         var cell = Math.max(3, Math.floor(110 / N)), mx = g.width - N * cell - 10, my = g.height - N * cell - 10;
         c.fillStyle = "rgba(0,0,0,0.45)"; c.fillRect(mx - 2, my - 2, N * cell + 4, N * cell + 4);
@@ -477,7 +564,7 @@
           var all = inv.order.filter(function (id) { return inv.count[id] > 0; });
           all.forEach(function (id, n) {
             var cx = g.width / 2 - 155 + (n % 2) * 160, cy = 104 + Math.floor(n / 2) * 24;
-            swatch(c, id, cx, cy, 18); c.fillStyle = "#fff"; c.font = "14px sans-serif"; c.fillText(NAMES[id] + "  x" + (state.creative ? "∞" : inv.count[id]), cx + 26, cy + 14);
+            drawIcon(c, id, cx, cy - 2, 22); c.fillStyle = "#fff"; c.font = "14px sans-serif"; c.fillText(NAMES[id] + "  x" + (state.creative ? "∞" : inv.count[id]), cx + 28, cy + 14);
           });
         }
         if (state.showCraft) {
@@ -487,8 +574,9 @@
           state.recipes.slice(page, page + 8).forEach(function (r, n) {
             var ok = state.canCraft(r), at = page + n === state.craftCursor, where = r.where === "table" ? "masa" : r.where === "furnace" ? "fırın" : "";
             if (at) { c.fillStyle = "rgba(255,255,255,0.12)"; c.fillRect(g.width / 2 - 192, 74 + n * 28, 384, 26); }
+            drawIcon(c, r.give[0], g.width / 2 - 190, 76 + n * 28, 22);
             c.fillStyle = ok ? "#a5d6a7" : "#8a8a8a"; c.font = "13px sans-serif";
-            c.fillText((n + 1) + ". " + r.name + "  [" + r.need.map(function (q) { return q[1] + " " + NAMES[q[0]]; }).join(" + ") + "] " + (where ? "(" + where + ")" : ""), g.width / 2 - 186, 92 + n * 28);
+            c.fillText((n + 1) + ". " + r.name + "  [" + r.need.map(function (q) { return q[1] + " " + NAMES[q[0]]; }).join(" + ") + "] " + (where ? "(" + where + ")" : ""), g.width / 2 - 160, 92 + n * 28);
           });
           c.fillStyle = "#cfd8dc"; c.font = "12px sans-serif"; c.fillText("sayfa " + (page / 8 + 1) + "/" + Math.ceil(state.recipes.length / 8) + "   kömür yakıt: " + (state.fuel || 0) + " eritme hakkı", g.width / 2 - 186, 300);
         }
@@ -509,7 +597,7 @@
         c.imageSmoothingEnabled = false; c.drawImage(small, 0, 0, g.width, g.height);
         drawHud(c);
       } }];
-      state.drawHud = drawHud;
+      state.drawHud = drawHud; state.icon = iconOf;
 
       // ---- the mouse (it looks when the page has the pointer; left click breaks and keeps breaking, right click places, the wheel chooses) ----
       var mouseLeft = false;
@@ -538,6 +626,7 @@
           once("ArrowUp", function () { if (state.showCraft) state.menuMove(-1); }); once("ArrowDown", function () { if (state.showCraft) state.menuMove(1); });
           once("Enter", function () { if (state.showCraft) state.craft(state.craftCursor); });
           for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(state.craftPage() + num - 1); else state.select(state.windowStart() + num - 1); }); })(n);
+          var cur = state.selectedBlock(); if (cur !== state.lastSel) { state.lastSel = cur; state.nameT = 2; } state.nameT -= dt;
           state.mineStep(dt, K.key("f") || mouseLeft);   // holding F or the left button digs
           var ch = state.chunk || { x: 0, z: 0 };
           g.ui.text("hud.info", "parça " + ch.x + "," + ch.z + "   gezdin " + state.hud.explored + "/" + N * N + "   derinlik " + state.hud.depth + (state.flying ? "   UÇUYOR" : ""), 10, 22, { size: 14 });
