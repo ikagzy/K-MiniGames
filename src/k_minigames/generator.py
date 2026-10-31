@@ -7,7 +7,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from k_minigames import kgamelib, kits, patching
+from k_minigames import kgamelib, kits, patching, specrules
 from k_minigames import memory as memory_notes
 from k_minigames.library import Texture
 from k_minigames.ollama_client import OllamaError
@@ -336,7 +336,9 @@ class Generator:
     def create_spec(self, description: str, kit: str, cancel: Callable[[], bool] | None = None, *,
                     memory: str = "") -> dict:
         user = f"Oyun tarifi:\n{description}\n\nÖzeti (tek JSON nesnesi) ver."
-        return self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+        spec = self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+        # the small model's gaps are closed by rules that read the description (specrules)
+        return specrules.apply(spec, description) if kit == "platformer" and self.model.startswith(TUNED_PREFIX) else spec
 
     def edit_spec(self, spec: dict, request: str, kit: str, cancel: Callable[[], bool] | None = None, *,
                   memory: str = "") -> dict:

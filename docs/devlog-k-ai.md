@@ -81,3 +81,23 @@ değiştiriyor; model bir kez yoldan çıkınca fazladan `}` yazıyor, `generate
 Çözüm: **modelden seed istememek.** `specdata.py` artık seed yazdırmıyor (seviye, kampanya, müzik; seed alanı kitte zaten isteğe bağlı),
 uygulama eksik seed'leri kendisi rastgele dolduruyor (`kits.fill_seeds`, `Generator._spec` içinde). Bu sürümü (v3) eğitmek gerekiyor;
 v2 (seed'li) olduğu gibi kullanılırsa seed bölgesinde yine sapabilir.
+
+## v3 ve kurallar katmanı (hangisi uygulamada?)
+**v3** = v2 adaptörünün üstüne 1 tur ek eğitim (1000 örnek, 18 dk, `train_lora.py --init-adapter`): seed'siz cevaplar, "bol" = 4, yazıyla yazılmış kampanya sayıları.
+Ham model (HF) v3: geçerli %100, doğruluk 0,97, elle yazılmış hepsi doğru 0,875 / alan 0,93 (v2 ham: 0,69 / 0,84). Not: bu artışın bir kısmı "bol" ve yazılı sayı düzeltmelerinden geliyor (ölçümün beklediği yöne çekilen veri); üretilmiş setteki 0,98 → 0,97 daha adil, fark yok.
+Ama uygulama Ollama kullanıyor ve orada (GGUF) hem v2 hem v3 ham değerlerin çok altında kalıyor (Ollama / llama.cpp aynı). Kök sebep tam çözülmedi: seed rakamları tek sebep değil (v3 seed'siz eğitilse de Ollama'da düşük).
+
+Uygulama tarafında iki katman eklendi (modelden bağımsız, eğitim gerektirmez):
+- `kits.repair_spec`: şemaya göre onarım (bilinmeyen alan/değer atılır, sayılar aralığa çekilir, `generate` yoksa eklenir, **seed'leri hep uygulama rastgele koyar**).
+- `specrules.apply` (`src/k_minigames/specrules.py`): tarifteki açık sözcüklerden alanları kuralla koyar (tema, tilki, özellikler, müzik ruh hali, kampanya sayısı yazıyla da, can, zorluk, "bol/az/olmasın" miktarları). Yalnızca k-ai modellerinde ve oluşturmada çalışır.
+
+Ollama üzerinde ölçüm (117 üretilmiş + 32 elle yazılmış tarif):
+
+| yol | geçerli | doğruluk | elle yazılmış hepsi / alan |
+|---|---|---|---|
+| v2 ham Ollama (kuralsız) | %76 | 0,68 | 0,41 / 0,58 |
+| v2 + onarım | %100 | 0,75 | 0,50 / 0,73 |
+| **v2 + onarım + kurallar** | **%100** | **0,84** | **0,84 / 0,92** |
+| v3 + onarım + kurallar | %93 | 0,78 | 0,72 / 0,87 |
+
+Karar: uygulamada `game_model` = `k-ai-v2` (kurallarla en iyisi). Ham v3 uygulamaya konamaz (PyTorch gerektirir); llama.cpp'li v3 de v2+kurallardan iyi değil ve uygulamaya bağlı değil.
