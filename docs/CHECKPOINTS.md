@@ -81,3 +81,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-72 | 2026-10-28 | kök sebep: Claude'un AppData yazmaları sanal klasöre gidiyordu, ayar değişiklikleri kullanıcının uygulamasına ulaşmadı; tools/k-ai-sec.bat eklendi | e958afc |
 | CP-73 | 2026-10-28 | belirsiz tarifler farklı oyun veriyor (özette olmayan tema/müzik/seviye ayrıntıları rastgele doldurulur), düzenlemede seed korunur; doğruluk 0,973 | 8508676 |
 | CP-74 | 2026-10-28 | nişancı kiti: dikey kayan uzay nişancısı (5 düşman türü, dalgalar, patron, güçlendirme, 4 özellik), şema, rehber, Bob kontrolleri, kurallar; bot testiyle her zorlukta yenilebilir; k-ai verisi henüz yok | e414109 |
+| CP-75 | 2026-10-28 | k-ai v4: nişancı kiti öğrenildi (üretilmiş 1,00, elle yazılmış 0,9), platformda gerileme yok; kurallar düzeltildi; Ollama'ya k-ai-v4 olarak kuruldu | b1746fd |
