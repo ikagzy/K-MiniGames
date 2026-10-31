@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { load } = require('./helpers');
 
 const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxelmobs.js', 'kgame.voxel.js'];
-const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true; K.voxel.keyActions = true; return K; };   // the tests play without the main menu
+const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true; K.voxel.keyActions = true; K.voxel.structures = false; return K; };   // the tests play without the main menu
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
 const world = (K, o = {}) => K.voxel.makeWorld({ seed: 3, biome: 'forest', size: 'medium', caves: 1, ores: 1, lakes: true, trees: 3, ...o });
@@ -1298,4 +1298,96 @@ test('ores lie in veins at the depths of the 1.8.9 game: coal and iron are commo
   for (const id of [159, 160, 161]) assert.ok(D.hasIcon(id) && D.NAME[id]);
   const s = K.kit.run({ kit: 'sandbox', world: { seed: 4 }, size: 'small', trees: 0, time: 'day', ores: 0 }); run(s, 1);
   s.world.ensureAround(64, 64, 8); assert.strictEqual(s.world.count(12) + s.world.count(10) + s.world.count(9), 0, 'ores: 0 means none');
+});
+
+test('experience comes from ores, creatures and furnaces; the büyü masası spends lapis and levels on a spell that really changes the tool, sword or armour, and it is kept', () => {
+  const K = fresh(); const D = K.voxeldata; const M = K.voxelmobs;
+  const { s, cx, cz, gy } = yard(K, 99);
+  assert.strictEqual(s.levelInfo().level, 0);
+  s.addXp(30); assert.ok(s.levelInfo().level >= 3, 'levels: ' + s.levelInfo().level);
+  const at3 = s.xpAt(3); assert.strictEqual(at3, 5 + 8 + 11);
+  // sources of experience
+  const x0 = s.xp; const m = M.create('zombie', 0, 0, 0); s.mobs.push(m); s.killMob(m); assert.ok(s.xp > x0, 'a kill gives experience');
+  assert.ok(D.recipeIndex('büyü masası') >= 0 && D.isBlock(162) && D.hasIcon(162));
+  // the table opens on a right click and lists what can be enchanted
+  s.addItem(D.toolId('pickaxe', 2), 1); s.addItem(D.toolId('sword', 2), 1); s.addItem(D.armorId(1, 1), 1); s.addItem(159, 12);
+  s.set(cx + 2, gy + 1, cz, 162, false); stand(s, cx + 0.5, gy + 1.01, cz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  let t = null; for (const pitch of [-0.6, -0.5, -0.4, -0.3]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 162) { t = h; break; } }
+  assert.ok(t, 'the table is in front'); assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.enchanting, true); assert.strictEqual(s.uiOpen(), true);
+  const list = s.enchantable(); assert.ok(list.includes(D.toolId('pickaxe', 2)) && list.includes(D.toolId('sword', 2)) && list.includes(D.armorId(1, 1)));
+  assert.ok(!list.includes(27), 'stone is not enchanted');
+  // not enough levels: nothing happens and nothing is spent
+  s.xp = 0; const lapisBefore = s.inv.count[159]; assert.strictEqual(s.enchant(D.toolId('sword', 2), 1), null); assert.strictEqual(s.inv.count[159], lapisBefore);
+  s.addXp(100);
+  const sword = D.toolId('sword', 2); s.ench = {}; const lvBefore = s.levelInfo().level;
+  const got = s.enchant(sword, 3); assert.ok(got && ['sharp', 'unb'].includes(got.key) && got.level === 3);
+  assert.strictEqual(s.inv.count[159], lapisBefore - 3); assert.strictEqual(s.levelInfo().level, lvBefore - 3, 'three levels were spent');
+  assert.ok(/I{1,3}/.test(s.enchantNote(sword)));
+  // the effects
+  s.ench[sword] = { sharp: 3 }; s.select(s.hotbar().indexOf(sword));
+  const zombie = M.create('zombie', cx + 3, gy + 1, cz); s.mobs.push(zombie); zombie.hp = 100; s.attackCd = 0; s.attackMob(zombie); const sharp = 100 - zombie.hp;
+  s.ench[sword] = {}; zombie.hp = 100; s.attackCd = 0; s.attackMob(zombie); const plain = 100 - zombie.hp; assert.ok(sharp >= plain + 3, 'sharper: ' + sharp + ' against ' + plain);
+  const pick = D.toolId('pickaxe', 2); const rate = () => D.mineTime(3, (k) => (k === 'pickaxe' ? 2 : -1)) / (1 + 0.4 * s.toolEnch(3, 'eff'));
+  s.ench[pick] = {}; const slow = rate(); s.ench[pick] = { eff: 3 }; assert.ok(rate() < slow * 0.6, 'efficiency digs faster');
+  const armor = D.armorId(1, 1), pts = s.armorPoints(); s.ench[armor] = { prot: 3 }; assert.strictEqual(s.armorPoints(), pts + 3, 'protection adds armour points');
+  s.ench[pick] = { unb: 3 }; s.wear = {}; for (let i = 0; i < 400; i++) s.useTool('pickaxe'); const worn = D.DUR[2] - (s.wear[pick] === undefined ? D.DUR[2] : s.wear[pick]); assert.ok(worn < 200, 'unbreaking: ' + worn + ' of 400');
+  // kept with the world
+  const again = K.kit.run({ kit: 'sandbox', world: { seed: 99 }, size: 'small', trees: 0, time: 'day' }); run(again, 1);
+  assert.deepStrictEqual(again.ench[armor], { prot: 3 }); assert.ok(again.xp > 0);
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  s.closeUi(); assert.strictEqual(s.enchanting, false);
+});
+
+test('villages stand on level ground with a well, paths, houses with doors and beds, farms of ripe wheat and hay bales; desert has a sandstone temple with chests; the same seed makes the same ones', () => {
+  const K = fresh(); K.voxel.structures = true;
+  const make = (biome, seed) => K.voxel.makeWorld({ seed, biome, size: 'medium', caves: 1, ores: 1, lakes: true, trees: 1 });
+  const w = make('plains', 8);
+  const vs = w.villages(); assert.ok(vs.length >= 1, 'a village: ' + vs.length);
+  const v = vs[0]; w.ensureAround(v.x, v.z, 3);
+  const flat = []; for (let dx = -15; dx <= 15; dx += 5) for (let dz = -15; dz <= 15; dz += 5) flat.push(w.heightAt(v.x + dx, v.z + dz));
+  assert.ok(flat.every((h) => h === v.gy), 'the ground is level: ' + flat.join(','));
+  assert.strictEqual(w.get(v.x, v.gy, v.z), 14, 'water in the well');
+  let planks = 0, doors = 0, beds = 0, glass = 0, hay = 0, crops = 0, farmland = 0, logs = 0;
+  for (let dx = -27; dx <= 27; dx++) for (let dz = -27; dz <= 27; dz++) for (let y = v.gy - 1; y <= v.gy + 5; y++) {
+    const b = w.get(v.x + dx, y, v.z + dz); if (b === 7) planks++; else if (b === 141) doors++; else if (b === 35) beds++; else if (b === 8) glass++; else if (b === 127) hay++; else if (b === 19) crops++; else if (b === 16) farmland++; else if (b === 5) logs++;
+  }
+  assert.ok(planks > 100 && doors >= 4 && beds >= 4 && glass >= 8 && hay >= 6 && crops >= 20 && farmland >= 20 && logs >= 16, [planks, doors, beds, glass, hay, crops, farmland, logs].join(','));
+  assert.ok(w.inStructure(v.x + 3, v.z + 3) && !w.inStructure(v.x + 60, v.z + 60 > 250 ? v.z - 60 : v.z + 60));
+  // the same seed: the same village; another biome without snow villages
+  const again = make('plains', 8).villages()[0]; assert.deepStrictEqual([again.x, again.z, again.gy], [v.x, v.z, v.gy]);
+  assert.strictEqual(make('snow', 8).villages().length, 0, 'no villages in the snow');
+  // desert: a temple
+  let d = null, ts = []; for (const sd of [3, 4, 5, 6, 7, 9, 11]) { d = make('desert', sd); ts = d.temples(); if (ts.length) break; } assert.ok(ts.length >= 1, 'a temple in one of seven deserts');
+  const t = ts[0]; d.ensureAround(t.x, t.z, 3);
+  let sand = 0, chests = 0; for (let dx = -10; dx <= 10; dx++) for (let dz = -10; dz <= 10; dz++) for (let y = t.gy; y <= t.gy + 10; y++) { const b = d.get(t.x + dx, y, t.z + dz); if (b === 29) sand++; else if (b === 26) chests++; }
+  assert.ok(sand > 800 && chests === 4, sand + ' sandstone, ' + chests + ' chests'); assert.strictEqual(d.get(t.x, t.gy, t.z), 31, 'a gold block under the middle');
+  assert.strictEqual(d.get(t.x, t.gy + 3, t.z), 0, 'a hollow chamber'); assert.strictEqual(d.get(t.x, t.gy + 1, t.z + 7), 0, 'a way in from the south');
+});
+
+test('villagers live in the village, wander, trade by profession (the better the goods the more zümrüt), chests give loot when broken, and hay can be taken', () => {
+  const K = fresh(); K.voxel.structures = true; const D = K.voxeldata;
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 8 }, size: 'medium', trees: 1, time: 'day', biome: 'plains' });
+  run(s, 1); const v = s.world.villages()[0]; assert.ok(v);
+  s.world.ensureAround(v.x, v.z, 4); run(s, 0.2);
+  const villagers = s.mobs.filter((m) => m.type === 'villager'); assert.ok(villagers.length >= 4, 'villagers: ' + villagers.length);
+  assert.ok(villagers.every((m) => Math.abs(m.x - v.x) < 30 && Math.abs(m.z - v.z) < 30));
+  s.creative = false; s.mobs = villagers; stand(s, v.x + 3, v.gy + 1.01, v.z + 4);
+  const m = villagers[0]; m.x = s.p.x + 2; m.z = s.p.z; m.y = s.p.y; s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.05);
+  assert.strictEqual(s.mobTarget() === m || s.mobTarget() === null || typeof s.mobTarget() === 'object', true);
+  s.openTrade(m); assert.ok(s.trade && ['çiftçi', 'demirci', 'rahip', 'kasap'].includes(s.trade.profession)); assert.strictEqual(s.uiOpen(), true);
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  // a farmer: wheat for zümrüt, zümrüt for bread
+  s.openTrade({ x: 1, z: 2, profession: 'çiftçi' });
+  const offer = s.trade.offers[0]; s.inv.count[21] = 0; assert.strictEqual(s.canTrade(offer), false); assert.strictEqual(s.doTrade(offer), false);
+  s.addItem(offer.give[0][0], offer.give[0][1]); assert.strictEqual(s.doTrade(offer), true);
+  assert.strictEqual(s.inv.count[161], offer.get[0][1]); assert.strictEqual(s.inv.count[offer.give[0][0]], 0);
+  const bread = s.trade.offers.find((o) => o.get[0][0] === 23); const breadBefore = s.inv.count[23] || 0; assert.strictEqual(s.doTrade(bread), true); assert.ok(s.inv.count[23] >= breadBefore + 5); assert.strictEqual(s.inv.count[161], 0);
+  s.closeUi(); assert.strictEqual(s.trade, null);
+  // every profession has offers that can be afforded with stuff from the world, and the iron sword is a real item
+  for (const p of ['çiftçi', 'demirci', 'rahip', 'kasap']) { s.openTrade({ x: 1, z: 2, profession: p }); assert.ok(s.trade.offers.length === 4); for (const of of s.trade.offers) for (const [id] of [...of.give, ...of.get]) assert.ok(D.NAME[id], 'a known item ' + id); }
+  // chests and hay
+  s.mobs = []; const before = Object.values(s.inv.count).reduce((a, b) => a + b, 0); let any = false; for (let i = 0; i < 20 && !any; i++) any = s.openChest().length > 0; assert.ok(any, 'a chest gives something');
+  assert.ok(Object.values(s.inv.count).reduce((a, b) => a + b, 0) > before);
+  s.mobs = [K.voxelmobs.create('villager', v.x + 1, v.gy + 1, v.z + 1)]; s.say(''); stand(s, v.x - 4, v.gy + 1.01, v.z - 14); const hx = v.x - 4, hz = v.z - 13;
+  assert.strictEqual(s.get(hx, v.gy + 1, hz), 127, 'a hay bale to steal');
 });

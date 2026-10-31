@@ -19,6 +19,7 @@
     zombie: { name: "zombi", kind: "hostile", hp: 20, w: 0.6, h: 1.8, speed: 1.9, dmg: 3, burns: true, drops: [[DROP.ROTTEN, [0, 2]]] },
     skeleton: { name: "iskelet", kind: "hostile", hp: 20, w: 0.6, h: 1.8, speed: 1.6, ranged: true, burns: true, drops: [[DROP.BONE, [0, 2]], [DROP.ARROW, [0, 2]]] },
     bomber: { name: "patlayıcı", kind: "hostile", hp: 20, w: 0.6, h: 1.7, speed: 1.7, explode: true, drops: [[DROP.GUNPOWDER, [0, 2]]] },
+    villager: { name: "köylü", kind: "passive", npc: true, hp: 20, w: 0.6, h: 1.8, speed: 1.0, drops: [] },   // lives in a village, trades with a right click
     spider: { name: "örümcek", kind: "hostile", hp: 16, w: 1.2, h: 0.9, speed: 2.6, dmg: 2, drops: [[DROP.STRING, [0, 2]]] },
     ember: { name: "közcü", kind: "hostile", hp: 16, w: 0.6, h: 1.8, speed: 1.5, ranged: true, drops: [[155, [1, 3]], [43, [0, 1]]] },   // the Kor Diyarı: throws embers from a distance
     warden: { name: "kor bekçisi", kind: "hostile", hp: 30, w: 0.8, h: 1.9, speed: 2.2, dmg: 5, drops: [[155, [0, 2]], [43, [0, 2]]] }   // a heavy brute that hits hard
@@ -49,6 +50,8 @@
              rows: ["..y.yy.y..", "..yyyyyy..", "..oooooo..", "..okooko..", "..oooooo..", "...orro...", "o.oooooo.o", "o.oorroo.o", "..oooooo..", "..oo..oo..", "..rr..rr.."] },
     warden: { pal: { h: [60, 20, 20], r: [150, 50, 45], d: [100, 30, 30], y: [255, 220, 80] },
               rows: ["..hhhhhh..", ".hrrrrrrh.", ".ryrrrryr.", ".rrrddrrr.", "..rrrrrr..", "rrrrrrrrrr", "rr.rrrr.rr", "rr.rddr.rr", "rr.rrrr.rr", "...rr.rr..", "...rr.rr..", "..hh..hh.."] },
+    villager: { pal: { r: [120, 84, 60], s: [214, 170, 130], n: [190, 140, 100], k: [30, 30, 30], b: [90, 60, 40], g: [100, 130, 60] },
+                rows: ["..bbbbbb..", "..ssssss..", "..sksskss.", "..ssnnss..", "..ssnnss..", "..rrrrrr..", ".rrrrrrrr.", "rrgrrrrgrr", "rrrrrrrrrr", "..rrrrrr..", "..rr..rr..", "..bb..bb.."] },
     spider: { pal: { d: [50, 40, 40], r: [210, 40, 40], g: [90, 80, 80] },
               rows: ["d..........d", ".d..dddd..d.", "..dddrddd...", "ddddrddrdddd", ".dddddddddd.", "d.dd.dd.dd.d", "d..d....d..d"] }
   };
