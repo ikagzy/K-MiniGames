@@ -21,6 +21,12 @@ class OllamaServerError(OllamaError):
     """Ollama was reached and answered with an error (for example when a model does not fit in memory)."""
 
 
+def is_installed(name: str, installed) -> bool:
+    """Is the model installed? Ollama lists a model made without a tag as `name:latest` and takes `name` for it, so both spellings match."""
+    base = lambda n: n[:-len(":latest")] if n.endswith(":latest") else n
+    return any(base(name) == base(m) for m in installed)
+
+
 def _explain(exc: Exception) -> OllamaError:
     if isinstance(exc, urllib.error.HTTPError):
         try:

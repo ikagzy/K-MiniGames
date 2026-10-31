@@ -202,3 +202,10 @@ def test_chat_can_limit_how_many_tokens_the_answer_may_have():
     c2, opener2 = client(ndjson({"message": {"content": "x"}, "done": True}))
     c2.chat("m", [{"role": "user", "content": "x"}])
     assert "num_predict" not in json.loads(opener2.requests[0].data)["options"]
+
+
+def test_a_model_without_a_tag_is_found_under_its_latest_name():
+    from k_minigames.ollama_client import is_installed
+    names = ["k-ai-v3:latest", "qwen2.5-coder:14b"]
+    assert is_installed("k-ai-v3", names) and is_installed("k-ai-v3:latest", names) and is_installed("qwen2.5-coder:14b", names)
+    assert not is_installed("k-ai", names) and not is_installed("qwen2.5-coder", names)

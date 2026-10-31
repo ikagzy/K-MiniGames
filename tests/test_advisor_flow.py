@@ -186,3 +186,11 @@ def test_an_explicit_memory_still_wins_over_the_file():
     flow, advisor, _ = make_flow(AdvisorReply("x", None))
     flow.user_says("merhaba", memory="verilen hafıza")
     assert advisor.calls[0]["memory"] == "verilen hafıza"
+
+
+def test_a_chosen_model_installed_as_name_latest_is_used_without_asking_again():
+    from k_minigames.startup import startup_state
+    class Client:
+        def is_running(self): return True
+        def models(self): return ["qwen3.5:4b", "k-ai-v3:latest"]
+    assert startup_state(Client(), "qwen3.5:4b", "k-ai-v3") == "library"

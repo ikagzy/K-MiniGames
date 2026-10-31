@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from k_minigames import catalog, settings
 from k_minigames.catalog import ModelInfo
-from k_minigames.ollama_client import InstalledModel, OllamaError
+from k_minigames.ollama_client import InstalledModel, OllamaError, is_installed
 
 CANCEL_MESSAGE = "Model kurulmadığı için devam edemiyorum. İstediğin zaman yeniden deneyebilirsin."
 
@@ -26,7 +26,7 @@ def startup_state(client, advisor_model: str, game_model: str | None) -> str:
         return "setup"
     if advisor_model not in models:
         return "setup"
-    if not game_model or game_model not in models:
+    if not game_model or not is_installed(game_model, models):
         return "advisor"
     return "library"
 

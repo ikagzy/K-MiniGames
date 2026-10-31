@@ -8,7 +8,7 @@ from k_minigames import memory as memory_notes
 from k_minigames import model_check, settings
 from k_minigames.advisor import Advisor, AdvisorReply
 from k_minigames.model_check import Recommendation
-from k_minigames.ollama_client import InstalledModel, OllamaError
+from k_minigames.ollama_client import InstalledModel, OllamaError, is_installed
 from k_minigames.startup import CANCEL_MESSAGE, Offer, build_offers
 
 
@@ -67,7 +67,7 @@ class AdvisorFlow:
 
     def _propose(self, proposal: str) -> None:
         chosen = settings.get("game_model")
-        if chosen and chosen in [m.name for m in self._installed_models()]:
+        if chosen and is_installed(chosen, [m.name for m in self._installed_models()]):
             self.state = "done"   # the user already agreed to this model: a new game does not ask again
             return
         self.recommendation = model_check.recommend(proposal, self._ram, self._vram)
