@@ -102,3 +102,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-93 | 2026-10-31 | küp dünya: büyü masası + deneyim + 4 büyü, köyler (ev, çiftlik, kuyu, saman), çöl tapınağı, köylüler ve takas, sandık ganimeti; 220 JS testi | 0e4c717 |
 | CP-94 | 2026-10-31 | küp dünya: elle üretim ızgarası (2x2, masada 3x3, fırın ekranı) gerçek tariflerle, W'ya iki kez basarak koşma; 222 JS testi | 0016ccd |
 | CP-95 | 2026-10-31 | Bob oyunu yapıp kaydedince Don'un hafızası otomatik silinir; 532 Python testi | 067ed7e |
+| CP-96 | 2026-10-31 | fps kiti (birinci şahıs nişancı): ışın izleme, bölüm üretici, 5 düşman, 4 silah, patron, arena, Python entegrasyonu; 230 JS + 536 Python test | d4478f5 |
