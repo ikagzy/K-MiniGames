@@ -80,3 +80,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-71 | 2026-10-28 | k-ai uygulamada görünmüyordu (ayar 'k-ai-v3', Ollama 'k-ai-v3:latest' diyor, uygulama 14B öneriyordu): is_installed ile düzeltildi; ayar ve KUR.bat ':latest' yazıyor; exe yeniden derlenmedi | d430a27 |
 | CP-72 | 2026-10-28 | kök sebep: Claude'un AppData yazmaları sanal klasöre gidiyordu, ayar değişiklikleri kullanıcının uygulamasına ulaşmadı; tools/k-ai-sec.bat eklendi | e958afc |
 | CP-73 | 2026-10-28 | belirsiz tarifler farklı oyun veriyor (özette olmayan tema/müzik/seviye ayrıntıları rastgele doldurulur), düzenlemede seed korunur; doğruluk 0,973 | 8508676 |
+| CP-74 | 2026-10-28 | nişancı kiti: dikey kayan uzay nişancısı (5 düşman türü, dalgalar, patron, güçlendirme, 4 özellik), şema, rehber, Bob kontrolleri, kurallar; bot testiyle her zorlukta yenilebilir; k-ai verisi henüz yok | e414109 |
