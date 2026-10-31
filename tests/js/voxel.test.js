@@ -1204,3 +1204,13 @@ test('a real game starts with empty hands, the recipe list follows the table and
   assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
   s.craftCursor = 999; s.menuMove(1); assert.ok(s.craftCursor < s.craftList().length);
 });
+
+test('swimming: you can climb out of the water onto a bank that is a block higher', () => {
+  const K = fresh();
+  const { s, cx, cz, gy } = yard(K, 93);
+  for (let x = cx; x <= cx + 2; x++) for (let z = cz - 2; z <= cz + 2; z++) { s.set(x, gy, z, 14, false); s.set(x, gy - 1, z, 14, false); s.set(x, gy - 2, z, 3, false); }
+  for (let z = cz - 2; z <= cz + 2; z++) { s.set(cx + 3, gy + 1, z, 3, false); }   // a bank one block above the water
+  stand(s, cx + 1.5, gy - 1, cz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.3);
+  K.press('w'); run(s, 2); K.press('w', false);
+  assert.ok(s.p.x > cx + 3.0, 'out on the bank: ' + s.p.x); assert.ok(s.p.y > gy + 0.9, 'dry and standing, not in the pool: ' + s.p.y);
+});

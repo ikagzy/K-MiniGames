@@ -921,9 +921,9 @@
         }
         p.peak = (p.onGround || inWater || flying) ? p.y : Math.max(p.peak, p.y);
         var nx = p.x + p.vx * dt;   // a step of up to half a block is climbed without jumping (half blocks, stairs)
-        if (!collides(nx, p.y, p.z)) p.x = nx; else if (p.onGround && !flying && !collides(nx, p.y + 0.55, p.z) && !collides(p.x, p.y + 0.55, p.z)) { p.x = nx; p.y += 0.55; }
+        if (!collides(nx, p.y, p.z)) p.x = nx; else if (p.onGround && !flying && !collides(nx, p.y + 0.55, p.z) && !collides(p.x, p.y + 0.55, p.z)) { p.x = nx; p.y += 0.55; } else if (inWater && !flying && !collides(nx, p.y + 1.6, p.z)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);   // swimming into a bank: climb out
         var nz = p.z + p.vz * dt;
-        if (!collides(p.x, p.y, nz)) p.z = nz; else if (p.onGround && !flying && !collides(p.x, p.y + 0.55, nz) && !collides(p.x, p.y + 0.55, p.z)) { p.z = nz; p.y += 0.55; }
+        if (!collides(p.x, p.y, nz)) p.z = nz; else if (p.onGround && !flying && !collides(p.x, p.y + 0.55, nz) && !collides(p.x, p.y + 0.55, p.z)) { p.z = nz; p.y += 0.55; } else if (inWater && !flying && !collides(p.x, p.y + 1.6, nz)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);
         var ny = p.y + p.vy * dt;
         if (!collides(p.x, ny, p.z)) { p.y = ny; p.onGround = false; }
         else { if (p.vy < 0) { p.onGround = true; if (flying && !space) state.flying = false; state.landed(p); } p.vy = 0; }
