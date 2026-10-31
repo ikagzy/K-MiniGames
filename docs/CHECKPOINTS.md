@@ -97,3 +97,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-88 | 2026-10-31 | k-ai-chat: Don için 0.5B model eğitildi ve Ollama'ya kuruldu (cevap 2,2 sn, modül %92); k-ai-chat-sec.bat | 0ff56ca |
 | CP-89 | 2026-10-31 | Don kuralları: kısa istekte öneri tutulup soru sorulur, Don'un mesajı ekranda okunur kalır; 530 Python testi | 0b896f9 |
 | CP-90 | 2026-10-31 | Don hafızası k-ai-chat ile kirleniyordu (Bob'da tekrarlayan mesajlar, 2 dk bekleme): kullanıcının sözleri tutulur, jeton sınırı; hafıza silme bat'ı | 56cb52b |
+| CP-91 | 2026-10-31 | küp dünya: E envanter ızgarası, Ctrl koş/Shift eğil, klavye kırma-koyma kalktı; müzik kapatma hatası düzeltildi; 214 JS testi | 268bbab |
