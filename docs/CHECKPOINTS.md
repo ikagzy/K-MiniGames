@@ -73,3 +73,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-64 | 2026-10-28 | k-ai v2 eğitildi ve ölçüldü (HF'de yeni özellikler %100, genel 0,98); Ollama'da v2 bozuluyor (açık sorun); k-ai için şemasız çağrı; devlog | 34b738c |
 | CP-65 | 2026-10-28 | v2 sorunu Ollama'da değil: aynı GGUF llama.cpp'de de bozuk (elle yazılmış 0,41); eğitimsiz 14B elle yazılmış 0,44 (k-ai v2 0,69) | a722418 |
 | CP-66 | 2026-10-28 | v2 sorununun sebebi bulundu: öğrenilemeyen rastgele seed rakamları (dönüştürme bozuk değil); seed artık modele yazdırılmıyor, uygulama dolduruyor; v3 eğitimi bekliyor | b67ba09 |
+| CP-67 | 2026-10-28 | k-ai v3 (ek eğitim, ham 0,97/0,88) + onarım ve kurallar katmanı; uygulamada v2+kurallar (Ollama'da doğruluk 0,84, elle yazılmış 0,84); exe yeniden derlendi | 99f5cc1 |
