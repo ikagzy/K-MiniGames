@@ -74,3 +74,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-65 | 2026-10-28 | v2 sorunu Ollama'da değil: aynı GGUF llama.cpp'de de bozuk (elle yazılmış 0,41); eğitimsiz 14B elle yazılmış 0,44 (k-ai v2 0,69) | a722418 |
 | CP-66 | 2026-10-28 | v2 sorununun sebebi bulundu: öğrenilemeyen rastgele seed rakamları (dönüştürme bozuk değil); seed artık modele yazdırılmıyor, uygulama dolduruyor; v3 eğitimi bekliyor | b67ba09 |
 | CP-67 | 2026-10-28 | k-ai v3 (ek eğitim, ham 0,97/0,88) + onarım ve kurallar katmanı; uygulamada v2+kurallar (Ollama'da doğruluk 0,84, elle yazılmış 0,84); exe yeniden derlendi | 99f5cc1 |
+| CP-68 | 2026-10-28 | Ollama bozulmasının kök sebebi çözüldü (GGUF'ta rope_theta 10000 yazılıyordu); v1/v2/v3 yeniden kuruldu, Ollama ham = HF; uygulamada k-ai-v3 (+onarım+kurallar: doğruluk 0,97, elle yazılmış 0,94) | 1b58529 |
