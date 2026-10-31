@@ -338,7 +338,9 @@ class Generator:
         user = f"Oyun tarifi:\n{description}\n\nÖzeti (tek JSON nesnesi) ver."
         spec = self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
         # the small model's gaps are closed by rules that read the description (specrules)
-        return specrules.apply(spec, description) if kit == "platformer" and self.model.startswith(TUNED_PREFIX) else spec
+        if not self.model.startswith(TUNED_PREFIX):
+            return spec
+        return {"platformer": specrules.apply, "shooter": specrules.apply_shooter}.get(kit, lambda sp, text: sp)(spec, description)
 
     def edit_spec(self, spec: dict, request: str, kit: str, cancel: Callable[[], bool] | None = None, *,
                   memory: str = "") -> dict:

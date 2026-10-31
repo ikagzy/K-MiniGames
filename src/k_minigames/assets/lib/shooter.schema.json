@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "required": ["kit"],
+  "properties": {
+    "kit": { "type": "string", "enum": ["shooter"] },
+    "title": { "type": "string", "maxLength": 60 },
+    "theme": { "type": "string", "enum": ["space", "night", "sky", "underwater", "cave", "castle", "forest"] },
+    "music": { "type": "string", "enum": ["overworld", "underground", "castle", "boss"] },
+    "musicStyle": {
+      "type": "object",
+      "properties": {
+        "mood": { "type": "string", "enum": ["happy", "calm", "tense", "epic", "mystery", "spooky"] },
+        "tempo": { "type": "string", "enum": ["slow", "medium", "fast"] },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 9999 }
+      }
+    },
+    "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "waves": {
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer", "minimum": 3, "maximum": 20 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 9999 }
+      }
+    },
+    "ship": {
+      "type": "object",
+      "properties": {
+        "speed": { "type": "integer", "minimum": 150, "maximum": 400 },
+        "lives": { "type": "integer", "minimum": 1, "maximum": 9 },
+        "fire": { "type": "string", "enum": ["single", "double", "spread"] }
+      }
+    },
+    "enemies": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["drifter", "zigzag", "shooter", "kamikaze", "tank"] },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "boss": { "type": "boolean" },
+    "features": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["shield", "bomb", "spread", "rapid"] },
+      "maxItems": 4
+    }
+  }
+}

@@ -94,3 +94,49 @@ def apply(spec: dict, description: str) -> dict:
             if field == "enemies" and flyers is not None:
                 level["flyers"] = flyers
     return spec
+
+
+SHOOTER_FEATURES = {"shield": r"\bkalkan|\bshield", "bomb": r"\bbomba", "spread": r"uc yone|yayilan|\bspread|dagilan ates", "rapid": r"hizli ates|seri ates|\brapid"}
+SHOOTER_ENEMIES = {"drifter": r"suzulen|\bdrifter", "zigzag": r"zigzag|kivrilan|ziczac", "shooter": r"ates eden|\bshooter|ates acan",
+                   "kamikaze": r"kamikaze|ustune atilan|intihar", "tank": r"\btank|dayanikli dusman"}
+
+
+def apply_shooter(spec: dict, description: str) -> dict:
+    """The same kind of rules for the shooter: what the description clearly says is set in the spec, the rest stays as the model wrote it."""
+    text = _fold(description or "")
+    found = [name for name, rx in THEMES.items() if re.search(rx, text)]
+    if len(found) == 1:
+        spec["theme"] = found[0]
+    features = list(spec.get("features") or [])
+    for name, rx in SHOOTER_FEATURES.items():
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    kinds = [name for name, rx in SHOOTER_ENEMIES.items() if re.search(rx, text) and not _negated(text, re.search(rx, text).end())]
+    if kinds:
+        spec["enemies"] = kinds
+    boss = re.search(r"\bpatron|\bboss", text)
+    if boss:
+        spec["boss"] = not _negated(text, boss.end())
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    count = re.search(rf"\b({_NUMBER})\s+dalga", text)
+    if count and 3 <= _number(count.group(1)) <= 20:
+        spec["waves"] = {**(spec.get("waves") or {}), "count": _number(count.group(1))}
+    lives = re.search(rf"\b({_NUMBER}|tek|bir)\s+can(?:li|\b)", text)
+    if lives:
+        spec.setdefault("ship", {})["lives"] = 1 if lives.group(1) in ("tek", "bir") else _number(lives.group(1))
+    if re.search(r"cift ates|iki ates", text):
+        spec.setdefault("ship", {})["fire"] = "double"
+    elif re.search(r"tek ates", text):
+        spec.setdefault("ship", {})["fire"] = "single"
+    elif re.search(r"uc yone ates|yayilan ates", text):
+        spec.setdefault("ship", {})["fire"] = "spread"
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

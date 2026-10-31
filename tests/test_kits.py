@@ -121,3 +121,23 @@ def test_an_edit_keeps_the_seeds_of_the_levels_the_campaign_and_the_music():
     after = kits.repair_spec({"kit": "platformer", "title": "Yeni", "generate": [{}, {}], "campaign": {"count": 6}, "musicStyle": {"mood": "calm"}}, "platformer")
     out = kits.keep_seeds(before, after)
     assert [lv["seed"] for lv in out["generate"]] == [11, 22] and out["campaign"]["seed"] == 33 and out["musicStyle"]["seed"] == 44
+
+
+def test_the_shooter_is_a_kit_with_a_schema_a_guide_checks_and_its_own_variety():
+    assert kgamelib.kit_of(["core", "shooter"]) == "shooter"
+    assert kits.schema("shooter")["properties"]["features"]["items"]["enum"] == ["shield", "bomb", "spread", "rapid"]
+    assert len(kits.checks("shooter")) == 5
+    prompt = kits.system_prompt("shooter")
+    assert "nişancı" in prompt and "Seviyeyi (levels)" not in prompt, "no platformer sentences in the shooter's prompt"
+    assert "Seviyeyi (levels)" in kits.system_prompt("platformer")
+    page = kits.compile_page({"kit": "shooter", "theme": "space"})
+    assert page.index("kgame.js") < page.index("kgame.shooter.js") < page.index("K.kit.run(")
+    seen = set()
+    for _ in range(40):
+        out = kits.repair_spec({"kit": "shooter", "enemies": ["drifter", "ejderha"], "ship": {"lives": 99}}, "shooter")
+        assert "generate" not in out and out["enemies"] == ["drifter"] and out["ship"]["lives"] == 9
+        assert 3 <= out["waves"]["count"] <= 20 and 0 <= out["waves"]["seed"] <= 9999 and out["theme"]
+        seen.add((out["theme"], out["waves"]["count"], out["difficulty"]))
+    assert len(seen) > 6
+    kept = kits.keep_seeds({"waves": {"count": 8, "seed": 77}}, kits.repair_spec({"kit": "shooter", "waves": {"count": 8}}, "shooter"))
+    assert kept["waves"]["seed"] == 77

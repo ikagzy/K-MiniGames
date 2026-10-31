@@ -25,6 +25,16 @@ _CHECKS = {
     ],
 }
 
+_CHECKS["shooter"] = [
+    ("Oyun açılır ve gemi sahnededir.", "return !!game.me && Number.isFinite(game.me.x) && game.g.current === 'play';"),
+    ("Gemi sağa gidebilir.",
+     "const x = game.me.x; K.press('d'); await new Promise(r => setTimeout(r, 500)); K.press('d', false); return game.me.x > x + 20;"),
+    ("Gemi ateş eder.",
+     "K.press(' '); await new Promise(r => setTimeout(r, 400)); K.press(' ', false); return game.g.all('pbullet').length > 0;"),
+    ("Düşman dalgası gelir.", "await new Promise(r => setTimeout(r, 2500)); return game.g.all('enemy').length > 0;"),
+    ("Gemi ekrandan çıkmaz.", "return game.me.x >= 0 && game.me.x + game.me.w <= game.g.width;"),
+]
+
 _SYSTEM = (
     "Sen bir oyun tasarımcısısın. Kullanıcının tarif ettiği oyun için KOD YAZMA; yalnızca oyunun ÖZETİNİ (tek bir JSON "
     "nesnesi) ver. Uygulama bu özeti hazır kit ile oyuna çevirir. Özetteki seçenekleri aşağıdaki kılavuzdan seç; olmayan "
@@ -46,8 +56,16 @@ def schema(kit: str) -> dict | None:
         return None
 
 
+_SYSTEM_OTHER = (
+    "Sen bir oyun tasarımcısısın. Kullanıcının tarif ettiği oyun için KOD YAZMA; yalnızca oyunun ÖZETİNİ (tek bir JSON "
+    "nesnesi) ver. Uygulama bu özeti hazır kit ile oyuna çevirir. Özetteki seçenekleri aşağıdaki kılavuzdan seç; olmayan "
+    "alan ya da değer uydurma.\n\n"
+)
+
+
 def system_prompt(kit: str) -> str:
-    return _SYSTEM + (kgamelib.LIB_DIR / f"{kit}.guide.md").read_text(encoding="utf-8").strip()
+    head = _SYSTEM if kit == "platformer" else _SYSTEM_OTHER   # the platformer's text stays as it was: the model was trained on it
+    return head + (kgamelib.LIB_DIR / f"{kit}.guide.md").read_text(encoding="utf-8").strip()
 
 
 def parse_spec(text: str, kit: str) -> dict:
@@ -122,15 +140,19 @@ def repair_spec(spec: dict, kit: str) -> dict:
         if isinstance(drawn, list) and drawn:
             spec["levels"] = drawn
     spec["kit"] = kit
-    if not spec.get("generate") and not spec.get("levels"):
+    if kit == "platformer" and not spec.get("generate") and not spec.get("levels"):   # only the platformer has levels
         spec["generate"] = [{}]
     for level in spec.get("generate") or []:
         level["seed"] = random.randint(0, 9999)
-    for part in ("campaign", "musicStyle"):
+    for part in ("campaign", "musicStyle", "waves"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
+    if kit == "shooter" and not isinstance(spec.get("waves"), dict):
+        spec["waves"] = {"seed": random.randint(0, 9999)}
     if kit == "platformer":
         _platformer_variety(spec)
+    elif kit == "shooter":
+        _shooter_variety(spec)
     return spec
 
 
@@ -157,13 +179,27 @@ def _platformer_variety(spec: dict) -> None:
         level.setdefault("style", random.randrange(5))
 
 
+def _shooter_variety(spec: dict) -> None:
+    """The same for the shooter: what the spec leaves open is drawn; what it says is kept."""
+    spec.setdefault("theme", random.choice(("space", "space", "night", "sky", "underwater", "cave", "castle", "forest")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["musicStyle"] = {"mood": random.choice(_MOODS), "seed": random.randint(0, 9999)}
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec["waves"].setdefault("count", random.randint(6, 10))
+    ship = spec.setdefault("ship", {})
+    ship.setdefault("fire", random.choice(("single", "double", "double")))
+    if not spec.get("enemies"):
+        spec["enemies"] = random.sample(["drifter", "zigzag", "shooter", "kamikaze", "tank"], random.choice((3, 3, 4)))
+    spec.setdefault("boss", random.random() < 0.3)
+
+
 def keep_seeds(before: dict, after: dict) -> dict:
     """After an edit the levels, the campaign and the music keep the seeds they had, so a change of the title does not rebuild the levels."""
     old_levels = before.get("generate") if isinstance(before.get("generate"), list) else []
     for old, new in zip(old_levels, after.get("generate") or []):
         if isinstance(old, dict) and isinstance(new, dict) and "seed" in old:
             new["seed"] = old["seed"]
-    for part in ("campaign", "musicStyle"):
+    for part in ("campaign", "musicStyle", "waves"):
         if isinstance(before.get(part), dict) and isinstance(after.get(part), dict) and "seed" in before[part]:
             after[part]["seed"] = before[part]["seed"]
     return after

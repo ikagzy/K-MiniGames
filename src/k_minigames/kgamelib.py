@@ -51,6 +51,9 @@ MODULES["platformer"] = Module(
     "platformer", ("kgame.platformer.js",), "platformer.guide.md",
     ("core", "sprites", "animation", "themes", "levels", "hud", "audio2", "items", "enemies", "kits"),
     "platform oyunu KİTİ (klasik platform türü): seviye, zıplama, düşman ezme, altın, bayrak, kamera, ses hazır; model yalnızca özet yazar")
+MODULES["shooter"] = Module(
+    "shooter", ("kgame.shooter.js",), "shooter.guide.md", ("core", "sprites", "hud", "audio2", "kits"),
+    "nişancı oyunu KİTİ (dikey kayan uzay nişancısı): gemi, düşman dalgaları, patron, güçlendirme, ses hazır; model yalnızca özet yazar")
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
 _TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
 _FIRST_SCRIPT = re.compile(r"<script\b", re.I)

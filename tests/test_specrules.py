@@ -39,3 +39,13 @@ def test_mood_needs_the_word_music_and_difficulty_a_clear_word():
 def test_a_star_in_a_block_is_not_the_night_theme():
     assert "theme" not in specrules.apply(spec(), "bloklardan yıldız çıksın")
     assert specrules.apply(spec(), "yıldızlı gece teması")["theme"] == "night"
+
+
+def test_shooter_rules_read_features_enemies_boss_waves_lives_and_fire():
+    out = specrules.apply_shooter({"kit": "shooter"}, "Uzayda geçen, kalkanlı ve bombalı, ateş eden ve kamikaze düşmanlı, patronlu, on dalgalık, 5 canlı, çift ateşli bir oyun")
+    assert out["theme"] == "space" and set(out["features"]) == {"shield", "bomb"}
+    assert out["enemies"] == ["shooter", "kamikaze"] and out["boss"] is True
+    assert out["waves"]["count"] == 10 and out["ship"]["lives"] == 5 and out["ship"]["fire"] == "double"
+    assert specrules.apply_shooter({"kit": "shooter", "boss": True}, "patron olmasın")["boss"] is False
+    assert "features" not in specrules.apply_shooter({"kit": "shooter"}, "kalkan olmasın")
+    assert "enemies" not in specrules.apply_shooter({"kit": "shooter"}, "sade bir nişancı oyunu")
