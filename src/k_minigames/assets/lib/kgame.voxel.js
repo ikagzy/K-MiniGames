@@ -10,7 +10,7 @@
   var K = root.K;
   var D = K.voxeldata, NAMES = D.NAME;
   var AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6, PLANKS = 7, GLASS = 8, COAL = 9, IRON = 10, GOLD = 11, DIAMOND = 12, SNOW = 13, WATER = 14, CACTUS = 15;
-  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40, FENCE = 140, DOOR_LO = 141, DOOR_HI = 142, DOOR_ITEM = 143, LADDER = 149;
+  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40, FENCE = 140, DOOR_LO = 141, DOOR_HI = 142, DOOR_ITEM = 143, LADDER = 149, PORTAL = 150, OBSIDIAN = 151, LIGHTER = 152, NETHERRACK = 153, GLOWSTONE = 154;
   var TABLE = 24, FURNACE = 25, TORCH = 33, COAL_ITEM = 41;   // (the coal you carry: COAL above is the ore in the ground)   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
   var BIOMES = { forest: { top: GRASS, trees: 1, amp: 5 }, plains: { top: GRASS, trees: 0.2, amp: 3 }, desert: { top: SAND, trees: 0.6, amp: 4 }, snow: { top: SNOW, trees: 0.5, amp: 6 } };
   var SIZES = { small: 8, medium: 16, large: 32 };   // chunks on a side
@@ -42,8 +42,8 @@
   function makeWorld(o) {
     var N = SIZES[o.size] || 16, S = N * CH, seed = (o.seed | 0) + 1, biome = BIOMES[o.biome] || BIOMES.forest;
     var caves = o.caves | 0, ores = o.ores | 0, trees = (o.trees === undefined ? 1 : o.trees) * biome.trees;
-    var chunks = new Array(N * N), heights = new Array(N * N), pending = {};
-    var w = { S: S, N: N, SY: SY, chunks: chunks, made: 0, spawn: null, pending: pending };
+    var chunks = new Array(N * N), heights = new Array(N * N), pending = {}, dim = o.dim || "over", treesBase = trees;
+    var w = { S: S, N: N, SY: SY, chunks: chunks, made: 0, spawn: null, pending: pending, dim: dim };
 
     function surface(x, z) {
       var n = noise2(seed, x, z, 22) * 0.65 + noise2(seed + 7, x, z, 9) * 0.35;
@@ -58,10 +58,39 @@
       if (noise3(seed + 43, x, y, z, 6) > 0.8) return 123;
       return STONE;
     }
+    function fillDimension(blocks, hm, cx, cz, at) {   // the other worlds: the Kor Diyarı (a red cave with a lava sea) and the Gök Adaları (islands in the void)
+      for (var lx = 0; lx < CH; lx++) for (var lz = 0; lz < CH; lz++) {
+        var x = cx * CH + lx, z = cz * CH + lz, y, h;
+        if (dim === "nether") {
+          h = 5 + Math.round(noise2(seed + 61, x, z, 14) * 9 + noise2(seed + 62, x, z, 5) * 3);
+          var ceil = 26 + Math.round(noise2(seed + 63, x, z, 10) * 3);
+          hm[lz * CH + lx] = h;
+          for (y = 0; y <= h; y++) blocks[at(lx, y, lz)] = y === 0 ? STONE : (y < h - 1 && hash(seed + 65, x, y, z) < 0.02 ? GOLD : NETHERRACK);
+          for (y = h + 1; y <= SEA; y++) blocks[at(lx, y, lz)] = LAVA;
+          if (h > SEA && noise2(seed + 64, x, z, 6) > 0.84) for (y = h + 1; y < ceil; y++) blocks[at(lx, y, lz)] = NETHERRACK;   // a pillar
+          for (y = ceil; y < SY; y++) blocks[at(lx, y, lz)] = y === ceil && hash(seed + 66, x, 0, z) < 0.07 ? GLOWSTONE : NETHERRACK;
+          if (hash(seed + 67, x, 0, z) < 0.04) { blocks[at(lx, ceil - 1, lz)] = GLOWSTONE; blocks[at(lx, ceil - 2, lz)] = GLOWSTONE; }
+        } else {
+          var mid = S >> 1, d = Math.sqrt((x - mid) * (x - mid) + (z - mid) * (z - mid));
+          var mask = noise2(seed + 71, x, z, 24) * 0.8 + noise2(seed + 72, x, z, 9) * 0.2 - d / S * 0.15 + (d < 22 ? (1 - d / 22) * 0.9 : 0);
+          hm[lz * CH + lx] = 0;
+          if (mask > 0.58) {
+            var top = 20 + Math.round(noise2(seed + 73, x, z, 12) * 4), bottom = top - (Math.round((mask - 0.58) * 22) + 2);
+            hm[lz * CH + lx] = top;
+            for (y = Math.max(1, bottom); y <= top; y++) {
+              var b = y === top ? GRASS : y >= top - 2 ? DIRT : STONE, r = hash(seed + 74, x, y, z);
+              if (b === STONE && r < 0.03) b = COAL; else if (b === STONE && r < 0.045) b = IRON;
+              blocks[at(lx, y, lz)] = b;
+            }
+          }
+        }
+      }
+    }
     function gen(cx, cz) {
       var idx = cz * N + cx, blocks = new Uint8Array(CH * SY * CH), hm = new Int16Array(CH * CH);
       var at = function (lx, y, lz) { return (y * CH + lz) * CH + lx; };
-      for (var lx = 0; lx < CH; lx++) for (var lz = 0; lz < CH; lz++) {
+      if (dim !== "over") fillDimension(blocks, hm, cx, cz, at);
+      else for (var lx = 0; lx < CH; lx++) for (var lz = 0; lz < CH; lz++) {
         var x = cx * CH + lx, z = cz * CH + lz, h = surface(x, z);
         hm[lz * CH + lx] = h;
         for (var y = 0; y <= h; y++) {
@@ -133,8 +162,15 @@
     };
     w.count = function (id) { var n = 0; chunks.forEach(function (c) { if (c) for (var i = 0; i < c.length; i++) if (c[i] === id) n++; }); return n; };
     w.loaded = function () { return w.made; };
+    w.switchDim = function (d) {   // forget every chunk and make the world of another dimension (the changes of that dimension are queued by the caller)
+      dim = d; w.dim = d; trees = d === "nether" ? 0 : treesBase;
+      for (var i = 0; i < chunks.length; i++) { chunks[i] = undefined; heights[i] = undefined; }
+      for (var k in pending) delete pending[k];
+      w.made = 0; w.spawn = null;
+    };
     // the spawn: open ground nearest the middle (dry, clear sky above)
-    var mid = S >> 1;
+    w.findSpawn = function () {
+    var mid = S >> 1; w.spawn = null;
     for (var ring = 0; ring < 40 && !w.spawn; ring++) for (var ox = -ring; ox <= ring && !w.spawn; ox++) for (var oz = -ring; oz <= ring && !w.spawn; oz++) {
       if (Math.max(Math.abs(ox), Math.abs(oz)) !== ring) continue;
       var sx = mid + ox, sz = mid + oz, sh = w.heightAt(sx, sz), clear = w.get(sx, sh, sz) !== WATER && sh > SEA;
@@ -143,6 +179,8 @@
     }
     if (!w.spawn) w.spawn = { x: mid + 0.5, y: Math.max(w.heightAt(mid, mid), SEA) + 1.01, z: mid + 0.5 };
     w.ensureAround(w.spawn.x | 0, w.spawn.z | 0, LOAD);
+    };
+    w.findSpawn();
     return w;
   }
 
@@ -165,6 +203,10 @@
       if (id === 28 && (u % 8 === 0 || v % 4 === 0)) k *= 0.78;   // brick lines
       if (id >= 124 && id <= 126 && (u === 0 || v === 0)) k *= 0.82;   // the edge of a polished block
       if (id === 127 && face === 1 && v % 4 === 0) k *= 0.8;   // the straw bands
+      if (id === 150) k *= 0.7 + 0.6 * Math.abs(Math.sin((u + v) * 0.7 + n * 3));   // the swirl of a portal
+      if (id === 151 && n > 0.86) c = [90, 50, 140];   // purple flecks in the black rock
+      if (id === 153 && n > 0.8) k *= 0.7;
+      if (id === 154 && n > 0.55) k = 1.25;
       if (id === 24 && face === 0 && (u % 5 === 0 || v % 5 === 0)) k *= 0.8;   // the table top
       if (id === 25 && face === 1 && u > 3 && u < 12 && v > 6 && v < 13) k *= 0.35;   // the furnace mouth
       if (id === 26 && face === 1 && (v === 7 || v === 8)) k *= 0.7;   // the chest band
@@ -197,7 +239,7 @@
       var seed = (spec.world && spec.world.seed) || 1;
       var w = makeWorld({ seed: seed, biome: spec.biome, size: spec.size, caves: spec.caves, ores: spec.ores, lakes: spec.lakes, trees: spec.trees });
       var S = w.S, N = w.N;
-      var saveKey = "sandbox." + spec.biome + "." + spec.size + "." + seed;
+      var baseKey = "sandbox." + spec.biome + "." + spec.size + "." + seed, saveKey = baseKey;   // the other dimensions keep their changes under baseKey.nether and baseKey.sky
       var state = { g: g, spec: spec, world: w, edits: [], hits: [], heroHooks: [], canFly: false, flying: false, sprintMul: 1, time: spec.time === "night" ? 0.5 : 0.1,
                     creative: false, inv: { order: [], count: {} }, slot: 0, showInv: false, showHelp: false, visited: {}, lockHint: true, breakDelay: 0,
                     p: { x: w.spawn.x, y: w.spawn.y, z: w.spawn.z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: false, peak: w.spawn.y },
@@ -207,7 +249,7 @@
       if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
       state.hud = { placed: 0, broken: 0, depth: 0, explored: 0, harvested: 0 };
       state.crops = [];
-      var get = w.get, solid = function (b) { return b !== AIR && b !== WATER && !(b >= CROP1 && b <= CROP3) && b !== TORCH && b !== LAVA && b !== SAPLING; };   // plants and torches are walked through, and lava is a liquid
+      var get = w.get, solid = function (b) { return b !== AIR && b !== WATER && !(b >= CROP1 && b <= CROP3) && b !== TORCH && b !== LAVA && b !== SAPLING && b !== PORTAL; };   // plants and torches are walked through, and lava is a liquid
       state.get = get;
       var set = function (x, y, z, b, remember, meta) {
         if (!w.set(x, y, z, b)) return false;
@@ -250,11 +292,11 @@
       // ---- looking: a ray through the cubes (shared by the picture and by breaking / placing) ----
       var hit = { b: 0, x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, t: 0, face: 1, hx: 0, hy: 0, hz: 0 };
       // ---- shaped blocks: the boxes a block fills (inside its own cell, 0 to 1); a fence reaches out to its neighbours, a door turns, stairs face the way you looked ----
-      state.meta = {};   // facing 0-3 (north, east, south, west) and +4 for an open door, for the blocks that have one
+      state.meta = pendingMeta;   // facing 0-3 (north, east, south, west) and +4 for an open door, for the blocks that have one
       var metaOf = function (x, y, z) { return state.meta[x + "," + y + "," + z] || 0; };
       state.metaOf = metaOf;
       var isFence = function (b) { return b === FENCE; };
-      var SHAPED = function (b) { return (b >= 130 && b <= 139) || b === FENCE || b === DOOR_LO || b === DOOR_HI || (b >= 144 && b <= 149); };
+      var SHAPED = function (b) { return (b >= 130 && b <= 139) || b === FENCE || b === DOOR_LO || b === DOOR_HI || (b >= 144 && b <= 149) || b === PORTAL; };
       function sideBox(f, thick) {   // a panel of the given thickness against side f
         return f === 0 ? [0, 0, 0, 1, 1, thick] : f === 1 ? [1 - thick, 0, 0, 1, 1, 1] : f === 2 ? [0, 0, 1 - thick, 1, 1, 1] : [0, 0, 0, thick, 1, 1];
       }
@@ -278,6 +320,7 @@
           var m = metaOf(x, y, z), f = m & 3, open = (m & 4) !== 0;
           return [sideBox(open ? (f + 3) % 4 : f, 0.1875)];
         }
+        if (b === PORTAL) return forBody ? [] : ((metaOf(x, y, z) & 1) ? [[0.44, 0, 0, 0.56, 1, 1]] : [[0, 0, 0.44, 1, 1, 0.56]]);
         if (b === LADDER) return forBody ? [] : [sideBox(metaOf(x, y, z) & 3, 0.125)];
         return null;
       }
@@ -360,6 +403,7 @@
       };
       state.sleep = function () {   // a bed: the night is over, and it is where you come back to
         var p = state.p;
+        if (state.dim === "nether") { state.say("Bu diyarda uyuyamazsın."); return false; }
         if (state.daylight() >= 0.45 && spec.time !== "night") { state.say("Sadece geceleri uyuyabilirsin."); return false; }
         if (spec.time === "cycle") state.time = 0.85;
         state.respawn = { x: p.x, y: p.y, z: p.z }; state.stats.slept++;
@@ -403,7 +447,7 @@
       state.closeMenu = function () { state.menu.open = false; state.menu.confirm = false; };
       state.toggleMusic = function () { state.musicOn = !state.musicOn; if (state.musicOn) { if (tune) K.music.play(tune); } else K.music.stop(); };
       state.resetWorld = function () {   // the saved changes and the achievements of this world are deleted; in a page it opens again from scratch
-        try { K.save.set(saveKey, []); K.save.set(saveKey + ".ach", {}); } catch (e) { /* nothing was kept anyway */ }
+        try { [baseKey, baseKey + ".nether", baseKey + ".sky"].forEach(function (k) { K.save.set(k, []); }); K.save.set(baseKey + ".ach", {}); } catch (e) { /* nothing was kept anyway */ }
         state.edits.length = 0; state.resetRequested = true;
         if (typeof location !== "undefined" && location.reload) location.reload();
       };
@@ -417,7 +461,7 @@
         return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
       };
       var CONTROL_LINES = ["W A S D  yürü       Boşluk  zıpla       Shift  koş", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
-                           "Tekerlek, Q ya da 1-9  eşya seç       I  envanter       X  tarifler", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)"];
+                           "Tekerlek, Q ya da 1-9  eşya seç       I  envanter       X  tarifler", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)", "Geçit: 4x5 kara kaya çerçeve (köşesiz), çakmakla içine bak ve sağ tık. Cam çerçeve = Gök Adaları"];
       state.menuUpdate = function (dt) {
         var m = state.menu;
         g.ui.items = {};
@@ -551,6 +595,7 @@
         state.spawnT += dt; if (state.spawnT >= 2) { state.spawnT = 0; state.spawnHostile(); }
       };
       w.onChunk = function (cx, cz) {   // a chunk made for the first time gets its herd, when the ground is open
+        if (state.dim === "nether") return;
         M.chunkSpawns(seed, cx, cz, spec.biome).forEach(function (sp) {
           var x = Math.floor(sp.x), z = Math.floor(sp.z), h = w.heightAt(x, z), top = get(x, h, z);
           if (h > SEA + 1 && (top === GRASS || top === SNOW || top === SAND) && get(x, h + 1, z) === AIR) state.mobs.push(M.create(sp.type, sp.x, h + 1.01, sp.z));
@@ -600,6 +645,7 @@
           if (!state.creative) { inv.count[SAPLING]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
           return true;
         }
+        if (id === LIGHTER) { state.lightPortal(t.x, t.y, t.z); return true; }   // a çakmak lights the portal frame it points at
         if (id === DOOR_ITEM) {   // a door stands in the cell next to what you clicked, on solid ground, two high
           var dx0 = t.x + t.nx, dy0 = t.y + t.ny, dz0 = t.z + t.nz;
           if (get(dx0, dy0, dz0) !== AIR || get(dx0, dy0 + 1, dz0) !== AIR || !solid(get(dx0, dy0 - 1, dz0)) || SHAPED(get(dx0, dy0 - 1, dz0))) return false;
@@ -694,6 +740,88 @@
         if (e instanceof Array && e[3] >= CROP1 && e[3] < CROP3 && get(e[0], e[1], e[2]) === e[3]) state.crops.push({ x: e[0], y: e[1], z: e[2], age: (e[3] - CROP1) * CROP_SECONDS });
       });
 
+      // ---- dimensions: a portal frame (kara kaya = Kor Diyarı, cam = Gök Adaları) lit with a çakmak leads to another world made by the same seed; each keeps its own changes ----
+      var DIMS = { nether: { name: "Kor Diyarı", frame: OBSIDIAN, code: 1 }, sky: { name: "Gök Adaları", frame: GLASS, code: 2 } }, DIM_BY_CODE = [null, "nether", "sky"];
+      state.dim = "over"; state.homes = {}; state.dimsSeen = {}; state.portalT = 0; state.portalLock = true; state.dimNames = { over: "Ana dünya", nether: "Kor Diyarı", sky: "Gök Adaları" };
+      function portalCell(ix, iy, iz, axis, a, b) { return axis === 0 ? [ix + a, iy + b, iz] : [ix, iy + b, iz + a]; }
+      function frameFits(ix, iy, iz, axis, mat) {   // a free 2 wide, 3 high opening with a ring of `mat` around it (corners are not needed)
+        for (var a = -1; a <= 2; a++) for (var b = -1; b <= 3; b++) {
+          var c = portalCell(ix, iy, iz, axis, a, b), inside = a >= 0 && a <= 1 && b >= 0 && b <= 2, corner = (a === -1 || a === 2) && (b === -1 || b === 3);
+          if (corner) continue;
+          var here = get(c[0], c[1], c[2]);
+          if (inside ? here !== AIR : here !== mat) return false;
+        }
+        return true;
+      }
+      state.lightPortal = function (x, y, z) {
+        var mat = get(x, y, z);
+        if (mat !== OBSIDIAN && mat !== GLASS) return false;
+        var code = state.dim !== "over" ? 0 : mat === OBSIDIAN ? 1 : 2;
+        for (var axis = 0; axis <= 1; axis++) for (var da = -4; da <= 4; da++) for (var iy = y - 4; iy <= y + 1; iy++) {
+          var ix = axis === 0 ? x + da : x, iz = axis === 0 ? z : z + da;
+          if (!frameFits(ix, iy, iz, axis, mat)) continue;
+          for (var a = 0; a <= 1; a++) for (var b = 0; b <= 2; b++) { var c = portalCell(ix, iy, iz, axis, a, b); set(c[0], c[1], c[2], PORTAL, true, axis + 4 * code); }
+          K.sfx("coin"); state.say("Geçit açıldı."); return true;
+        }
+        state.say("Çerçeve olmadı: 4 geniş, 5 yüksek, köşesiz, içi boş.");
+        return false;
+      };
+      function buildArrival(ax, h, az, dest) {   // the way back: a small portal standing on flat ground, with room around it
+        for (var x = ax - 1; x <= ax + 2; x++) for (var z = az - 1; z <= az + 1; z++) {
+          var under = get(x, h, z); if (!solid(under) || under === LAVA) set(x, h, z, dest === "nether" ? NETHERRACK : STONE, true);
+          for (var y = h + 1; y <= h + 4; y++) if (get(x, y, z) !== AIR) set(x, y, z, AIR, true);
+        }
+        [[ax, h], [ax + 1, h]].forEach(function (c) { set(c[0], c[1], az, OBSIDIAN, true); set(c[0], h + 4, az, OBSIDIAN, true); });
+        for (var yy = h + 1; yy <= h + 3; yy++) { set(ax - 1, yy, az, OBSIDIAN, true); set(ax + 2, yy, az, OBSIDIAN, true); set(ax, yy, az, PORTAL, true, 0); set(ax + 1, yy, az, PORTAL, true, 0); }
+      }
+      function restoreGrowth(list) {   // saplings and crops that were growing in this world go on
+        list.forEach(function (e) {
+          if (e[3] === SAPLING && get(e[0], e[1], e[2]) === SAPLING) state.saplings.push({ x: e[0], y: e[1], z: e[2], age: 0 });
+          if (e[3] >= CROP1 && e[3] < CROP3 && get(e[0], e[1], e[2]) === e[3]) state.crops.push({ x: e[0], y: e[1], z: e[2], age: (e[3] - CROP1) * CROP_SECONDS });
+        });
+      }
+      state.travel = function (dest) {
+        if (dest === state.dim || (dest !== "over" && !DIMS[dest])) return false;
+        var p = state.p, from = state.dim, fromPos = { x: p.x, y: p.y, z: p.z };
+        state.homes[from] = fromPos; state.dim = dest; state.dimsSeen[dest] = true;
+        saveKey = dest === "over" ? baseKey : baseKey + "." + dest;
+        state.edits = []; state.meta = {}; state.mobs = []; state.arrows = []; state.saplings = []; state.crops = [];
+        w.switchDim(dest);
+        var sv; try { sv = K.save.get(saveKey, []); } catch (e) { sv = []; }
+        var list = (sv instanceof Array ? sv : []).filter(function (e) { return e instanceof Array && (e.length === 4 || e.length === 5); });
+        list.forEach(function (e) { state.edits.push(e); w.queueEdit(e); if (e.length === 5) state.meta[e[0] + "," + e[1] + "," + e[2]] = e[4]; });
+        w.findSpawn();
+        var home = state.homes[dest];
+        if (home) { w.ensureAround(home.x | 0, home.z | 0, LOAD); p.x = home.x; p.y = home.y; p.z = home.z; }
+        else if (dest === "over") { p.x = w.spawn.x; p.y = w.spawn.y; p.z = w.spawn.z; }
+        else {
+          var tx = dest === "nether" ? Math.max(8, Math.min(S - 8, Math.floor(fromPos.x / 2))) : w.spawn.x | 0, tz = dest === "nether" ? Math.max(8, Math.min(S - 8, Math.floor(fromPos.z / 2))) : w.spawn.z | 0, ax = tx, az = tz, h = 0, found = false;
+          w.ensureAround(tx, tz, 3);
+          for (var ring = 0; ring < 40 && !found; ring++) for (var ox = -ring; ox <= ring && !found; ox++) for (var oz = -ring; oz <= ring && !found; oz++) {
+            if (Math.max(Math.abs(ox), Math.abs(oz)) !== ring) continue;
+            var cx2 = tx + ox, cz2 = tz + oz; if (cx2 < 3 || cz2 < 3 || cx2 > S - 4 || cz2 > S - 4) continue;
+            var hh = w.heightAt(cx2, cz2); if (hh > SEA && hh < 18 && get(cx2, hh, cz2) !== LAVA) { ax = cx2; az = cz2; h = hh; found = true; }
+          }
+          if (!found) { ax = tx; az = tz; h = Math.max(12, w.heightAt(tx, tz)); }
+          buildArrival(ax, h, az, dest);
+          state.homes[dest] = { x: ax + 1.0, y: h + 1.01, z: az + 0.5 };
+          p.x = ax + 1.0; p.y = h + 1.01; p.z = az + 1.5;
+        }
+        p.vx = p.vy = p.vz = 0; p.peak = p.y; state.portalLock = true; state.portalT = 0; state.visited = {};
+        w.ensureAround(p.x | 0, p.z | 0, LOAD);
+        restoreGrowth(list);
+        K.sfx("coin"); state.say(state.dimNames[dest]);
+        return true;
+      };
+      state.portalStep = function (dt) {
+        var p = state.p, fx = Math.floor(p.x), fz = Math.floor(p.z);
+        var cellY = get(fx, Math.floor(p.y + 0.2), fz) === PORTAL ? Math.floor(p.y + 0.2) : get(fx, Math.floor(p.y + 1.2), fz) === PORTAL ? Math.floor(p.y + 1.2) : -1;
+        if (cellY < 0) { state.portalT = 0; state.portalLock = false; return; }
+        if (state.portalLock) return;
+        state.portalT += dt;
+        if (state.portalT >= 1.2) { var code = metaOf(fx, cellY, fz) >> 2; state.travel(DIM_BY_CODE[code] || "over"); }
+      };
+
       // ---- the player ----
       function collides(x, y, z) {
         for (var bx = Math.floor(x - 0.3); bx <= Math.floor(x + 0.3); bx++) for (var bz = Math.floor(z - 0.3); bz <= Math.floor(z + 0.3); bz++)
@@ -719,6 +847,7 @@
       state.die = function (why) {   // you come back at the spawn with everything you carry
         var p = state.p;
         state.deaths++; state.health = 20; state.food = 20; state.air = 10; state.hungerT = state.regenT = state.starveT = state.drownT = 0;
+        if (state.dim !== "over") state.travel("over");   // you wake up in the main world
         var rs = state.respawn || w.spawn; p.x = rs.x; p.y = rs.y; p.z = rs.z; p.vx = p.vy = p.vz = 0; p.peak = p.y;
         state.mobs = state.mobs.filter(function (m) { return K.voxelmobs.TYPES[m.type].kind === "passive"; });   // the night things are gone when you come back
         state.say("Öldün" + (why ? " (" + why + ")" : "") + ". Doğma noktasında yeniden doğdun.");
@@ -729,14 +858,14 @@
         else if (drop > 3.3 && !state.flying) state.hurt(Math.floor(drop - 3), "düşme");
         p.peak = p.y;
       };
-      var savedAch; try { savedAch = K.save.get(saveKey + ".ach", {}); } catch (e) { savedAch = {}; }
+      var savedAch; try { savedAch = K.save.get(baseKey + ".ach", {}); } catch (e) { savedAch = {}; }
       if (savedAch && typeof savedAch === "object") Object.keys(savedAch).forEach(function (k) { state.ach[k] = true; });
       state.checkAch = function () {   // an achievement that comes true is announced once and kept with the world
         var gained = [];
         D.ACH.forEach(function (a) { if (!state.ach[a.id] && a.test(state)) { state.ach[a.id] = true; gained.push(a); } });
         if (gained.length) {
           state.say("Başarım: " + gained[0].name + " (" + gained[0].desc + ")"); K.sfx("powerup");
-          try { K.save.set(saveKey + ".ach", state.ach); } catch (e) { /* not kept */ }
+          try { K.save.set(baseKey + ".ach", state.ach); } catch (e) { /* not kept */ }
         }
         return gained;
       };
@@ -791,7 +920,7 @@
         if (!collides(p.x, ny, p.z)) { p.y = ny; p.onGround = false; }
         else { if (p.vy < 0) { p.onGround = true; if (flying && !space) state.flying = false; state.landed(p); } p.vy = 0; }
         p.x = Math.max(0.35, Math.min(S - 0.35, p.x)); p.z = Math.max(0.35, Math.min(S - 0.35, p.z));
-        if (p.y < -10) { p.x = w.spawn.x; p.y = w.spawn.y + 8; p.z = w.spawn.z; p.vy = 0; p.peak = p.y; }
+        if (p.y < (state.dim === "sky" ? 2 : -10)) { if (state.dim === "sky") state.say("Boşluğa düştün."); p.x = w.spawn.x; p.y = w.spawn.y + 8; p.z = w.spawn.z; p.vy = 0; p.peak = p.y; }
         state.hud.depth = Math.max(0, Math.round(w.heightAt(Math.floor(p.x), Math.floor(p.z)) - p.y));
         // the chunks around the player are made ahead of the walk, two at most each frame, and the visited ones are remembered
         w.ensureAround(Math.floor(p.x), Math.floor(p.z), LOAD, 2);
@@ -802,11 +931,13 @@
         state.time0 += dt;
         state.grow(dt);
         state.vitals(dt);
+        state.portalStep(dt);
         state.updateMobs(dt);
         state.heroHooks.forEach(function (h) { h(p, dt); });
       };
       state.time0 = 0;
       state.daylight = function () {
+        if (state.dim === "nether") return 0.3;   // always dim, lit only by the lava and the glowing stone
         if (spec.time === "day") return 1;
         if (spec.time === "night") return 0.18;
         return Math.max(0.18, Math.min(1, 0.59 + 0.6 * Math.cos(state.time * Math.PI * 2)));   // 1 at noon (time 0), dark at midnight (0.5)
@@ -816,11 +947,12 @@
       var buffer = typeof Uint8ClampedArray !== "undefined" ? new Uint8ClampedArray(RW * RH * 4) : [];
       void buffer;
       function render(out) {
-        var e = eye(), d = look(), light = state.daylight(), p = state.p;
+        var e = eye(), d = look(), light = state.dim === "nether" ? 0.62 : state.daylight(), p = state.p;
         var rx = Math.cos(p.yaw), rz = Math.sin(p.yaw);
         var ux = -Math.sin(p.yaw) * Math.sin(p.pitch), uy = Math.cos(p.pitch), uz = Math.cos(p.yaw) * Math.sin(p.pitch);
         var scale = Math.tan(0.62), aspect = RW / RH;
         var skyR = 110 * light + 8, skyG = 170 * light + 10, skyB = 235 * light + 25;
+        if (state.dim === "nether") { skyR = 80; skyG = 16; skyB = 12; }
         var inWater = get(Math.floor(e.x), Math.floor(e.y), Math.floor(e.z)) === WATER;
         var shade = [1, 0.82, 0.55];
         for (var j = 0; j < RH; j++) for (var i = 0; i < RW; i++) {

@@ -488,7 +488,7 @@ test('the hotbar is a window over everything you hold, so new tools show up, and
 
 test('every thing you can hold has a picture: a cube from its textures for a block, pixel art in 16 rows of 16 for the rest', () => {
   const K = fresh(); const D = K.voxeldata;
-  const never = new Set([14, 16, 17, 18, 19, 37, 135, 136, 137, 138, 139, 141, 142]);   // upper slabs and door halves are never carried   // water and the field and crops are never carried
+  const never = new Set([14, 16, 17, 18, 19, 37, 150, 135, 136, 137, 138, 139, 141, 142]);   // upper slabs and door halves are never carried   // water and the field and crops are never carried
   for (const id of Object.keys(D.NAME).map(Number).filter((n) => !never.has(n))) {
     assert.ok(D.hasIcon(id), D.NAME[id] + ' (' + id + ') has an icon');
     if (!D.isBlock(id)) {
@@ -565,7 +565,7 @@ test('drowning: staying under water too long hurts, breathing in the air brings 
 
 test('achievements: none at the start (the starter things do not count), each one comes true by itself, is announced once, is kept with the world, and B shows the list', () => {
   const K = fresh(); const D = K.voxeldata;
-  assert.strictEqual(D.ACH.length, 23); assert.strictEqual(new Set(D.ACH.map((a) => a.id)).size, 23);
+  assert.strictEqual(D.ACH.length, 25); assert.strictEqual(new Set(D.ACH.map((a) => a.id)).size, 25);
   let s = K.kit.run({ kit: 'sandbox', world: { seed: 12 }, size: 'small', trees: 0 });
   run(s, 2);
   assert.deepStrictEqual(Object.keys(s.ach), [], 'nothing yet, even though you start with logs and stone');
@@ -1041,4 +1041,103 @@ test('menus: the game opens on a main menu, Esc opens a pause menu, the arrows a
   assert.ok(/sıfırla/.test(wipe().label)); wipe().act(); assert.ok(/Emin/.test(wipe().label), 'a second choice is needed');
   s.menu.index = 0; K.press('ArrowDown'); run(s, 0.05); K.press('ArrowDown', false); assert.strictEqual(s.menu.confirm, false, 'moving away cancels it');
   assert.strictEqual(s.food, hungerBefore, 'nothing was eaten or lost while in the menus');
+});
+
+// ---- dimensions ----
+function yard(K, seed) {
+  const s = K.kit.run({ kit: 'sandbox', world: { seed }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1.5);
+  const cx = 60, cz = 60, gy = s.world.heightAt(cx, cz);
+  for (let x = cx - 8; x <= cx + 8; x++) for (let z = cz - 8; z <= cz + 8; z++) { for (let y = gy + 1; y <= gy + 7; y++) s.set(x, y, z, 0, false); s.set(x, gy, z, 3, false); }
+  s.mobs.length = 0; s.set(cx + 5, gy + 1, cz + 5, 24, false);   // a crafting table at hand
+  return { s, cx, cz, gy };
+}
+function frame(s, ix, iy, iz, mat) {   // a ring 4 wide and 5 high around a 2 by 3 opening, in the plane of constant z
+  for (let a = -1; a <= 2; a++) for (let b = -1; b <= 3; b++) {
+    const corner = (a === -1 || a === 2) && (b === -1 || b === 3), inside = a >= 0 && a <= 1 && b >= 0 && b <= 2;
+    if (!corner && !inside) s.set(ix + a, iy + b, iz, mat, false);
+  }
+}
+const stand = (s, x, y, z) => { s.p.x = x; s.p.y = y; s.p.z = z; s.p.vx = s.p.vy = s.p.vz = 0; };
+
+test('the Kor Diyarı and the Gök Adaları are made from the seed: a red cave with a lava sea and glowing stone, and islands in the void with a way to stand on', () => {
+  const K = fresh(); const S = 16 * 8;
+  const n = K.voxel.makeWorld({ seed: 5, biome: 'forest', size: 'small', caves: 2, ores: 2, lakes: true, trees: 2, dim: 'nether' });
+  n.ensureAround(S >> 1, S >> 1, 4);
+  assert.ok(n.count(153) > 3000, 'kızıl taş: ' + n.count(153)); assert.ok(n.count(37) > 100, 'lava sea: ' + n.count(37)); assert.ok(n.count(154) > 5, 'glow stone: ' + n.count(154));
+  assert.ok(n.count(11) > 5, 'gold in the rock'); assert.strictEqual(n.count(5), 0, 'no trees'); assert.strictEqual(n.get(70, 31, 70), 153, 'a ceiling');
+  assert.ok(n.spawn && n.heightAt(n.spawn.x | 0, n.spawn.z | 0) > 9 && n.get(n.spawn.x | 0, (n.spawn.y | 0) + 3, n.spawn.z | 0) === 0, 'a place to stand');
+  const sky = K.voxel.makeWorld({ seed: 5, biome: 'forest', size: 'small', caves: 2, ores: 2, lakes: true, trees: 2, dim: 'sky' });
+  sky.ensureAround(S >> 1, S >> 1, 4);
+  assert.ok(sky.count(1) > 300, 'grass on the islands: ' + sky.count(1)); assert.ok(sky.spawn.y > 19, 'the spawn is on an island');
+  let voidColumns = 0; for (let x = 4; x < S; x += 6) for (let z = 4; z < S; z += 6) if (sky.heightAt(x, z) === 0) voidColumns++;
+  assert.ok(voidColumns > 20, 'most of the sky is empty: ' + voidColumns);
+  const again = K.voxel.makeWorld({ seed: 5, biome: 'forest', size: 'small', caves: 2, ores: 2, lakes: true, trees: 2, dim: 'nether' });
+  again.ensureAround(S >> 1, S >> 1, 4); assert.strictEqual(again.count(153), n.count(153), 'the same seed makes the same world');
+});
+
+test('a portal: the frame needs the right shape, a çakmak lights it, standing in it takes you to the other world, which has a way back and keeps its own changes', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const { s, cx, cz, gy } = yard(K, 77);
+  s.addItem(27, 2); s.addItem(41, 2); s.addItem(42, 1);
+  assert.strictEqual(s.craft('kara kaya'), true); assert.strictEqual(s.craft('çakmak'), true); assert.strictEqual(s.inv.count[151], 1); assert.strictEqual(s.inv.count[152], 1);
+  assert.ok(D.hasIcon(152) && D.isBlock(151) && D.isBlock(153) && D.isBlock(154) && !D.isBlock(150));
+  // a frame with a hole in the ring does not light
+  const ix = cx, iy = gy + 1, iz = cz;
+  frame(s, ix, iy, iz, 151); s.set(ix - 1, iy + 1, iz, 0, false);
+  assert.strictEqual(s.lightPortal(ix, iy - 1, iz), false); assert.strictEqual(s.get(ix, iy, iz), 0);
+  s.set(ix - 1, iy + 1, iz, 151, false);
+  assert.strictEqual(s.lightPortal(ix, iy - 1, iz), true);
+  for (let a = 0; a <= 1; a++) for (let b = 0; b <= 2; b++) { assert.strictEqual(s.get(ix + a, iy + b, iz), 150); assert.strictEqual(s.metaOf(ix + a, iy + b, iz), 4, 'axis 0, towards the Kor Diyarı'); }
+  assert.deepStrictEqual(D.drops(150, () => 5), [], 'a portal gives nothing');
+  // walking through is possible, and a long stay travels
+  stand(s, ix + 1.0, iy + 0.01, iz + 2.5); run(s, 0.2);
+  stand(s, ix + 1.0, iy + 0.01, iz + 0.5); run(s, 0.6); assert.strictEqual(s.dim, 'over', 'not yet');
+  run(s, 1.0); assert.strictEqual(s.dim, 'nether'); assert.strictEqual(s.world.dim, 'nether'); assert.ok(s.dimsSeen.nether);
+  assert.ok(/Kor/.test(s.message));
+  assert.ok(s.world.count(150) >= 6, 'a portal waits here too'); assert.ok(s.get(Math.floor(s.p.x), Math.floor(s.p.y) - 1, Math.floor(s.p.z)) !== 0, 'standing on something');
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255); assert.ok(s.daylight() < 0.45);
+  run(s, 3); assert.strictEqual(s.dim, 'nether', 'you are not thrown straight back');
+  // a change made here stays here
+  const hx = Math.floor(s.p.x) + 3, hz = Math.floor(s.p.z) + 3, hy = s.world.heightAt(hx, hz) + 1;
+  s.set(hx, hy, hz, 7, true); assert.strictEqual(s.get(hx, hy, hz), 7);
+  // the way back: stepping into the portal here leads to where you left
+  let back = null; for (let dx = -3; dx <= 3 && !back; dx++) for (let dz = -3; dz <= 3 && !back; dz++) for (let dy = -2; dy <= 4 && !back; dy++) if (s.get(Math.floor(s.p.x) + dx, Math.floor(s.p.y) + dy, Math.floor(s.p.z) + dz) === 150) back = [Math.floor(s.p.x) + dx, Math.floor(s.p.y) + dy, Math.floor(s.p.z) + dz];
+  assert.ok(back, 'the return portal'); stand(s, back[0] + 0.5, back[1] + 0.01, back[2] + 0.5); run(s, 0.1);
+  s.portalLock = false; run(s, 1.6);
+  assert.strictEqual(s.dim, 'over'); assert.ok(Math.abs(s.p.x - (ix + 1.0)) < 1.5 && Math.abs(s.p.z - (iz + 0.5)) < 1.5, 'back at the portal you used: ' + s.p.x + ',' + s.p.z);
+  assert.strictEqual(s.get(hx, hy, hz) === 7, false, 'the change of the other world is not here');
+  assert.strictEqual(s.get(ix, iy, iz), 150, 'the main world is as it was');
+  // and again: it is the same Kor Diyarı as before, with the change in it
+  s.portalLock = false; stand(s, ix + 1.0, iy + 0.01, iz + 2.5); run(s, 0.2); stand(s, ix + 1.0, iy + 0.01, iz + 0.5); run(s, 1.6);
+  assert.strictEqual(s.dim, 'nether'); assert.strictEqual(s.get(hx, hy, hz), 7, 'the changes of that world were kept');
+  // dying in the other world brings you home to the main one
+  s.hurt(99, 'test'); assert.strictEqual(s.dim, 'over'); assert.ok(s.health > 0);
+  // sleeping is not possible in the Kor Diyarı
+  s.portalLock = false; stand(s, ix + 1.0, iy + 0.01, iz + 2.5); run(s, 0.2); stand(s, ix + 1.0, iy + 0.01, iz + 0.5); run(s, 1.6); assert.strictEqual(s.dim, 'nether');
+  assert.strictEqual(s.sleep(), false); assert.ok(/uyuyamazsın/.test(s.message));
+});
+
+test('a glass frame leads to the Gök Adaları, where you land on an island, and falling into the void brings you back to it', () => {
+  const K = fresh();
+  const { s, cx, cz, gy } = yard(K, 78);
+  const ix = cx, iy = gy + 1, iz = cz;
+  frame(s, ix, iy, iz, 8);
+  assert.strictEqual(s.lightPortal(ix, iy - 1, iz), true); assert.strictEqual(s.metaOf(ix, iy, iz), 8, 'towards the sky');
+  stand(s, ix + 1.0, iy + 0.01, iz + 2.5); run(s, 0.2); stand(s, ix + 1.0, iy + 0.01, iz + 0.5); run(s, 1.6);
+  assert.strictEqual(s.dim, 'sky'); assert.ok(s.p.y > 19, 'high up: ' + s.p.y);
+  run(s, 1); assert.ok(s.p.y > 19, 'standing on the island: ' + s.p.y); assert.strictEqual(s.dim, 'sky');
+  assert.ok(s.ach.sky || (s.checkAch(), s.ach.sky), 'an achievement for it');
+  s.p.x = 2.5; s.p.z = 2.5; s.p.y = 12; s.p.vy = 0; run(s, 4);
+  assert.ok(s.p.y > 19, 'back on the island after falling: ' + s.p.y);
+});
+
+test('the open state and facing of a door are kept with the world', () => {
+  const K = fresh();
+  const { s, cx, cz, gy } = yard(K, 79);
+  s.set(cx, gy + 1, cz, 141, true, 2); s.set(cx, gy + 2, cz, 142, true, 2);
+  s.toggleDoor(cx, gy + 1, cz); assert.strictEqual(s.metaOf(cx, gy + 1, cz), 6);
+  const again = K.kit.run({ kit: 'sandbox', world: { seed: 79 }, size: 'small', trees: 0, time: 'day' });
+  run(again, 1.5); again.world.ensureAround(cx, cz, 2);
+  assert.strictEqual(again.get(cx, gy + 1, cz), 141); assert.strictEqual(again.metaOf(cx, gy + 1, cz), 6, 'still open and facing the same way');
 });
