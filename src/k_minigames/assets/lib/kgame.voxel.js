@@ -11,7 +11,7 @@
   var D = K.voxeldata, NAMES = D.NAME;
   var AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6, PLANKS = 7, GLASS = 8, COAL = 9, IRON = 10, GOLD = 11, DIAMOND = 12, SNOW = 13, WATER = 14, CACTUS = 15;
   var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40;
-  var TABLE = 24, FURNACE = 25, TORCH = 33, COAL = 41;   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
+  var TABLE = 24, FURNACE = 25, TORCH = 33, COAL_ITEM = 41;   // (the coal you carry: COAL above is the ore in the ground)   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
   var BIOMES = { forest: { top: GRASS, trees: 1, amp: 5 }, plains: { top: GRASS, trees: 0.2, amp: 3 }, desert: { top: SAND, trees: 0.6, amp: 4 }, snow: { top: SNOW, trees: 0.5, amp: 6 } };
   var SIZES = { small: 8, medium: 16, large: 32 };   // chunks on a side
   var CH = 16, SY = 32, SEA = 9, RW = 160, RH = 100, REACH = 5, FAR = 36, LOAD = 3;
@@ -51,6 +51,13 @@
       if (!o.lakes) h = Math.max(h, SEA + 1);
       return Math.max(2, Math.min(SY - 8, h));
     }
+    function rockAt(x, y, z) {   // 1.8 added granite, diorite and andesite: blobs of them lie in the stone
+      if (y < 4) return STONE;
+      if (noise3(seed + 41, x, y, z, 6) > 0.8) return 121;
+      if (noise3(seed + 42, x, y, z, 6) > 0.8) return 122;
+      if (noise3(seed + 43, x, y, z, 6) > 0.8) return 123;
+      return STONE;
+    }
     function gen(cx, cz) {
       var idx = cz * N + cx, blocks = new Uint8Array(CH * SY * CH), hm = new Int16Array(CH * CH);
       var at = function (lx, y, lz) { return (y * CH + lz) * CH + lx; };
@@ -58,7 +65,7 @@
         var x = cx * CH + lx, z = cz * CH + lz, h = surface(x, z);
         hm[lz * CH + lx] = h;
         for (var y = 0; y <= h; y++) {
-          var b = STONE;
+          var b = rockAt(x, y, z);   // stone, with veins of the three other kinds
           if (y === h) b = h <= SEA + 1 && biome.top !== SNOW ? SAND : biome.top;
           else if (y >= h - 3) b = biome.top === SAND || h <= SEA + 1 ? SAND : DIRT;
           blocks[at(lx, y, lz)] = b;
@@ -66,7 +73,7 @@
         for (var wy = h + 1; wy <= SEA; wy++) blocks[at(lx, wy, lz)] = WATER;
         for (y = 3; y < h - 2; y++) {
           if (caves > 0 && noise3(seed + 3, x, y, z, 7) > 0.78 - caves * 0.045) { blocks[at(lx, y, lz)] = y <= 5 ? LAVA : AIR; continue; }   // the lowest caves are lava lakes
-          if (ores > 0 && blocks[at(lx, y, lz)] === STONE) {
+          if (ores > 0 && (blocks[at(lx, y, lz)] === STONE || (blocks[at(lx, y, lz)] >= 121 && blocks[at(lx, y, lz)] <= 123))) {
             var r = hash(seed + 11, x, y, z), rich = 0.5 + ores * 0.5;
             if (y < 6 && r < 0.004 * rich) blocks[at(lx, y, lz)] = DIAMOND;
             else if (y < 10 && r < 0.010 * rich) blocks[at(lx, y, lz)] = GOLD;
@@ -155,6 +162,8 @@
       if (id === 8 && (u === 0 || v === 0 || u === 15 || v === 15)) k = 1.1;
       if (id === 6 && n > 0.8) k *= 0.6;
       if (id === 28 && (u % 8 === 0 || v % 4 === 0)) k *= 0.78;   // brick lines
+      if (id >= 124 && id <= 126 && (u === 0 || v === 0)) k *= 0.82;   // the edge of a polished block
+      if (id === 127 && face === 1 && v % 4 === 0) k *= 0.8;   // the straw bands
       if (id === 24 && face === 0 && (u % 5 === 0 || v % 5 === 0)) k *= 0.8;   // the table top
       if (id === 25 && face === 1 && u > 3 && u < 12 && v > 6 && v < 13) k *= 0.35;   // the furnace mouth
       if (id === 26 && face === 1 && (v === 7 || v === 8)) k *= 0.7;   // the chest band
@@ -497,13 +506,13 @@
       state.canCraft = function (r) {
         if (!r.need.every(function (n) { return (inv.count[n[0]] || 0) >= n[1]; })) return false;
         if (r.where === "table") return state.near(TABLE, 5);
-        if (r.where === "furnace") return state.near(FURNACE, 5) && (state.fuel > 0 || (inv.count[COAL] || 0) >= 1);
+        if (r.where === "furnace") return state.near(FURNACE, 5) && (state.fuel > 0 || (inv.count[COAL_ITEM] || 0) >= 1);
         return true;
       };
       state.craft = function (which) {   // by number in the list or by name
         var r = typeof which === "string" ? state.recipes[D.recipeIndex(which)] : state.recipes[which];
         if (!r || !state.canCraft(r)) return false;
-        if (r.where === "furnace") { if (state.fuel <= 0) { inv.count[COAL]--; state.fuel = 8; } state.fuel--; }   // a coal smelts eight
+        if (r.where === "furnace") { if (state.fuel <= 0) { inv.count[COAL_ITEM]--; state.fuel = 8; } state.fuel--; }   // a coal smelts eight
         r.need.forEach(function (n) { inv.count[n[0]] -= n[1]; });
         state.addItem(r.give[0], r.give[1]); K.sfx("coin");
         state.stats.crafted[r.name] = (state.stats.crafted[r.name] || 0) + 1; if (r.where === "furnace") state.stats.smelted++;

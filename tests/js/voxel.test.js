@@ -865,3 +865,19 @@ test('saplings: leaves can drop one and an apple, a sapling stands on grass or s
   s.set(gx + 4, gy, gz + 4, 1, false); s.set(gx + 4, gy + 1, gz + 4, 38, true); s.saplings.push({ x: gx + 4, y: gy + 1, z: gz + 4, age: 0 }); s.set(gx + 4, gy + 3, gz + 4, 3, false);
   run(s, K.voxel.treeSeconds + 2); assert.strictEqual(s.get(gx + 4, gy + 1, gz + 4), 38, 'a sapling under a roof waits');
 });
+
+test('1.8 stones: granite, diorite and andesite lie in the stone as veins, ores still appear, they need a pickaxe, they can be polished, and hay bales are made from wheat', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const w = K.voxel.makeWorld({ seed: 4, biome: 'plains', size: 'medium', caves: 1, ores: 3, lakes: true, trees: 0 }); w.ensureAround(128, 128, 6);
+  for (const id of [121, 122, 123]) assert.ok(w.count(id) > 100, D.NAME[id] + ' veins: ' + w.count(id));
+  assert.ok(w.count(3) > w.count(121) + w.count(122) + w.count(123), 'most of the rock is still plain stone');
+  assert.ok(w.count(9) > 0 && w.count(10) > 0, 'ores are still found');
+  for (const id of [121, 122, 123, 124, 125, 126]) { assert.deepStrictEqual(D.drops(id, () => -1), [], D.NAME[id] + ' by hand gives nothing'); assert.deepStrictEqual(D.drops(id, () => 0), [[id, 1]]); }
+  assert.ok(D.mineTime(121, (k) => (k === 'pickaxe' ? 2 : -1)) < D.mineTime(121, () => -1));
+  for (const [from, to] of [[121, 124], [122, 125], [123, 126]]) { const r = D.recipes[D.recipeIndex(D.NAME[to])]; assert.deepStrictEqual(r.need, [[from, 4]]); assert.deepStrictEqual(r.give, [to, 4]); }
+  assert.deepStrictEqual(D.recipes[D.recipeIndex('saman balyası')].need, [[21, 9]]);
+  for (const id of [121, 122, 123, 124, 125, 126, 127]) { assert.ok(D.isBlock(id) && D.hasIcon(id), D.NAME[id]); }
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 4 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1);
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+});

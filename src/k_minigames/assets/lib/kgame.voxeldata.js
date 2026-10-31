@@ -112,6 +112,9 @@
   D.FOOD[117] = 4;
   NAME[35] = "yatak"; COLOR[35] = [[190, 50, 50], [176, 70, 70], [176, 140, 84]]; NAME[37] = "lav"; COLOR[37] = [[244, 120, 30], [230, 100, 20], [230, 100, 20]];
   NAME[38] = "fidan"; COLOR[38] = [[70, 160, 60]]; NAME[120] = "elma"; COLOR[120] = [[210, 50, 50]]; D.FOOD[120] = 4;
+  NAME[121] = "granit"; COLOR[121] = [[154, 104, 88]]; NAME[122] = "diyorit"; COLOR[122] = [[188, 188, 192]]; NAME[123] = "andezit"; COLOR[123] = [[136, 136, 138]];
+  NAME[124] = "cilalı granit"; COLOR[124] = [[168, 118, 100]]; NAME[125] = "cilalı diyorit"; COLOR[125] = [[204, 204, 208]]; NAME[126] = "cilalı andezit"; COLOR[126] = [[150, 150, 152]];
+  NAME[127] = "saman balyası"; COLOR[127] = [[205, 175, 60], [190, 160, 50], [205, 175, 60]];
   NAME[34] = "yün"; COLOR[34] = [[236, 236, 236], [226, 226, 230], [226, 226, 230]];
   D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
 
@@ -144,13 +147,13 @@
     { id: "forester", name: "Ormancı", desc: "diktiğin fidandan ağaç yetiştir", test: function (s) { return s.stats.grown >= 1; } }
   ];
   // a block can be put down: the ground and plant blocks, and the new building blocks (not tools, food or materials)
-  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 35) || id === 38; };
+  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 35) || id === 38 || (id >= 121 && id <= 127); };
 
   // ---- mining: how long a block takes by hand (seconds), which tool is the right one, and the lowest tier that gets something out of it ----
-  var HARD = { 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
-  var RIGHT = { 1: "shovel", 2: "shovel", 3: "pickaxe", 4: "shovel", 5: "axe", 7: "axe", 9: "pickaxe", 10: "pickaxe", 11: "pickaxe", 12: "pickaxe", 13: "shovel", 16: "shovel",
+  var HARD = { 121: 1.5, 122: 1.5, 123: 1.5, 124: 1.5, 125: 1.5, 126: 1.5, 127: 0.5, 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
+  var RIGHT = { 121: "pickaxe", 122: "pickaxe", 123: "pickaxe", 124: "pickaxe", 125: "pickaxe", 126: "pickaxe", 1: "shovel", 2: "shovel", 3: "pickaxe", 4: "shovel", 5: "axe", 7: "axe", 9: "pickaxe", 10: "pickaxe", 11: "pickaxe", 12: "pickaxe", 13: "shovel", 16: "shovel",
                 24: "axe", 25: "pickaxe", 26: "axe", 27: "pickaxe", 28: "pickaxe", 29: "pickaxe", 30: "pickaxe", 31: "pickaxe", 32: "pickaxe" };
-  var NEED_TIER = { 3: 0, 9: 0, 10: 1, 11: 2, 12: 2, 25: 0, 27: 0, 28: 0, 29: 0, 30: 1, 31: 2, 32: 2 };   // pickaxe blocks drop nothing without a good enough pickaxe
+  var NEED_TIER = { 121: 0, 122: 0, 123: 0, 124: 0, 125: 0, 126: 0, 3: 0, 9: 0, 10: 1, 11: 2, 12: 2, 25: 0, 27: 0, 28: 0, 29: 0, 30: 1, 31: 2, 32: 2 };   // pickaxe blocks drop nothing without a good enough pickaxe
   var SPEED = [2, 4, 6, 12, 8];   // wood, stone, iron, gold, diamond (gold is fast but soft: it only reaches tier 1 in what it may mine)
   var HARVEST = [0, 1, 2, 0, 3];   // the level a tool tier counts for when asked "is it good enough": gold only counts as wood
   D.rightTool = function (b) { return RIGHT[b] || null; };
@@ -208,6 +211,8 @@
   D.smelts.forEach(function (s) { add("eritme: " + s[2], "furnace", [[s[0], 1]], [s[1], 1]); });
   add("yün (4 ip)", "hand", [[114, 4]], [34, 1]);
   add("yatak", "table", [[34, 3], [ID.PLANKS, 3]], [35, 1]);
+  add("cilalı granit", "table", [[121, 4]], [124, 4]); add("cilalı diyorit", "table", [[122, 4]], [125, 4]); add("cilalı andezit", "table", [[123, 4]], [126, 4]);
+  add("saman balyası", "table", [[ID.WHEAT, 9]], [127, 1]);
   for (var ar = 0; ar < 4; ar++) {
     var armMat = [113, ID.IRON_INGOT, ID.GOLD_INGOT, ID.DIAMOND][ar], armCost = [5, 8, 7, 4];
     for (var part = 0; part < 4; part++) add(ARMOR_TIERS[ar] + " " + ARMOR_PARTS[part][1], "table", [[armMat, armCost[part]]], [D.armorId(ar, part), 1]);
