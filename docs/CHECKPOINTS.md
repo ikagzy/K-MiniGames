@@ -84,3 +84,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-75 | 2026-10-28 | k-ai v4: nişancı kiti öğrenildi (üretilmiş 1,00, elle yazılmış 0,9), platformda gerileme yok; kurallar düzeltildi; Ollama'ya k-ai-v4 olarak kuruldu | b1746fd |
 | CP-76 | 2026-10-28 | küp dünya kiti (sandbox, eski Minecraft tadında): tohumdan arazi, mağara, maden, ağaç, kırma/koyma, gündüz-gece, kayıt, ışın izlemeli düşük çözünürlüklü çizim; k-ai verisi henüz yok | c900ede |
 | CP-77 | 2026-10-28 | küp dünya: parça tabanlı dünya, envanter, fare/tekerlek kontrolleri, harita, tarım (çapa/tohum/ekin/hasat), üretim menüsü; v5 eğitimi sürüyor | d48c34e |
+| CP-78 | 2026-10-28 | küp dünya: 44 tarif (1.8.9 çekirdek), 5 kademe alet, kazma süresi ve alet kademeleri, fırın/eritme/yakıt, tarif menüsü; v5 eğitimi sürüyor | bf67988 |
