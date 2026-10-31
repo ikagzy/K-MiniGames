@@ -55,3 +55,18 @@ model HF'de doğru), donanım (CPU ve GPU birebir aynı çıktı). Kalan şüphe
 modeli çalıştırması. Denenecekler: resmi llama.cpp ikilisiyle (llama-cli) aynı GGUF'u çalıştırmak (hata Ollama'da mı llama.cpp'de mi),
 başka bir llama.cpp etiketiyle dönüştürmek, taban modeli aynı hatla çevirip HF ile karşılaştırmak.
 Uygulamada şimdilik `game_model` = `k-ai` (v1); v2 (`k-ai-v2`) deneme amaçlı Ollama'da duruyor, HF doğruluğunu vermiyor.
+
+## Ollama mı, dönüştürme mi? (llama.cpp testi)
+Aynı `k-ai-v2-q8.gguf` resmi llama.cpp (b6000, `llama-server`, işlemcide) ile çalıştırıldı, aynı istemler ve aynı puanlama (`--limit 3` + 32 elle yazılmış):
+
+| yol | elle yazılmış, hepsi doğru | alan |
+|---|---|---|
+| v2, HF (ham model) | 0,69 | 0,84 |
+| v2, Ollama q8 | 0,41 | 0,58 |
+| v2, llama.cpp q8 | 0,41 | 0,60 |
+
+Sonuç: llama.cpp'de de aynı düşüş, yani sorun Ollama'da değil; GGUF dönüştürmesinde (ya da llama.cpp'nin bu modeli çalıştırmasında). Sıradaki: başka llama.cpp etiketiyle dönüştürmek, taban modeli aynı yoldan çevirip HF ile karşılaştırmak.
+Not: llama.cpp ikilisi `<train env>/llamabin` altında (CPU, b6000). Türkçe karakterli yolu okuyamıyor, GGUF'u oraya kopyalamak gerekti.
+
+## 14B ile karşılaştırma (eğitimsiz qwen2.5-coder:14b, şema açık)
+32 elle yazılmış tarif: hepsi doğru 0,44, alan 0,72 (v2: 0,69 / 0,84; v1 yeni sette 0,44 / 0,70). Üretilmiş tarifler yalnızca 5 örnekle ölçüldü (güvenilmez). 14B karta sığmıyor (%43 işlemcide), istek başına ~17 sn; tam ölçüm ~35 dk daha sürerdi. Rapor: `report_base14b.json`.
