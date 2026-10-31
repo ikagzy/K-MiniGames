@@ -8,10 +8,10 @@
    Önce kgame.js ve kgame.kits.js. Doku ve renklerin hepsi kodla üretilir (resim dosyası yok). */
 (function (root) {
   var K = root.K;
-  var NAMES = ["hava", "çimen", "toprak", "taş", "kum", "kütük", "yaprak", "tahta", "cam", "kömür", "demir", "altın", "elmas", "kar", "su", "kaktüs",
-                "tarla", "buğday filizi", "büyüyen buğday", "olgun buğday", "tohum", "buğday", "çapa", "ekmek"];
+  var D = K.voxeldata, NAMES = D.NAME;
   var AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6, PLANKS = 7, GLASS = 8, COAL = 9, IRON = 10, GOLD = 11, DIAMOND = 12, SNOW = 13, WATER = 14, CACTUS = 15;
-  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, HOE = 22, BREAD = 23, CROP_SECONDS = 25;   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
+  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25;
+  var TABLE = 24, FURNACE = 25, TORCH = 33, COAL = 41;   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
   var BIOMES = { forest: { top: GRASS, trees: 1, amp: 5 }, plains: { top: GRASS, trees: 0.2, amp: 3 }, desert: { top: SAND, trees: 0.6, amp: 4 }, snow: { top: SNOW, trees: 0.5, amp: 6 } };
   var SIZES = { small: 8, medium: 16, large: 32 };   // chunks on a side
   var CH = 16, SY = 32, SEA = 9, RW = 160, RH = 100, REACH = 5, FAR = 36, LOAD = 3;
@@ -139,11 +139,7 @@
   }
 
   // ---- pixel textures, made by code: [top, side, bottom] colours with a little noise ----
-  var COLORS = { 1: [[88, 152, 52], [134, 96, 62], [134, 96, 62]], 2: [[134, 96, 62]], 3: [[128, 128, 128]], 4: [[222, 208, 150]], 5: [[104, 80, 48], [110, 84, 52]],
-                 6: [[52, 120, 40]], 7: [[176, 140, 84]], 8: [[196, 230, 240]], 9: [[128, 128, 128], [30, 30, 30]], 10: [[128, 128, 128], [216, 176, 140]],
-                 11: [[128, 128, 128], [250, 216, 60]], 12: [[128, 128, 128], [80, 230, 230]], 13: [[240, 244, 250], [225, 232, 242]], 14: [[50, 100, 200]], 15: [[40, 130, 50]],
-                 16: [[92, 60, 36], [120, 84, 54], [120, 84, 54]], 17: [[100, 170, 60], [90, 160, 55], [90, 160, 55]], 18: [[150, 185, 60], [120, 170, 55], [120, 170, 55]],
-                 19: [[225, 195, 70], [205, 170, 60], [205, 170, 60]], 20: [[170, 150, 80]], 21: [[225, 195, 70]], 22: [[150, 150, 165]], 23: [[200, 140, 70]] };
+  var COLORS = D.COLOR;
   var textures = {};
   function texture(id, face) {   // face 0 top, 1 side, 2 bottom
     var key = id * 3 + face;
@@ -157,6 +153,10 @@
       if (id === 7 && v % 4 === 0) k *= 0.75;
       if (id === 8 && (u === 0 || v === 0 || u === 15 || v === 15)) k = 1.1;
       if (id === 6 && n > 0.8) k *= 0.6;
+      if (id === 28 && (u % 8 === 0 || v % 4 === 0)) k *= 0.78;   // brick lines
+      if (id === 24 && face === 0 && (u % 5 === 0 || v % 5 === 0)) k *= 0.8;   // the table top
+      if (id === 25 && face === 1 && u > 3 && u < 12 && v > 6 && v < 13) k *= 0.35;   // the furnace mouth
+      if (id === 26 && face === 1 && (v === 7 || v === 8)) k *= 0.7;   // the chest band
       px[(v * 16 + u) * 3] = Math.min(255, c[0] * k); px[(v * 16 + u) * 3 + 1] = Math.min(255, c[1] * k); px[(v * 16 + u) * 3 + 2] = Math.min(255, c[2] * k);
     }
     return textures[key] = px;
@@ -194,7 +194,7 @@
       if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
       state.hud = { placed: 0, broken: 0, depth: 0, explored: 0, harvested: 0 };
       state.crops = [];
-      var get = w.get, solid = function (b) { return b !== AIR && b !== WATER && !(b >= CROP1 && b <= CROP3); };   // plants are walked through
+      var get = w.get, solid = function (b) { return b !== AIR && b !== WATER && !(b >= CROP1 && b <= CROP3) && b !== TORCH; };   // plants and torches are walked through
       state.get = get;
       var set = function (x, y, z, b, remember) {
         if (!w.set(x, y, z, b)) return false;
@@ -220,14 +220,15 @@
         if (!inv.count[id]) { inv.count[id] = 0; if (inv.order.indexOf(id) < 0) inv.order.push(id); }
         inv.count[id] += n || 1;
       };
-      state.hotbar = function () { return inv.order.filter(function (id) { return inv.count[id] > 0; }).slice(0, 9); };
+      state.hotbar = function () { return inv.order.filter(function (id) { return inv.count[id] > 0; }); };   // every kind you hold, in the order you got them
       state.selectedBlock = function () { var bar = state.hotbar(); return bar.length ? bar[Math.min(state.slot, bar.length - 1)] : (state.creative ? STONE : 0); };
       state.select = function (i) { var n = Math.max(1, state.hotbar().length); state.slot = ((i % n) + n) % n; };
+      state.windowStart = function () { var n = state.hotbar().length; return Math.max(0, Math.min(state.slot - 4, n - 9)); };   // the nine slots shown
       state.setCreative = function (on) {
         state.creative = on;
         if (on) [GRASS, DIRT, STONE, SAND, LOG, LEAVES, PLANKS, GLASS, SNOW, COAL, IRON, GOLD, DIAMOND, CACTUS].forEach(function (id) { if (inv.order.indexOf(id) < 0) inv.order.push(id); if (!inv.count[id]) inv.count[id] = 1; });
       };
-      [[STONE, 20], [DIRT, 20], [PLANKS, 20], [GLASS, 8], [LOG, 10], [HOE, 1], [SEEDS, 6]].forEach(function (s) { state.addItem(s[0], s[1]); });
+      [[STONE, 20], [DIRT, 20], [PLANKS, 20], [GLASS, 8], [LOG, 10], [D.hoeId(0), 1], [SEEDS, 6]].forEach(function (s) { state.addItem(s[0], s[1]); });
 
       // ---- looking: a ray through the cubes (shared by the picture and by breaking / placing) ----
       var hit = { b: 0, x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, t: 0, face: 1, hx: 0, hy: 0, hz: 0 };
@@ -265,23 +266,40 @@
       state.look = function (dx, dy) { state.p.yaw += dx; state.p.pitch = Math.max(-1.5, Math.min(1.5, state.p.pitch - dy)); };   // the mouse
 
       // ---- breaking and placing ----
+      state.have = function (kind) {   // the best tier of a tool kind in the inventory (-1: none); the right tool is used by itself
+        var best = -1;
+        Object.keys(inv.count).forEach(function (k) { var t = D.toolOf(+k); if (t && t.kind === kind && inv.count[k] > 0 && t.tier > best) best = t.tier; });
+        return best;
+      };
+      state.mining = { key: "", progress: 0, need: 0 };
       state.breakBlock = function () {
         var t = target();
         if (!t || t.y < 1) return false;
         var tx = t.x, ty = t.y, tz = t.z, b = t.b;
         K.sfx(b === DIRT || b === GRASS || b === SAND ? "click" : "hit");
         set(tx, ty, tz, AIR, true); state.hud.broken++;
-        if (b === GRASS) { state.addItem(DIRT, 1); if (hash(7, tx, ty, tz) < 0.25) state.addItem(SEEDS, 1); }   // seeds hide in the grass
-        else if (b === FARMLAND) state.addItem(DIRT, 1);
-        else if (b === CROP3) { state.addItem(WHEAT, 1); state.addItem(SEEDS, 1 + (hash(8, tx, ty, tz) < 0.5 ? 1 : 0)); state.hud.harvested++; }
+        if (b === CROP3) { state.addItem(WHEAT, 1); state.addItem(SEEDS, 1 + (hash(8, tx, ty, tz) < 0.5 ? 1 : 0)); state.hud.harvested++; }
         else if (b >= CROP1 && b < CROP3) state.addItem(SEEDS, 1);
-        else state.addItem(b, 1);
+        else {
+          D.drops(b, state.have).forEach(function (d) { state.addItem(d[0], d[1]); });
+          if (b === GRASS && hash(7, tx, ty, tz) < 0.25) state.addItem(SEEDS, 1);   // seeds hide in the grass
+        }
         return true;
+      };
+      state.mineStep = function (dt, holding) {   // holding the button on a block digs it, as fast as your best tool allows
+        var m = state.mining, t = holding ? target() : null;
+        if (!t) { m.key = ""; m.progress = 0; m.need = 0; return false; }
+        var key = t.x + "," + t.y + "," + t.z;
+        if (m.key !== key) { m.key = key; m.progress = 0; }
+        m.need = state.creative ? 0 : D.mineTime(t.b, state.have);
+        m.progress += dt;
+        if (m.progress >= m.need) { state.breakBlock(); m.key = ""; m.progress = 0; return true; }
+        return false;
       };
       state.placeBlock = function () {
         var t = target(), id = state.selectedBlock();
         if (!t || !id || (!state.creative && !(inv.count[id] > 0))) return false;
-        if (id === HOE) {   // the hoe turns the top of grass or soil into a field
+        if (D.toolOf(id) && D.toolOf(id).kind === "hoe") {   // the hoe turns the top of grass or soil into a field
           if (t.ny !== 1 || (t.b !== GRASS && t.b !== DIRT) || get(t.x, t.y + 1, t.z) !== AIR) return false;
           set(t.x, t.y, t.z, FARMLAND, true); K.sfx("click"); return true;
         }
@@ -291,7 +309,7 @@
           if (!state.creative) { inv.count[SEEDS]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
           return true;
         }
-        if (id >= WHEAT || id === FARMLAND || (id >= CROP1 && id <= CROP3)) return false;   // food and tools are not placed
+        if (!D.isBlock(id)) return false;   // food, tools and materials are not placed
         var x = t.x + t.nx, y = t.y + t.ny, z = t.z + t.nz, p = state.p;
         if (get(x, y, z) !== AIR && get(x, y, z) !== WATER) return false;
         if (x + 1 > p.x - 0.3 && x < p.x + 0.3 && z + 1 > p.z - 0.3 && z < p.z + 0.3 && y + 1 > p.y && y < p.y + 1.8) return false;   // not inside the player
@@ -311,17 +329,28 @@
           return CROP1 + stage < CROP3;
         });
       };
-      state.recipes = [
-        { name: "tahta (1 kütük)", need: [[LOG, 1]], give: [PLANKS, 4] }, { name: "çapa (3 tahta)", need: [[PLANKS, 3]], give: [HOE, 1] },
-        { name: "ekmek (3 buğday)", need: [[WHEAT, 3]], give: [BREAD, 1] }, { name: "cam (2 kum)", need: [[SAND, 2]], give: [GLASS, 1] }
-      ];
-      state.craft = function (i) {
-        var r = state.recipes[i];
-        if (!r || !r.need.every(function (n) { return (inv.count[n[0]] || 0) >= n[1]; })) return false;
+      state.recipes = D.recipes; state.fuel = 0; state.craftCursor = 0;
+      state.near = function (id, r) {   // is a block of this kind within r blocks of the player
+        var p = state.p, x0 = Math.floor(p.x), y0 = Math.floor(p.y), z0 = Math.floor(p.z);
+        for (var dx = -r; dx <= r; dx++) for (var dy = -2; dy <= 3; dy++) for (var dz = -r; dz <= r; dz++) if (get(x0 + dx, y0 + dy, z0 + dz) === id) return true;
+        return false;
+      };
+      state.canCraft = function (r) {
+        if (!r.need.every(function (n) { return (inv.count[n[0]] || 0) >= n[1]; })) return false;
+        if (r.where === "table") return state.near(TABLE, 5);
+        if (r.where === "furnace") return state.near(FURNACE, 5) && (state.fuel > 0 || (inv.count[COAL] || 0) >= 1);
+        return true;
+      };
+      state.craft = function (which) {   // by number in the list or by name
+        var r = typeof which === "string" ? state.recipes[D.recipeIndex(which)] : state.recipes[which];
+        if (!r || !state.canCraft(r)) return false;
+        if (r.where === "furnace") { if (state.fuel <= 0) { inv.count[COAL]--; state.fuel = 8; } state.fuel--; }   // a coal smelts eight
         r.need.forEach(function (n) { inv.count[n[0]] -= n[1]; });
         state.addItem(r.give[0], r.give[1]); K.sfx("coin");
         return true;
       };
+      state.craftPage = function () { return Math.floor(state.craftCursor / 8) * 8; };
+      state.menuMove = function (d) { state.craftCursor = Math.max(0, Math.min(state.recipes.length - 1, state.craftCursor + d)); };
       (saved instanceof Array ? saved : []).forEach(function (e) {   // crops that were growing when the world was saved go on growing
         if (e instanceof Array && e[3] >= CROP1 && e[3] < CROP3 && get(e[0], e[1], e[2]) === e[3]) state.crops.push({ x: e[0], y: e[1], z: e[2], age: (e[3] - CROP1) * CROP_SECONDS });
       });
@@ -336,6 +365,7 @@
       state.step = function (dt) {
         var p = state.p, flying = state.canFly && state.flying;
         var turn = (K.key("ArrowRight") ? 1 : 0) - (K.key("ArrowLeft") ? 1 : 0), tilt = (K.key("ArrowUp") ? 1 : 0) - (K.key("ArrowDown") ? 1 : 0);
+        if (state.showCraft) { turn = 0; tilt = 0; }   // the arrows move in the recipe list instead
         p.yaw += turn * 2.2 * dt; p.pitch = Math.max(-1.5, Math.min(1.5, p.pitch + tilt * 1.6 * dt));
         var f = (K.key("w") ? 1 : 0) - (K.key("s") ? 1 : 0), r = (K.key("d") ? 1 : 0) - (K.key("a") ? 1 : 0);
         var speed = 4.3 * state.sprintMul * (K.key("Shift") && !flying ? 1.5 : flying ? 1.6 : 1);
@@ -421,10 +451,14 @@
       }
       function drawHud(c) {
         c.fillStyle = "#fff"; c.fillRect(g.width / 2 - 8, g.height / 2 - 1, 16, 2); c.fillRect(g.width / 2 - 1, g.height / 2 - 8, 2, 16);
-        var bar = state.hotbar(), slot = 38, x0 = g.width / 2 - 9 * slot / 2, y0 = g.height - slot - 8;
+        var all = state.hotbar(), start = state.windowStart(), bar = all.slice(start, start + 9), slot = 38, x0 = g.width / 2 - 9 * slot / 2, y0 = g.height - slot - 8;
+        if (state.mining && state.mining.need > 0 && state.mining.progress > 0) {   // the block being dug
+          c.fillStyle = "rgba(0,0,0,0.6)"; c.fillRect(g.width / 2 - 30, g.height / 2 + 18, 60, 6);
+          c.fillStyle = "#ffe082"; c.fillRect(g.width / 2 - 30, g.height / 2 + 18, 60 * Math.min(1, state.mining.progress / state.mining.need), 6);
+        }
         for (var i = 0; i < 9; i++) {
           c.fillStyle = "rgba(0,0,0,0.55)"; c.fillRect(x0 + i * slot, y0, slot - 3, slot - 3);
-          c.strokeStyle = i === Math.min(state.slot, Math.max(0, bar.length - 1)) && bar.length ? "#fff" : "rgba(255,255,255,0.3)"; c.lineWidth = i === state.slot ? 3 : 1;
+          c.strokeStyle = start + i === Math.min(state.slot, Math.max(0, all.length - 1)) && all.length ? "#fff" : "rgba(255,255,255,0.3)"; c.lineWidth = start + i === state.slot ? 3 : 1;
           c.strokeRect(x0 + i * slot, y0, slot - 3, slot - 3);
           if (bar[i]) {
             swatch(c, bar[i], x0 + i * slot + 6, y0 + 6, slot - 15);
@@ -447,18 +481,22 @@
           });
         }
         if (state.showCraft) {
-          c.fillStyle = "rgba(0,0,0,0.8)"; c.fillRect(g.width / 2 - 170, 60, 340, 170);
-          c.fillStyle = "#fff"; c.font = "16px sans-serif"; c.fillText("ÜRETİM (sayı tuşu ile yap, X kapatır)", g.width / 2 - 155, 86);
-          state.recipes.forEach(function (r, n) {
-            var ok = r.need.every(function (q) { return (inv.count[q[0]] || 0) >= q[1]; });
-            c.fillStyle = ok ? "#a5d6a7" : "#777"; c.font = "14px sans-serif"; c.fillText((n + 1) + ". " + r.name + " -> " + NAMES[r.give[0]] + " x" + r.give[1], g.width / 2 - 155, 114 + n * 26);
+          c.fillStyle = "rgba(0,0,0,0.82)"; c.fillRect(g.width / 2 - 200, 40, 400, 270);
+          c.fillStyle = "#fff"; c.font = "15px sans-serif"; c.fillText("TARİFLER  (yukarı/aşağı seç, Enter yap, X kapat)", g.width / 2 - 188, 64);
+          var page = state.craftPage();
+          state.recipes.slice(page, page + 8).forEach(function (r, n) {
+            var ok = state.canCraft(r), at = page + n === state.craftCursor, where = r.where === "table" ? "masa" : r.where === "furnace" ? "fırın" : "";
+            if (at) { c.fillStyle = "rgba(255,255,255,0.12)"; c.fillRect(g.width / 2 - 192, 74 + n * 28, 384, 26); }
+            c.fillStyle = ok ? "#a5d6a7" : "#8a8a8a"; c.font = "13px sans-serif";
+            c.fillText((n + 1) + ". " + r.name + "  [" + r.need.map(function (q) { return q[1] + " " + NAMES[q[0]]; }).join(" + ") + "] " + (where ? "(" + where + ")" : ""), g.width / 2 - 186, 92 + n * 28);
           });
+          c.fillStyle = "#cfd8dc"; c.font = "12px sans-serif"; c.fillText("sayfa " + (page / 8 + 1) + "/" + Math.ceil(state.recipes.length / 8) + "   kömür yakıt: " + (state.fuel || 0) + " eritme hakkı", g.width / 2 - 186, 300);
         }
         if (state.showHelp) {
           c.fillStyle = "rgba(0,0,0,0.8)"; c.fillRect(g.width / 2 - 190, 50, 380, 250);
           c.fillStyle = "#fff"; c.font = "14px sans-serif";
           ["KONTROLLER", "W A S D  yürü       Boşluk  zıpla       Shift  koş", "Fare ya da oklar  bak (önce sayfaya tıkla)", "Sol tık / F  blok kır        Sağ tık / E  blok koy",
-           "Tekerlek / Q / 1-9  blok seç", "I  envanter   X  üretim   C  yaratıcı mod (sınırsız blok)", "Çapa: sağ tık ile toprağı sür; tohum: tarlaya sağ tık; ekin büyür, kır ve topla", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
+           "Tekerlek / Q / 1-9  blok seç", "I  envanter   X  tarifler (yukarı/aşağı, Enter)   C  yaratıcı mod", "Kazarken en iyi aletin kullanılır; masa ve fırın yakında olmalı", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
             c.fillText(line, g.width / 2 - 175, 80 + n * 26);
           });
         }
@@ -480,11 +518,11 @@
         canvas.addEventListener("click", function () { if (canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (e) { /* no lock: keys still work */ } } });
         document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });
         canvas.addEventListener("mousedown", function (e) {
-          if (e.button === 0) { mouseLeft = true; state.breakBlock(); state.breakDelay = 0.22; } else if (e.button === 2) state.placeBlock();
+          if (e.button === 0) mouseLeft = true; else if (e.button === 2) state.placeBlock();
         });
         document.addEventListener("mouseup", function (e) { if (e.button === 0) mouseLeft = false; });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
-        canvas.addEventListener("wheel", function (e) { e.preventDefault(); state.select(state.slot + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+        canvas.addEventListener("wheel", function (e) { e.preventDefault(); if (state.showCraft) state.menuMove(e.deltaY > 0 ? 1 : -1); else state.select(state.slot + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
       }
 
       var held = {};
@@ -492,20 +530,21 @@
       g.scene("play", {
         update: function (game, dt) {
           state.step(dt);
-          once("f", state.breakBlock); once("e", state.placeBlock); once("q", function () { state.select(state.slot + 1); });
+          once("e", state.placeBlock); once("q", function () { state.select(state.slot + 1); });
           once("i", function () { state.showInv = !state.showInv; }); once("Tab", function () { state.showInv = !state.showInv; });
           once("c", function () { state.setCreative(!state.creative); }); once("h", function () { state.showHelp = !state.showHelp; });
           once("g", function () { if (state.canFly) state.flying = !state.flying; });
           once("x", function () { state.showCraft = !state.showCraft; });
-          for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(num - 1); else state.select(num - 1); }); })(n);
-          state.breakDelay -= dt;
-          if (mouseLeft && state.breakDelay <= 0) { state.breakBlock(); state.breakDelay = 0.22; }   // holding the button keeps digging
+          once("ArrowUp", function () { if (state.showCraft) state.menuMove(-1); }); once("ArrowDown", function () { if (state.showCraft) state.menuMove(1); });
+          once("Enter", function () { if (state.showCraft) state.craft(state.craftCursor); });
+          for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(state.craftPage() + num - 1); else state.select(state.windowStart() + num - 1); }); })(n);
+          state.mineStep(dt, K.key("f") || mouseLeft);   // holding F or the left button digs
           var ch = state.chunk || { x: 0, z: 0 };
           g.ui.text("hud.info", "parça " + ch.x + "," + ch.z + "   gezdin " + state.hud.explored + "/" + N * N + "   derinlik " + state.hud.depth + (state.flying ? "   UÇUYOR" : ""), 10, 22, { size: 14 });
           g.ui.text("hud.block", "BLOK: " + (state.selectedBlock() ? NAMES[state.selectedBlock()] : "yok") + "   kırdın " + state.hud.broken + "  koydun " + state.hud.placed, 10, 42, { size: 13, color: "#cfd8dc" });
-          g.ui.text("hud.keys", "H yardım  I envanter  X üretim", g.width - 220, 22, { size: 12, color: "#cfd8dc" });
+          g.ui.text("hud.keys", "H yardım  I envanter  X tarifler", g.width - 220, 22, { size: 12, color: "#cfd8dc" });
           var locked = typeof document !== "undefined" && g.canvas && document.pointerLockElement === g.canvas;
-          if (typeof document !== "undefined" && g.canvas && !locked) g.ui.text("hud.lock", "Fareyle bakmak için ekrana tıkla", g.width / 2 - 110, 70, { size: 14, color: "#ffe082" });
+          if (typeof document !== "undefined" && g.canvas && !locked && !state.showCraft && !state.showInv && !state.showHelp) g.ui.text("hud.lock", "Fareyle bakmak için ekrana tıkla", g.width / 2 - 110, 70, { size: 14, color: "#ffe082" });
           else delete g.ui.items["hud.lock"];
         }
       });

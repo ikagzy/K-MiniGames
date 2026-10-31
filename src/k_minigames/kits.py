@@ -41,7 +41,7 @@ _CHECKS["sandbox"] = [
     ("Oyuncu ileri yürüyebilir.",
      "const x = game.p.x, z = game.p.z; K.press('w'); await new Promise(r => setTimeout(r, 600)); K.press('w', false); return Math.hypot(game.p.x - x, game.p.z - z) > 0.5;"),
     ("Oyuncu bir blok kırabilir.",
-     "game.state.p.pitch = -0.7; K.press('f'); await new Promise(r => setTimeout(r, 300)); K.press('f', false); return game.hud.broken > 0;"),
+     "game.state.p.pitch = -0.7; K.press('f'); await new Promise(r => setTimeout(r, 2500)); K.press('f', false); return game.hud.broken > 0;"),
     ("Dünyada toprak ve taş vardır.",
      "return game.world.count(2) > 100 && game.world.count(3) > 100;"),
 ]

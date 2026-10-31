@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { load } = require('./helpers');
 
-const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxel.js'];
+const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxel.js'];
 const fresh = () => load(...FILES);
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
@@ -141,7 +141,7 @@ test('the mouse and the arrows turn the view up to a limit, and F or E break and
   const t = s.target();
   assert.ok(t, 'the ground is in reach');
   const x = t.x, y = t.y, z = t.z;
-  K.press('f'); run(s, 0.1); K.press('f', false);
+  K.press('f'); run(s, 1.15); K.press('f', false); run(s, 0.05);   // digging takes a moment: hold the key
   assert.strictEqual(s.get(x, y, z), 0, 'F broke it');
   assert.strictEqual(s.hud.broken, 1);
   K.press('e'); run(s, 0.1); K.press('e', false);
@@ -158,7 +158,7 @@ test('the inventory: what you break is yours, placing uses it up, you cannot pla
   s.p.pitch = -0.7;
   const t = s.target(); const gets = t.b === 1 ? 2 : t.b;   // breaking grass gives dirt
   const had = s.inv.count[gets] || 0;
-  K.press('f'); run(s, 0.1); K.press('f', false);
+  K.press('f'); run(s, 1.15); K.press('f', false); run(s, 0.05);
   assert.strictEqual(s.inv.count[gets], had + 1, 'the block was added to the inventory');
   s.select(0);
   assert.strictEqual(s.selectedBlock(), 3);
@@ -197,7 +197,7 @@ test('what the player builds and digs is kept for the next time, per world, even
   let s = K.kit.run({ kit: 'sandbox', world: { seed: 8 }, size: 'small', trees: 0 });
   s.p.pitch = -0.7; run(s, 1.5);
   const { x, y, z } = s.target();
-  K.press('f'); run(s, 0.1); K.press('f', false);
+  K.press('f'); run(s, 1.15); K.press('f', false); run(s, 0.05);
   assert.strictEqual(s.get(x, y, z), 0);
   s.set(5, 20, 5, 7, true);   // a far corner nobody has made yet
   s = K.kit.run({ kit: 'sandbox', world: { seed: 8 }, size: 'small', trees: 0 });
@@ -320,18 +320,21 @@ test('farming: the hoe makes a field, seeds make a crop, it grows in stages by i
   s.set(x, y + 1, z, 17, true); s.crops.push({ x, y: y + 1, z, age: 0 });
   const had = s.inv.count[20]; K.press('f'); run(s, 0.1); K.press('f', false);
   assert.strictEqual(s.inv.count[20], had + 1);
-  // crafting
+  // crafting needs a table near for the bigger recipes
   s.inv.count[21] = 3;
-  assert.strictEqual(s.craft(2), true);
+  assert.strictEqual(s.craft('ekmek'), false, 'bread needs a crafting table');
+  s.set(Math.floor(s.p.x) + 2, Math.floor(s.p.y), Math.floor(s.p.z), 24, false);
+  assert.strictEqual(s.craft('ekmek'), true);
   assert.strictEqual(s.inv.count[23], 1, 'bread'); assert.strictEqual(s.inv.count[21], 0);
-  assert.strictEqual(s.craft(2), false, 'not enough wheat now');
+  assert.strictEqual(s.craft('ekmek'), false, 'not enough wheat now');
   const logs = s.inv.count[5], planks = s.inv.count[7];
-  assert.strictEqual(s.craft(0), true); assert.strictEqual(s.inv.count[7], planks + 4); assert.strictEqual(s.inv.count[5], logs - 1);
-  K.press('x'); run(s, 0.1); K.press('x', false);
+  assert.strictEqual(s.craft('tahta'), true); assert.strictEqual(s.inv.count[7], planks + 4); assert.strictEqual(s.inv.count[5], logs - 1);
+  K.press('x'); run(s, 0.1); K.press('x', false); run(s, 0.05);
   assert.strictEqual(s.showCraft, true);
   const bread = s.inv.count[23]; s.inv.count[21] = 3;
-  K.press('3'); run(s, 0.1); K.press('3', false);
-  assert.strictEqual(s.inv.count[23], bread + 1, 'a number key crafts while the menu is open');
+  s.craftCursor = K.voxeldata.recipeIndex('ekmek');
+  K.press('Enter'); run(s, 0.1); K.press('Enter', false);
+  assert.strictEqual(s.inv.count[23], bread + 1, 'Enter crafts the recipe the cursor is on');
 });
 
 test('plants are walked through, tools and food cannot be placed as blocks, and breaking grass can give seeds', () => {
@@ -348,4 +351,137 @@ test('plants are walked through, tools and food cannot be placed as blocks, and 
   let seeds = 0;
   for (let i = 0; i < 80; i++) { const had = s.inv.count[20]; s.set(60 + i, 12, 60, 1, false); s.p.x = 60 + i + 0.5; s.p.z = 58.5; s.p.y = 14; s.p.yaw = 0; s.p.pitch = -1.2; run(s, 0.05); const t = s.target(); if (t && t.b === 1) { s.breakBlock(); if (s.inv.count[20] > had) seeds++; } }
   assert.ok(seeds > 3 && seeds < 60, 'some grass gives seeds, not all: ' + seeds);
+});
+
+const have = (tiers) => (kind) => (tiers[kind] === undefined ? -1 : tiers[kind]);
+
+test('mining takes time: stone by hand is slow, a pickaxe speeds it up, the right tool kind matters, creative is instant', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const hand = D.mineTime(3, have({})), wood = D.mineTime(3, have({ pickaxe: 0 })), iron = D.mineTime(3, have({ pickaxe: 2 })), gold = D.mineTime(3, have({ pickaxe: 3 }));
+  assert.ok(hand > wood && wood > D.mineTime(3, have({ pickaxe: 1 })) && D.mineTime(3, have({ pickaxe: 1 })) > iron, 'better tiers are faster');
+  assert.ok(gold < iron, 'gold is fast');
+  assert.strictEqual(D.mineTime(3, have({ axe: 4 })), hand, 'an axe does not help on stone');
+  assert.ok(D.mineTime(5, have({ axe: 1 })) < D.mineTime(5, have({})), 'an axe helps on logs');
+  assert.ok(D.mineTime(2, have({ shovel: 0 })) < D.mineTime(2, have({})), 'a shovel helps on dirt');
+  assert.strictEqual(D.mineTime(19, have({})), 0, 'a ripe crop comes up at once');
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0 });
+  run(s, 1.5); s.p.pitch = -0.7;
+  const t = s.target(); const x = t.x, y = t.y, z = t.z;
+  s.set(x, y, z, 3, false);   // stone under the crosshair
+  K.press('f'); run(s, 0.3);
+  assert.strictEqual(s.get(x, y, z), 3, 'not yet: the progress is on the way');
+  assert.ok(s.mining.progress > 0.2 && s.mining.need > 1, 'the dig bar fills');
+  run(s, 3); K.press('f', false); run(s, 0.05);
+  assert.strictEqual(s.get(x, y, z), 0, 'a while later it is gone');
+  assert.ok(!s.inv.count[27], 'stone dug by hand gives nothing');
+  s.set(x, y, z, 3, false); s.setCreative(true);
+  K.press('f'); run(s, 0.1); K.press('f', false);
+  assert.strictEqual(s.get(x, y, z), 0, 'creative breaks at once');
+});
+
+test('what breaking gives: stone gives cobblestone, ores need the right pickaxe, glass and leaves give nothing, grass gives soil', () => {
+  const K = fresh(); const D = K.voxeldata;
+  assert.deepStrictEqual(D.drops(3, have({ pickaxe: 0 })), [[27, 1]]);
+  assert.deepStrictEqual(D.drops(3, have({})), [], 'stone by hand gives nothing');
+  assert.deepStrictEqual(D.drops(9, have({ pickaxe: 0 })), [[41, 1]], 'coal ore gives coal');
+  assert.deepStrictEqual(D.drops(10, have({ pickaxe: 0 })), [], 'iron ore needs a stone pickaxe');
+  assert.deepStrictEqual(D.drops(10, have({ pickaxe: 1 })), [[10, 1]], 'and drops the ore, to be smelted');
+  assert.deepStrictEqual(D.drops(12, have({ pickaxe: 1 })), [], 'diamonds need iron');
+  assert.deepStrictEqual(D.drops(12, have({ pickaxe: 2 })), [[44, 1]]);
+  assert.deepStrictEqual(D.drops(11, have({ pickaxe: 3 })), [], 'a gold pickaxe is fast but soft, it cannot take gold');
+  assert.deepStrictEqual(D.drops(8, have({})), []); assert.deepStrictEqual(D.drops(6, have({})), []);
+  assert.deepStrictEqual(D.drops(1, have({})), [[2, 1]]); assert.deepStrictEqual(D.drops(5, have({})), [[5, 1]]);
+});
+
+test('the recipes: every tool of every tier can be made, each from the right material and sticks, and every result is something the kit knows', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const names = D.recipes.map((r) => r.name);
+  assert.strictEqual(new Set(names).size, names.length, 'no two recipes share a name');
+  assert.ok(D.recipes.length >= 40);
+  for (const [tier, mat] of [[0, 7], [1, 27], [2, 42], [3, 43], [4, 44]]) {
+    const pick = D.recipes[D.recipeIndex(D.TIERS[tier] + ' kazma')];
+    assert.deepStrictEqual(pick.need, [[mat, 3], [40, 2]]); assert.deepStrictEqual(pick.give, [D.toolId('pickaxe', tier), 1]);
+    assert.deepStrictEqual(D.recipes[D.recipeIndex(D.TIERS[tier] + ' kılıç')].need, [[mat, 2], [40, 1]]);
+    assert.deepStrictEqual(D.recipes[D.recipeIndex(D.TIERS[tier] + ' kürek')].need, [[mat, 1], [40, 2]]);
+    assert.ok(D.recipeIndex(D.TIERS[tier] + ' balta') >= 0 && D.recipeIndex(D.TIERS[tier] + ' çapa') >= 0);
+  }
+  for (const r of D.recipes) { assert.ok(D.NAME[r.give[0]], r.name + ' gives a named thing'); r.need.forEach((n) => assert.ok(D.NAME[n[0]], r.name + ' needs a named thing')); }
+  assert.strictEqual(D.toolOf(52).kind, 'pickaxe'); assert.strictEqual(D.toolOf(52).tier, 2); assert.strictEqual(D.toolOf(22).kind, 'hoe'); assert.strictEqual(D.toolOf(73).tier, 4); assert.strictEqual(D.toolOf(3), null);
+  assert.ok(D.isBlock(24) && D.isBlock(3) && D.isBlock(33) && !D.isBlock(50) && !D.isBlock(41) && !D.isBlock(14) && !D.isBlock(21));
+});
+
+test('crafting: small recipes anywhere, bigger ones need a crafting table near, smelting needs a furnace near and coal for fuel (one coal, eight smelts)', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0 });
+  run(s, 1.5);
+  const px = Math.floor(s.p.x), py = Math.floor(s.p.y), pz = Math.floor(s.p.z);
+  const give = (id, n) => s.addItem(id, n);
+  give(5, 3);
+  assert.strictEqual(s.craft('tahta'), true, 'planks anywhere'); assert.strictEqual(s.craft('çubuk'), true, 'sticks anywhere');
+  give(7, 4); assert.strictEqual(s.craft('üretim masası'), true);
+  give(27, 11);
+  assert.strictEqual(s.craft('fırın'), false, 'a furnace is built at a table');
+  s.set(px + 2, py, pz, 24, false);
+  assert.strictEqual(s.craft('fırın'), true);
+  give(7, 3); give(40, 4);
+  assert.strictEqual(s.craft('odun kazma'), true, 'a wooden pickaxe at the table');
+  assert.strictEqual(s.have('pickaxe'), 0);
+  give(27, 3); assert.strictEqual(s.craft('taş kazma'), true); assert.strictEqual(s.have('pickaxe'), 1, 'the best one counts');
+  // smelting
+  give(4, 3);
+  assert.strictEqual(s.craft('eritme: cam'), false, 'no furnace near, no coal');
+  s.set(px - 2, py, pz, 25, false);
+  assert.strictEqual(s.craft('eritme: cam'), false, 'no coal yet');
+  give(41, 1);
+  const glass = s.inv.count[8] || 0;
+  assert.strictEqual(s.craft('eritme: cam'), true); assert.strictEqual(s.inv.count[8], glass + 1);
+  assert.strictEqual(s.fuel, 7, 'one coal is eight smelts'); assert.strictEqual(s.inv.count[41], 0);
+  assert.strictEqual(s.craft('eritme: cam'), true); assert.strictEqual(s.craft('eritme: cam'), true);
+  assert.strictEqual(s.craft('eritme: cam'), false, 'out of sand');
+  give(10, 1); give(11, 1);
+  assert.strictEqual(s.craft('eritme: demir külçe'), true); assert.strictEqual(s.craft('eritme: altın külçe'), true);
+  assert.strictEqual(s.inv.count[42], 1); assert.strictEqual(s.inv.count[43], 1);
+  give(42, 8); assert.strictEqual(s.craft('demir blok'), true); assert.strictEqual(s.inv.count[30], 1);
+  assert.strictEqual(s.craft('demir külçe (bloktan)'), true); assert.strictEqual(s.inv.count[42], 9);
+  s.p.x += 20;
+  assert.strictEqual(s.craft('taş tuğla'), false, 'far from the table: nothing bigger works');
+});
+
+test('the best tool in the inventory is used by itself, and a torch can be put down and walked through', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0 });
+  run(s, 1.5); s.p.pitch = -0.7;
+  const t = s.target(); const x = t.x, y = t.y, z = t.z;
+  s.set(x, y, z, 10, false);   // iron ore
+  s.addItem(K.voxeldata.toolId('pickaxe', 0), 1);
+  const slow = (() => { s.mineStep(0.01, true); return s.mining.need; })();
+  s.mining.progress = 0; s.mining.key = '';
+  s.addItem(K.voxeldata.toolId('pickaxe', 2), 1);
+  s.mineStep(0.01, true);
+  assert.ok(s.mining.need < slow, 'the iron pickaxe is used without being selected');
+  s.mining.progress = 0; s.mining.key = '';
+  for (let i = 0; i < 4 && s.get(x, y, z) === 10; i++) s.mineStep(3, true);
+  assert.strictEqual(s.get(x, y, z), 0); assert.strictEqual(s.inv.count[10], 1, 'iron ore comes up as ore');
+  s.addItem(33, 4); s.select(s.hotbar().indexOf(33));
+  assert.strictEqual(s.selectedBlock(), 33);
+  assert.strictEqual(s.placeBlock(), true);
+  const px = Math.floor(s.p.x), pz = Math.floor(s.p.z);
+  s.set(px + 1, Math.floor(s.p.y), pz, 33, false);
+  s.p.x = px + 0.6; K.press('d'); run(s, 0.6); K.press('d', false);
+  assert.ok(s.p.x > px + 1.2, 'a torch does not block the way');
+});
+
+test('the hotbar is a window over everything you hold, so new tools show up, and the number keys follow the window', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small' });
+  run(s, 1);
+  for (const id of [40, 41, 42, 43, 44, 50, 51]) s.addItem(id, 1);
+  const all = s.hotbar();
+  assert.ok(all.length > 9);
+  s.select(all.length - 1);
+  assert.ok(s.windowStart() > 0 && s.windowStart() + 9 === all.length, 'the window slid to show the last one');
+  const start = s.windowStart();
+  K.press('1'); run(s, 0.1); K.press('1', false);
+  assert.strictEqual(s.selectedBlock(), all[start], 'key 1 is the first slot shown');
+  s.select(0); assert.strictEqual(s.windowStart(), 0);
 });
