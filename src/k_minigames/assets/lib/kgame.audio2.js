@@ -118,6 +118,8 @@
   var timer = null;
   var contextOf = function () { try { return new (root.AudioContext || root.webkitAudioContext)(); } catch (e) { return null; } };
   var ctx, master = null;   // every note of the music goes through one gain, so that stopping can silence what is already written into the audio clock
+  var wake = function () { if (ctx && ctx.state === "suspended" && ctx.resume) { try { ctx.resume(); } catch (e) { /* not allowed yet */ } } };   // a page may only make sound after a key or a click
+  if (typeof document !== "undefined" && document.addEventListener) ["pointerdown", "keydown", "touchstart", "click"].forEach(function (n) { document.addEventListener(n, wake, true); });
   var masterGain = function () { if (!master) { master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination); } return master; };
 
   function schedule(track, name) {
@@ -156,6 +158,7 @@
     M.stop();
     M.current = name;
     if (ctx === undefined) ctx = contextOf();
+    wake();
     schedule(track, name);
     return true;
   };

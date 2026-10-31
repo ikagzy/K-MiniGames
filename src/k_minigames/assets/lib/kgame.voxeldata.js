@@ -134,7 +134,7 @@
   D.texId = function (id) {   // which block's picture a shaped block wears
     var sl = D.slabOf(id), st = D.stairOf(id);
     if (sl) return sl.base; if (st) return st.base;
-    return id === 140 || id === 141 || id === 142 || id === 149 ? 7 : id;
+    return id === 140 || id === 149 ? 7 : id;   // a fence and a ladder wear the planks; a door has its own picture
   };
   SLAB_BASES.forEach(function (base, i) {
     var baseName = NAME[base] || "blok";
@@ -170,7 +170,7 @@
     if (r.where === "furnace") return null;
     if (STATIC_PATTERNS[r.name]) return STATIC_PATTERNS[r.name];
     var m = r.need[0][0], parts = r.name.split(" "), last = parts[parts.length - 1];
-    if (/\(bloktan\)/.test(r.name)) return { shapeless: [m] };
+    if (/\((bloktan|balyadan)\)/.test(r.name)) return { shapeless: [m] };
     if (SHAPES[last]) return { rows: SHAPES[last], key: { M: m, S: ST } };
     if (/yarım blok$/.test(r.name)) return { rows: ["MMM"], key: { M: m } };
     if (/basamak$/.test(r.name)) return { rows: ["M  ", "MM ", "MMM"], key: { M: m } };
@@ -308,6 +308,7 @@
   add("yatak", "table", [[34, 3], [ID.PLANKS, 3]], [35, 1]);
   add("cilalı granit", "table", [[121, 4]], [124, 4]); add("cilalı diyorit", "table", [[122, 4]], [125, 4]); add("cilalı andezit", "table", [[123, 4]], [126, 4]);
   add("saman balyası", "table", [[ID.WHEAT, 9]], [127, 1]);
+  add("buğday (balyadan)", "table", [[127, 1]], [ID.WHEAT, 9]);   // a hay bale gives its wheat back
   SLAB_BASES.forEach(function (base, i) {
     add(NAME[base] + " yarım blok", "table", [[base, 3]], [130 + i, 6]);
     add(NAME[base] + " basamak", "table", [[base, 6]], [144 + i, 4]);

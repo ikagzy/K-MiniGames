@@ -10,11 +10,11 @@
   var K = root.K;
   var D = K.voxeldata, NAMES = D.NAME;
   var AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6, PLANKS = 7, GLASS = 8, COAL = 9, IRON = 10, GOLD = 11, DIAMOND = 12, SNOW = 13, WATER = 14, CACTUS = 15;
-  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40, FENCE = 140, DOOR_LO = 141, DOOR_HI = 142, DOOR_ITEM = 143, LADDER = 149, ENCH_TABLE = 162, HAY = 127, CHEST = 26, SANDSTONE = 29, COBBLE = 27, GOLD_BLOCK = 31, GOLD_INGOT_ID = 43, IRON_INGOT_ID = 42, LAPIS_ORE = 156, REDSTONE_ORE = 157, EMERALD_ORE = 158, PORTAL = 150, OBSIDIAN = 151, LIGHTER = 152, NETHERRACK = 153, GLOWSTONE = 154;
+  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40, FENCE = 140, DOOR_LO = 141, DOOR_HI = 142, DOOR_ITEM = 143, LADDER = 149, ENCH_TABLE = 162, CACTUS_ID = 15, HAY = 127, CHEST = 26, SANDSTONE = 29, COBBLE = 27, GOLD_BLOCK = 31, GOLD_INGOT_ID = 43, IRON_INGOT_ID = 42, LAPIS_ORE = 156, REDSTONE_ORE = 157, EMERALD_ORE = 158, PORTAL = 150, OBSIDIAN = 151, LIGHTER = 152, NETHERRACK = 153, GLOWSTONE = 154;
   var TABLE = 24, FURNACE = 25, TORCH = 33, COAL_ITEM = 41;   // (the coal you carry: COAL above is the ore in the ground)   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
   var BIOMES = { forest: { top: GRASS, trees: 1, amp: 5 }, plains: { top: GRASS, trees: 0.2, amp: 3 }, desert: { top: SAND, trees: 0.6, amp: 4 }, snow: { top: SNOW, trees: 0.5, amp: 6 } };
   var SIZES = { small: 8, medium: 16, large: 32 };   // chunks on a side
-  var CH = 16, SY = 32, SEA = 9, RW = 160, RH = 100, REACH = 5, FAR = 36, LOAD = 3;
+  var CH = 16, SY = 32, SEA = 9, RW = 256, RH = 160, REACH = 5, FAR = 36, LOAD = 3;
 
   // ---- noise (seeded, no libraries; every value depends only on the world position, so chunks fit together) ----
   function hash(seed, x, y, z) {
@@ -319,6 +319,16 @@
   // ---- pixel textures, made by code: [top, side, bottom] colours with a little noise ----
   var COLORS = D.COLOR;
   var textures = {};
+
+  function cutAt(id, u, v) {   // a gap in the picture of a block: what lies behind it shows through (glass inside its frame, holes in leaves, between the stalks of a plant, between the rungs of a ladder)
+    if (id === GLASS) return !(u === 0 || v === 0 || u === 15 || v === 15 || (u + v === 7 && u > 1 && u < 6) || (u + v === 9 && u > 1 && u < 5));
+    if (id === LEAVES) return hash(6 * 17 + 1, u, 0, v) > 0.8;
+    if (id >= 17 && id <= 19) return !((u % 4 === 1 || u % 4 === 2) && (hash(id, u, 0, v) < 0.9));
+    if (id === SAPLING) return !(((u - 7.5) * (u - 7.5) / 30 + (v - 8) * (v - 8) / 22 < 1) || ((u === 7 || u === 8) && v >= 11));
+    if (id === 149) return !(u < 2 || u > 13 || v % 4 === 1);
+    return false;
+  }
+  var CUT = {}; CUT[GLASS] = CUT[LEAVES] = CUT[CROP1] = CUT[CROP1 + 1] = CUT[CROP3] = CUT[SAPLING] = CUT[149] = true;
   function texture(id, face) {   // face 0 top, 1 side, 2 bottom
     id = D.texId(id);   // a half block or a stair wears the picture of its block
     var key = id * 3 + face;
@@ -339,6 +349,27 @@
       if (id === 151 && n > 0.86) c = [90, 50, 140];   // purple flecks in the black rock
       if (id === 153 && n > 0.8) k *= 0.7;
       if (id === 154 && n > 0.55) k = 1.25;
+      if (id === 27) { var chunk = hash(27, u >> 2, 5, v >> 2); c = [base[0] * (0.7 + chunk * 0.5), base[1] * (0.7 + chunk * 0.5), base[2] * (0.7 + chunk * 0.5)]; if (u % 4 === 0 || v % 4 === 0) k *= 0.72; }   // cobblestone: rough chunks
+      if (id === 3 && n > 0.88) k *= 0.72;   // speckled stone
+      if (id === 5 && face !== 1) { var ring = Math.max(Math.abs(u - 7.5), Math.abs(v - 7.5)); k *= 0.82 + (Math.floor(ring) % 2) * 0.26; c = [172, 132, 84]; }   // the rings of a log
+      if (id === 2 && n > 0.9) k *= 0.8;
+      if (id === 4 && n > 0.85) k *= 1.1;
+      if (id === 6) k *= 0.8 + n * 0.5;
+      if (id === 8) { c = [200, 232, 244]; k = 1; if (u === 0 || v === 0 || u === 15 || v === 15) { c = [225, 245, 255]; k = 1; } }   // glass: a pale frame (its inside is see-through)
+      if (id === 33) { if (face === 0) c = [255, 215, 90]; else if (v < 9) { c = hash(33, u, 1, v) > 0.5 ? [255, 210, 70] : [255, 130, 30]; k = 1.1; } else { c = [112, 78, 42]; k = 0.9 + n * 0.2; } }   // a torch: a flame on a stick
+      if (id === 35) { if (face === 0) { c = v < 5 ? [240, 240, 240] : [196, 44, 44]; if (v === 5) k *= 0.7; } else if (v > 9) { c = [150, 108, 60]; } else c = [196, 44, 44]; }   // a bed: a pillow, a red blanket and wooden legs
+      if (id === 26) { if (face === 1) { c = [160, 112, 54]; if (v >= 6 && v <= 8) { c = [90, 62, 30]; } if (u >= 7 && u <= 8 && v >= 6 && v <= 9) { c = [235, 200, 70]; k = 1.1; } if (u === 0 || u === 15) k *= 0.7; } else { c = [150, 104, 50]; if (u === 0 || v === 0 || u === 15 || v === 15) k *= 0.7; } }   // a chest: a band and a lock
+      if (id === 15) { c = [64, 130, 52]; if (u % 4 === 1) k *= 1.2; if (face === 1 && hash(15, u, 1, v) > 0.92) c = [230, 240, 200]; if (u === 0 || u === 15) k *= 0.75; }   // a cactus: stripes and spines
+      if (id === 16) { c = [92, 58, 34]; if (face === 0 && u % 4 === 0) k *= 0.7; }   // ploughed soil: furrows
+      if (id >= 17 && id <= 19) { c = id === CROP1 ? [96, 172, 60] : id === CROP1 + 1 ? [150, 186, 60] : [228, 198, 74]; k = 0.9 + n * 0.3; }
+      if (id === SAPLING) { c = v >= 11 ? [112, 80, 44] : [60, 150, 56]; k = 0.85 + n * 0.3; }
+      if (id === 162) { c = face === 0 ? [48, 28, 90] : [60, 36, 110]; if (face === 0 && u > 4 && u < 11 && v > 4 && v < 11) { c = [60, 100, 220]; k = 1.1; } if (u === 0 || v === 0 || u === 15) k *= 0.7; }   // an enchanting table: a dark top with a blue book
+      if (id === 141 || id === 142) {   // a door: a dark frame, panels, a handle, a window in the upper half
+        var wood = [158, 112, 58], frame = u < 1 || u > 14 || (id === 141 && v > 14) || (id === 142 && v < 1);
+        c = frame ? [88, 60, 32] : wood;
+        if (!frame && id === 141) { var panel = u > 2 && u < 13 && ((v > 1 && v < 7) || (v > 8 && v < 14)); if (panel) { c = [176, 128, 70]; if (u === 3 || u === 12 || v === 2 || v === 6 || v === 9 || v === 13) k *= 0.68; } if (u >= 11 && u <= 12 && v >= 6 && v <= 7) { c = [240, 210, 90]; k = 1.1; } }
+        if (!frame && id === 142) { if (u > 3 && u < 12 && v > 2 && v < 9) { c = (u === 7 || u === 8 || v === 5 || v === 6) ? [88, 60, 32] : [176, 216, 236]; k = 1; } else if (v > 10) { c = [176, 128, 70]; if (v === 11 || u === 3 || u === 12) k *= 0.68; } }
+      }
       if (id === 24 && face === 0 && (u % 5 === 0 || v % 5 === 0)) k *= 0.8;   // the table top
       if (id === 25 && face === 1 && u > 3 && u < 12 && v > 6 && v < 13) k *= 0.35;   // the furnace mouth
       if (id === 26 && face === 1 && (v === 7 || v === 8)) k *= 0.7;   // the chest band
@@ -347,7 +378,32 @@
     return textures[key] = px;
   }
 
-  K.voxel = { structures: true, keyActions: false, starter: false, menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
+
+  var hdCache = {};
+  function texHD(id, face) {   // the same picture in 64 x 64: smooth between the pixels, sharpened again, and a fine grain on top, like a texture pack
+    var key = id * 3 + face;
+    if (hdCache[key]) return hdCache[key];
+    var src = texture(id, face), N = 64, tmp = new Float32Array(N * N * 3), out = new Uint8Array(N * N * 3), x, y, c;
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {   // bilinear between the centres of the 16 x 16 pixels
+      var fx = Math.max(0, Math.min(15, (x + 0.5) / 4 - 0.5)), fy = Math.max(0, Math.min(15, (y + 0.5) / 4 - 0.5)), x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(15, x0 + 1), y1 = Math.min(15, y0 + 1), tx = fx - x0, ty = fy - y0;
+      for (c = 0; c < 3; c++) {
+        var a = src[(y0 * 16 + x0) * 3 + c], b = src[(y0 * 16 + x1) * 3 + c], d = src[(y1 * 16 + x0) * 3 + c], e = src[(y1 * 16 + x1) * 3 + c];
+        tmp[(y * N + x) * 3 + c] = (a * (1 - tx) + b * tx) * (1 - ty) + (d * (1 - tx) + e * tx) * ty;
+      }
+    }
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {   // sharpen: the pixel minus what lies around it, then a grain of its own
+      var grain = 0.93 + hash(id * 131 + face, x, 11, y) * 0.14 + (hash(id * 71 + face, x >> 1, 5, y >> 1) - 0.5) * 0.06;
+      for (c = 0; c < 3; c++) {
+        var mid = tmp[(y * N + x) * 3 + c], around = 0, cnt = 0;
+        for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) { var nx = x + ox, ny = y + oy; if (nx >= 0 && ny >= 0 && nx < N && ny < N && (ox || oy)) { around += tmp[(ny * N + nx) * 3 + c]; cnt++; } }
+        var sharp = mid + (mid - around / cnt) * 0.9;
+        out[(y * N + x) * 3 + c] = Math.max(0, Math.min(255, sharp * grain));
+      }
+    }
+    return hdCache[key] = out;
+  }
+
+  K.voxel = { res: { w: RW, h: RH }, structures: true, keyActions: false, starter: false, menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
 
   K.kit.define("sandbox", {
     defaults: {
@@ -386,6 +442,7 @@
       var set = function (x, y, z, b, remember, meta) {
         if (!w.set(x, y, z, b)) return false;
         if (state.meta) { if (meta !== undefined) state.meta[x + "," + y + "," + z] = meta; else if (b === AIR) delete state.meta[x + "," + y + "," + z]; }
+        if (b === CHEST && remember && state.initChest) state.initChest(x, y, z);
         if (remember) {
           state.edits.push(meta !== undefined ? [x, y, z, b, meta] : [x, y, z, b]);
           if (state.edits.length > 3000) state.edits.shift();
@@ -428,7 +485,7 @@
       var metaOf = function (x, y, z) { return state.meta[x + "," + y + "," + z] || 0; };
       state.metaOf = metaOf;
       var isFence = function (b) { return b === FENCE; };
-      var SHAPED = function (b) { return (b >= 130 && b <= 139) || b === FENCE || b === DOOR_LO || b === DOOR_HI || (b >= 144 && b <= 149) || b === PORTAL; };
+      var SHAPED = function (b) { return (b >= 130 && b <= 139) || b === FENCE || b === DOOR_LO || b === DOOR_HI || (b >= 144 && b <= 149) || b === PORTAL || b === TORCH || b === BED || b === CHEST || b === CACTUS_ID || b === FARMLAND || (b >= CROP1 && b <= CROP3) || b === SAPLING || b === ENCH_TABLE; };
       function sideBox(f, thick) {   // a panel of the given thickness against side f
         return f === 0 ? [0, 0, 0, 1, 1, thick] : f === 1 ? [1 - thick, 0, 0, 1, 1, 1] : f === 2 ? [0, 0, 1 - thick, 1, 1, 1] : [0, 0, 0, thick, 1, 1];
       }
@@ -452,6 +509,13 @@
           var m = metaOf(x, y, z), f = m & 3, open = (m & 4) !== 0;
           return [sideBox(open ? (f + 3) % 4 : f, 0.1875)];
         }
+        if (b === TORCH) return forBody ? [] : [[0.4, 0, 0.4, 0.6, 0.72, 0.6]];   // a thin post
+        if (b === BED) return [[0, 0, 0, 1, forBody ? 0.5 : 0.5625, 1]];   // lower than a block, low enough to step onto
+        if (b === CHEST) return [[0.0625, 0, 0.0625, 0.9375, 0.875, 0.9375]];
+        if (b === CACTUS_ID) return [[0.0625, 0, 0.0625, 0.9375, 1, 0.9375]];
+        if (b === FARMLAND) return [[0, 0, 0, 1, 0.9375, 1]];
+        if (b === ENCH_TABLE) return [[0, 0, 0, 1, 0.75, 1]];
+        if ((b >= CROP1 && b <= CROP3) || b === SAPLING) { var ph = b === SAPLING ? 0.6 : 0.3 + (b - CROP1) * 0.3; return forBody ? [] : [[0.45, 0, 0, 0.55, ph, 1], [0, 0, 0.45, 1, ph, 0.55]]; }   // plants: two crossing panels
         if (b === PORTAL) return forBody ? [] : ((metaOf(x, y, z) & 1) ? [[0.44, 0, 0, 0.56, 1, 1]] : [[0, 0, 0.44, 1, 1, 0.56]]);
         if (b === LADDER) return forBody ? [] : [sideBox(metaOf(x, y, z) & 3, 0.125)];
         return null;
@@ -480,14 +544,14 @@
         return true;
       };
       var facing = function () { return Math.floor(state.p.yaw / (Math.PI / 2) + 0.5) & 3; };   // 0 looking north, 1 east, 2 south, 3 west
-      function cast(ox, oy, oz, dx, dy, dz, maxT, skipWater, thin) {
+      function cast(ox, oy, oz, dx, dy, dz, maxT, skipWater, thin, skip) {   // skip: a cell [x, y, z] the ray starts in and passes without a hit (the see-through block it just went through)
         var x = Math.floor(ox), y = Math.floor(oy), z = Math.floor(oz);
         var sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, sz = dz > 0 ? 1 : -1;
         var tdx = dx !== 0 ? Math.abs(1 / dx) : 1e30, tdy = dy !== 0 ? Math.abs(1 / dy) : 1e30, tdz = dz !== 0 ? Math.abs(1 / dz) : 1e30;
         var tx = dx !== 0 ? (dx > 0 ? x + 1 - ox : ox - x) * tdx : 1e30, ty = dy !== 0 ? (dy > 0 ? y + 1 - oy : oy - y) * tdy : 1e30, tz = dz !== 0 ? (dz > 0 ? z + 1 - oz : oz - z) * tdz : 1e30;
         var t = 0, nx = 0, ny = 0, nz = 0, steps = 0, first = get(x, y, z);
         while (t <= maxT && steps++ < 200) {
-          var b = get(x, y, z);
+          var b = skip && x === skip[0] && y === skip[1] && z === skip[2] ? AIR : get(x, y, z);
           if (SHAPED(b)) {   // only the parts of the cell that are filled stop the ray
             var sh = boxRay(ox, oy, oz, dx, dy, dz, x, y, z, shapeBoxes(b, x, y, z, false), t, maxT);
             if (sh) {
@@ -558,10 +622,16 @@
         var t = target();
         if (!t || t.y < 1) return false;
         var tx = t.x, ty = t.y, tz = t.z, b = t.b;
+        if (b === BED) {   // both halves of a bed go together, and one bed comes back
+          var bm = metaOf(tx, ty, tz), bd = [[0, -1], [1, 0], [0, 1], [-1, 0]][bm & 3], bhead = (bm & 4) !== 0, ox = bhead ? tx - bd[0] : tx + bd[0], oz = bhead ? tz - bd[1] : tz + bd[1];
+          K.sfx("click"); set(tx, ty, tz, AIR, true);
+          if (get(ox, ty, oz) === BED && metaOf(ox, ty, oz) === (bhead ? (bm & 3) : 4 + (bm & 3))) set(ox, ty, oz, AIR, true);
+          state.hud.broken++; state.addItem(BED, 1); return true;
+        }
         K.sfx(b === DIRT || b === GRASS || b === SAND ? "click" : "hit");
         set(tx, ty, tz, AIR, true); state.hud.broken++;   if (XP_FOR[b] && !state.creative) state.addXp(XP_FOR[b]);
         var kindUsed = D.rightTool(b); if (kindUsed) state.useTool(kindUsed);
-        if (b === CHEST) state.openChest();
+        if (b === CHEST) state.spillChest(tx, ty, tz);
         if (b === HAY && state.mobs.some(function (m) { return m.type === "villager" && Math.abs(m.x - tx) < 14 && Math.abs(m.z - tz) < 14; })) state.say("Köylü: Samanlarıma dokunma!");
         if (b === DOOR_LO || b === DOOR_HI) { var dl = b === DOOR_LO ? ty : ty - 1; set(tx, dl, tz, AIR, true); set(tx, dl + 1, tz, AIR, true); state.addItem(DOOR_ITEM, 1); return true; }
         for (var sy2 = ty + 1; sy2 <= ty + 8; sy2++) if (get(tx, sy2, tz) === SAND) state.settle(tx, sy2, tz);   // the sand above falls into the hole
@@ -766,6 +836,7 @@
       };
       state.placeBlock = function () {
         var bedT = target(); if (bedT && bedT.b === BED) return state.sleep();
+        if (bedT && bedT.b === CHEST && !K.key("Shift")) { state.openChestAt(bedT.x, bedT.y, bedT.z); return true; }   // a right click on a chest opens it
         if (bedT && bedT.b === ENCH_TABLE && !K.key("Shift")) { state.enchanting = true; state.enchCursor = 0; return true; }   // a right click on a büyü masası opens its spells
         if (bedT && (bedT.b === TABLE || bedT.b === FURNACE) && !K.key("Shift")) { state.openScreen(bedT.b === TABLE ? "table" : "furnace"); return true; }   // a right click on a table or a furnace opens its recipes (Shift puts a block next to it)
         if (bedT && (bedT.b === DOOR_LO || bedT.b === DOOR_HI)) return state.toggleDoor(bedT.x, bedT.y, bedT.z);   // a right click on a door opens or shuts it
@@ -822,6 +893,18 @@
           var tx3 = t.x + t.nx, ty3 = t.y + t.ny, tz3 = t.z + t.nz;
           if (get(tx3, ty3, tz3) !== AIR && get(tx3, ty3, tz3) !== WATER) return false;
           set(tx3, ty3, tz3, id, true, facing()); state.hud.placed++; K.sfx("click");
+          if (!state.creative) { inv.count[id]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
+          return true;
+        }
+        if (id === BED) {   // a bed is two blocks long: the foot where you click, the head the way you look (a single one when there is no room)
+          var bx0 = t.x + t.nx, by0 = t.y + t.ny, bz0 = t.z + t.nz, bdirs = [[0, -1], [1, 0], [0, 1], [-1, 0]], bplaced = false;
+          if (get(bx0, by0, bz0) !== AIR || !solid(get(bx0, by0 - 1, bz0))) return false;
+          for (var bt = 0; bt < 4 && !bplaced; bt++) {
+            var bf = (facing() + bt) & 3, hx2 = bx0 + bdirs[bf][0], hz2 = bz0 + bdirs[bf][1];
+            if (get(hx2, by0, hz2) === AIR && solid(get(hx2, by0 - 1, hz2))) { set(bx0, by0, bz0, BED, true, bf); set(hx2, by0, hz2, BED, true, 4 + bf); bplaced = true; }
+          }
+          if (!bplaced) set(bx0, by0, bz0, BED, true, 0);
+          K.sfx("click"); state.hud.placed++;
           if (!state.creative) { inv.count[id]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
           return true;
         }
@@ -1019,8 +1102,32 @@
         if (!state.creative) { inv.count[159] -= tier; state.xp = state.xpAt(state.levelInfo().level - tier) + 0; }
         K.sfx("coin"); state.savePlayer(); state.say(NAMES[id] + ":" + state.enchantNote(id)); return { key: key, level: state.ench[id][key] };
       };
-      state.interactive = function (b) { return b === ENCH_TABLE; };
+      state.interactive = function (b) { return b === ENCH_TABLE || b === CHEST; };
       // ---- chests give their loot when broken; villagers trade (right click): wheat, coal and meat for zümrüt, zümrüt for food, tools, lapis and even a diamond ----
+      // ---- chests keep what you put in them (27 places, per chest, saved with the world); a chest of a village or a temple has loot in it the first time it is opened ----
+      function chestStore() { return (state.dim === "over" ? baseKey : baseKey + "." + state.dim) + ".chests"; }
+      function chestAll() { var all; try { all = K.save.get(chestStore(), {}); } catch (e) { all = {}; } return all && typeof all === "object" ? all : {}; }
+      function chestSave(all) { try { K.save.set(chestStore(), all); } catch (e) { /* not kept */ } }
+      function emptySlots() { var a = []; for (var i = 0; i < 27; i++) a.push(null); return a; }
+      function rollChest(x, y, z) {   // the loot of a chest nobody has opened: the same for the same chest
+        var slots = emptySlots(), n = 0;
+        LOOT.forEach(function (l, li) {
+          if (hash(seed + 700 + li, x, y, z) >= l[3]) return;
+          var count = l[1] + Math.floor(hash(seed + 720 + li, x, y, z) * (l[2] - l[1] + 1)); if (count <= 0) return;
+          var at = Math.floor(hash(seed + 740 + li, x, y, z) * 27); while (slots[at]) at = (at + 1) % 27;
+          slots[at] = { id: l[0], n: count }; n++;
+        });
+        return slots;
+      }
+      state.chestContents = function (x, y, z) { var all = chestAll(), key = x + "," + y + "," + z; if (!all[key]) { all[key] = rollChest(x, y, z); chestSave(all); } return all[key]; };
+      state.initChest = function (x, y, z) { var all = chestAll(); all[x + "," + y + "," + z] = emptySlots(); chestSave(all); };   // a chest you put down is empty
+      state.saveChest = function () { var c = state.chestOpen; if (!c) return; var all = chestAll(); all[c.key] = c.slots; chestSave(all); };
+      state.openChestAt = function (x, y, z) { state.returnItems(); state.chestOpen = { key: x + "," + y + "," + z, slots: state.chestContents(x, y, z).map(function (c) { return c ? { id: c.id, n: c.n } : null; }) }; state.screen = "chest"; state.showInv = true; };
+      state.spillChest = function (x, y, z) {   // a chest that is broken gives what is in it
+        var all = chestAll(), key = x + "," + y + "," + z, slots = all[key] || rollChest(x, y, z), got = [];
+        slots.forEach(function (c) { if (c) { state.addItem(c.id, c.n); got.push(NAMES[c.id] + " x" + c.n); } });
+        delete all[key]; chestSave(all); if (got.length) state.say("Sandıktan: " + got.join(", ")); return got;
+      };
       var LOOT = [[GOLD_INGOT_ID, 1, 3, 0.8], [161, 0, 2, 0.5], [BREAD, 1, 3, 0.7], [115, 0, 2, 0.5], [159, 1, 4, 0.4], [IRON_INGOT_ID, 1, 3, 0.6], [44, 1, 1, 0.12]];
       state.openChest = function () { var got = []; LOOT.forEach(function (l) { if (mr() < l[3]) { var n = l[1] + Math.floor(mr() * (l[2] - l[1] + 1)); if (n > 0) { state.addItem(l[0], n); got.push(NAMES[l[0]] + " x" + n); } } }); if (got.length) state.say("Sandıktan: " + got.join(", ")); return got; };
       var PROFESSIONS = ["çiftçi", "demirci", "rahip", "kasap"];
@@ -1046,9 +1153,9 @@
       var FUEL = { 41: 8, 5: 2, 7: 1.5, 40: 0.5 };
       state.gridSize = function () { return state.screen === "table" ? 3 : 2; };
       function invLayout() {
-        var size = state.screen === "table" ? 3 : state.screen === "furnace" ? 0 : 2, cell = 40, x0 = Math.floor(g.width / 2 - 190), y0 = 26, topH = size === 3 ? 128 : 92;
-        var L = { x0: x0, y0: y0, cell: cell, rows: 3, w: 380, size: size };
-        L.gridY = y0 + 30 + topH + 8; L.barY = L.gridY + 3 * cell + 12; L.h = L.barY + cell + 8 - y0;
+        var size = state.screen === "table" ? 3 : state.screen === "furnace" || state.screen === "chest" ? 0 : 2, cell = 40, x0 = Math.floor(g.width / 2 - 190), y0 = 26, topH = size === 3 ? 128 : 92;
+        var L = { x0: x0, y0: y0, cell: cell, rows: 3, w: 380, size: size, chest: state.screen === "chest" };
+        L.gridY = y0 + 30 + topH + 8; L.barY = L.gridY + 3 * cell + 12; L.h = L.barY + cell + 22 - y0;
         L.cellX = size === 3 ? x0 + 70 : x0 + 190; L.cellY = y0 + 34;
         L.resX = size === 3 ? x0 + 290 : x0 + 318; L.resY = y0 + 34 + (size === 3 ? 38 : 20);
         L.fin = { x: x0 + 110, y: y0 + 36 }; L.ffuel = { x: x0 + 110, y: y0 + 92 }; L.fout = { x: x0 + 270, y: y0 + 62 };
@@ -1061,14 +1168,16 @@
         if (L.size) {
           for (i = 0; i < L.size * L.size; i++) if (inside(L.cellX + (i % L.size) * cell, L.cellY + Math.floor(i / L.size) * cell)) return { kind: "cell", index: i };
           if (inside(L.resX, L.resY)) return { kind: "result" };
+        } else if (L.chest) {
+          for (i = 0; i < 27; i++) if (inside(L.x0 + 10 + (i % 9) * cell, L.cellY + Math.floor(i / 9) * cell)) return { kind: "chest", index: i };
         } else {
           if (inside(L.fin.x, L.fin.y)) return { kind: "fin" }; if (inside(L.ffuel.x, L.ffuel.y)) return { kind: "ffuel" }; if (inside(L.fout.x, L.fout.y)) return { kind: "fout" };
         }
         var col = Math.floor((mx - (L.x0 + 10)) / cell);
         if (col < 0 || col > 8) return null;
         var row = Math.floor((my - L.gridY) / cell);
-        if (row >= 0 && row < L.rows) { var id = all[state.invScroll * 9 + row * 9 + col]; return id ? { kind: "grid", id: id } : null; }
-        if (my >= L.barY && my < L.barY + cell) { var at = state.windowStart() + col; return at < all.length ? { kind: "hotbar", index: at, id: all[at] } : null; }
+        if (row >= 0 && row < L.rows) { var gi = state.invScroll * 9 + row * 9 + col; return { kind: "grid", index: gi, id: all[gi] }; }   // an empty cell is a place too
+        if (my >= L.barY && my < L.barY + cell) { var at = state.windowStart() + col; return { kind: "hotbar", index: at, id: all[at] }; }
         return null;
       };
       state.moveItem = function (id) {   // the item goes to the chosen slot and the one that was there takes its place
@@ -1098,6 +1207,14 @@
         var have = inv.count[id] || 0, n = half ? Math.ceil(have / 2) : have; if (n <= 0) return false;
         inv.count[id] -= n; state.cursor = { id: id, n: n };
         if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1);
+        return true;
+      };
+      state.placeAt = function (id, index) {   // the kind goes to this place of the bar or the grid (the one that was there changes places with it, an empty place after the last one means the end)
+        var all = state.hotbar(), from = all.indexOf(id); if (!id || from < 0) return false;
+        var to = Math.max(0, Math.min(index, all.length - 1));
+        if (index >= all.length) { all.splice(from, 1); all.push(id); to = all.length - 1; } else { var other = all[to]; all[to] = id; all[from] = other; }
+        inv.order = all.concat(inv.order.filter(function (i) { return all.indexOf(i) < 0; }));
+        if (index >= state.windowStart() && index < state.windowStart() + 9) state.select(to);
         return true;
       };
       state.dropCursor = function () { var c = state.cursor; if (!c) return; if (!c.free) state.addItem(c.id, c.n); state.cursor = null; };
@@ -1131,20 +1248,29 @@
       state.uiClick = function (button) {   // a mouse button pressed while the inventory screen is open
         if (!state.showInv) return false;
         var hit = state.invHit(K.mouse.x, K.mouse.y);
-        if (!hit) return false;
+        if (!hit) { if (state.cursor) { state.dropCursor(); return true; } return false; }   // a click on nothing puts what is in the hand back
         if (hit.kind === "cell") state.cells[hit.index] = slotClick(state.cells[hit.index], button);
+        else if (hit.kind === "chest") { state.chestOpen.slots[hit.index] = slotClick(state.chestOpen.slots[hit.index], button); state.saveChest(); }
         else if (hit.kind === "result") state.takeResult();
         else if (hit.kind === "fin") state.furn.input = slotClick(state.furn.input, button, function (id) { return !!state.smeltOf(id); });
         else if (hit.kind === "ffuel") state.furn.fuel = slotClick(state.furn.fuel, button, function (id) { return !!FUEL[id]; });
         else if (hit.kind === "fout") state.furn.out = slotClick(state.furn.out, button, function () { return false; });
-        else if (state.cursor) state.dropCursor();   // a stack put on the inventory goes back into it
-        else state.pickFromInventory(hit.id, button === 2);
+        else if (state.cursor) { var cid = state.cursor.id; state.dropCursor(); state.placeAt(cid, hit.index); }   // a stack put on a place of the bar or the grid goes back into the inventory and takes that place
+        else if (hit.id) state.pickFromInventory(hit.id, button === 2);
         return true;
+      };
+      state.hoverSlot = function (num) {   // a number key with the mouse over an item: the item goes to that slot of the bar
+        if (!state.showInv || state.cursor) return false;
+        var hit = state.invHit(K.mouse.x, K.mouse.y), id = hit && (hit.kind === "grid" || hit.kind === "hotbar") ? hit.id : 0; if (!id) return false;
+        var all = state.hotbar(), from = all.indexOf(id), to = Math.min(state.windowStart() + num - 1, all.length - 1);
+        if (from < 0 || to < 0) return false;
+        var other = all[to]; all[to] = id; all[from] = other;
+        inv.order = all.concat(inv.order.filter(function (i) { return all.indexOf(i) < 0; })); state.select(to); return true;
       };
       state.openScreen = function (kind) { state.returnItems(); state.screen = kind; state.showInv = true; };
       state.invUpdate = function () { state.furnaceUpdate(1 / 60); };
       state.uiOpen = function () { return !!(state.showInv || state.showCraft || state.showAch || state.showHelp || state.trade || state.enchanting); };
-      state.closeUi = function () { state.returnItems(); state.showInv = state.showCraft = state.showAch = state.showHelp = false; state.trade = null; state.enchanting = false; state.screen = "inv"; };
+      state.closeUi = function () { state.returnItems(); state.saveChest(); state.chestOpen = null; state.showInv = state.showCraft = state.showAch = state.showHelp = false; state.trade = null; state.enchanting = false; state.screen = "inv"; };
       // ---- the player ----
       function collides(x, y, z) {
         for (var bx = Math.floor(x - 0.3); bx <= Math.floor(x + 0.3); bx++) for (var bz = Math.floor(z - 0.3); bz <= Math.floor(z + 0.3); bz++)
@@ -1294,24 +1420,35 @@
           var sx = ((i + 0.5) / RW * 2 - 1) * scale * aspect, sy = (1 - (j + 0.5) / RH * 2) * scale;
           var dx = d.x + rx * sx + ux * sy, dy = d.y + uy * sy, dz = d.z + rz * sx + uz * sy;
           var inv2 = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz); dx *= inv2; dy *= inv2; dz *= inv2;
-          var r = skyR, gg = skyG, bb = skyB, k = (j * RW + i) * 4, veil = 0, veilR = 0, veilG = 0, veilB = 0; state.depth[j * RW + i] = 1e9;
+          var r = skyR, gg = skyG, bb = skyB, k = (j * RW + i) * 4, ar = 0, ag = 0, ab = 0, trans = 1, layers = 0; state.depth[j * RW + i] = 1e9;
           var got = cast(e.x, e.y, e.z, dx, dy, dz, FAR, false, inWater);
-          if (got && hit.b === PORTAL) {   // a portal is a shimmering veil: what is behind it shows through
-            var pv = 0.55 + 0.45 * Math.sin((hit.hx + hit.hz) * 5 + hit.hy * 7 + state.phase * 3);
-            veil = 0.5; veilR = 150 * pv; veilG = 60 * pv; veilB = 230 * pv;
-            got = cast(hit.hx + dx * 0.03, hit.hy + dy * 0.03, hit.hz + dz * 0.03, dx, dy, dz, FAR, false, inWater);
+          while (got && layers < 4) {   // see-through things show what is behind them: a portal, water seen from outside, glass, the gaps of leaves, plants and ladders
+            var tb = hit.b, pass = false, tint = null, alpha = 0;
+            if (tb === PORTAL) { var pv = 0.55 + 0.45 * Math.sin((hit.hx + hit.hz) * 5 + hit.hy * 7 + state.phase * 3); tint = [150 * pv, 60 * pv, 230 * pv]; alpha = 0.5; pass = true; }
+            else if (tb === WATER && !inWater) { tint = [36, 96, 186]; alpha = 0.4; pass = true; }
+            else if (CUT[tb]) {
+              var cu, cv;
+              if (hit.face === 1) { cu = hit.nx !== 0 ? hit.hz : hit.hx; cv = 1 - hit.hy; } else { cu = hit.hx; cv = hit.hz; }
+              cu = Math.floor((cu - Math.floor(cu)) * 16); cv = Math.floor((cv - Math.floor(cv)) * 16);
+              if (cutAt(tb, cu, cv)) { pass = true; if (tb === GLASS) { tint = [190, 226, 240]; alpha = 0.12; } }
+            }
+            if (!pass) break;
+            if (tint) { ar += trans * alpha * tint[0]; ag += trans * alpha * tint[1]; ab += trans * alpha * tint[2]; trans *= 1 - alpha; }
+            layers++;
+            var skipCell = SHAPED(tb) ? null : [hit.x, hit.y, hit.z];
+            got = cast(hit.hx + dx * 0.03, hit.hy + dy * 0.03, hit.hz + dz * 0.03, dx, dy, dz, FAR, false, false, skipCell);
           }
           if (got) {
-            state.depth[j * RW + i] = hit.t; var tex = texture(hit.b, hit.face), u, v;
+            state.depth[j * RW + i] = hit.t; var tex = texHD(hit.b, hit.face), u, v;
             if (hit.face === 1) { u = hit.nx !== 0 ? hit.hz : hit.hx; v = 1 - hit.hy; } else { u = hit.hx; v = hit.hz; }
-            u = Math.floor((u - Math.floor(u)) * 16); v = Math.floor((v - Math.floor(v)) * 16);
-            var o = (v * 16 + u) * 3, sh = shade[hit.face] * (0.25 + 0.75 * light) * (hit.nx !== 0 ? 0.92 : 1), fog = Math.min(1, hit.t / FAR);
+            u = Math.floor((u - Math.floor(u)) * 64); v = Math.floor((v - Math.floor(v)) * 64);
+            var o = (v * 64 + u) * 3, sh = shade[hit.face] * (0.25 + 0.75 * light) * (hit.nx !== 0 ? 0.92 : 1), fog = Math.min(1, hit.t / FAR);
             fog = fog * fog * 0.85;
             r = tex[o] * sh * (1 - fog) + skyR * fog; gg = tex[o + 1] * sh * (1 - fog) + skyG * fog; bb = tex[o + 2] * sh * (1 - fog) + skyB * fog;
             if (hit.b === WATER) { r = r * 0.7; gg = gg * 0.8; }
             if (hit.b === LAVA) { r = tex[o]; gg = tex[o + 1]; bb = tex[o + 2]; }   // lava glows, night does not darken it
           } else if (dy < -0.05) { r = 20; gg = 20; bb = 30; }
-          if (veil) { r = r * (1 - veil) + veilR * veil; gg = gg * (1 - veil) + veilG * veil; bb = bb * (1 - veil) + veilB * veil; }
+          if (trans < 1) { r = ar + r * trans; gg = ag + gg * trans; bb = ab + bb * trans; }
           if (inWater) { r *= 0.55; gg *= 0.75; bb = bb * 0.9 + 30; }
           out[k] = r; out[k + 1] = gg; out[k + 2] = bb; out[k + 3] = 255;
         }
@@ -1444,7 +1581,7 @@
           var L = invLayout(), allInv = state.hotbar(), startInv = state.windowStart(), maxScroll = Math.max(0, Math.ceil(allInv.length / 9) - L.rows), cellPx = L.cell - 4;
           state.invScroll = Math.max(0, Math.min(maxScroll, state.invScroll));
           c.fillStyle = "rgba(20,20,24,0.95)"; c.fillRect(L.x0, L.y0, L.w, L.h); c.strokeStyle = "#8a8a92"; c.lineWidth = 2; c.strokeRect(L.x0, L.y0, L.w, L.h);
-          c.fillStyle = "#fff"; c.font = "bold 15px sans-serif"; c.fillText(state.screen === "table" ? "Üretim masası" : state.screen === "furnace" ? "Fırın" : "Envanter" + (state.creative ? "  (yaratıcı mod)" : ""), L.x0 + 12, L.y0 + 22);
+          c.fillStyle = "#fff"; c.font = "bold 15px sans-serif"; c.fillText(state.screen === "table" ? "Üretim masası" : state.screen === "furnace" ? "Fırın" : state.screen === "chest" ? "Sandık" : "Envanter" + (state.creative ? "  (yaratıcı mod)" : ""), L.x0 + 12, L.y0 + 22);
           var slotBox = function (x, y, on) { c.fillStyle = on ? "rgba(255,224,130,0.30)" : "rgba(90,90,98,0.55)"; c.fillRect(x, y, cellPx, cellPx); c.strokeStyle = on ? "#ffe082" : "#2c2c32"; c.lineWidth = on ? 2 : 1; c.strokeRect(x, y, cellPx, cellPx); };
           var stack = function (x, y, id, n, on) {
             slotBox(x, y, on); if (!id) return;
@@ -1452,7 +1589,9 @@
             if (!state.creative && n > 1) { c.fillStyle = "#fff"; c.font = "bold 11px sans-serif"; c.textAlign = "right"; c.fillText(String(n), x + cellPx - 3, y + cellPx - 4); c.textAlign = "left"; }
           };
           var arrow = function (x, y) { c.fillStyle = "#cfd8dc"; c.font = "bold 22px sans-serif"; c.fillText("→", x, y); };
-          if (L.size) {
+          if (L.chest && state.chestOpen) {
+            for (var chi = 0; chi < 27; chi++) { var chs = state.chestOpen.slots[chi]; stack(L.x0 + 10 + (chi % 9) * L.cell, L.cellY + Math.floor(chi / 9) * L.cell, chs && chs.id, chs && chs.n); }
+          } else if (L.size) {
             for (var ti = 0; ti < L.size * L.size; ti++) { var tc = state.cells[ti]; stack(L.cellX + (ti % L.size) * L.cell, L.cellY + Math.floor(ti / L.size) * L.cell, tc && tc.id, tc && tc.n); }
             var made = state.matchResult(); arrow(L.resX - 30, L.resY + 26); stack(L.resX, L.resY, made && made.give[0], made && made.give[1], !!made);
             c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(L.size === 3 ? "3x3 ızgaraya diz" : "2x2 ızgaraya diz", L.x0 + 12, L.cellY + 16);
@@ -1462,12 +1601,13 @@
             c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(L.fin.x + 56, L.fin.y + 44, 90, 6); c.fillStyle = "#ffab40"; c.fillRect(L.fin.x + 56, L.fin.y + 44, 90 * Math.min(1, fs.progress / 1.6), 6); arrow(L.fout.x - 38, L.fout.y + 26);
           }
           for (var gi = 0; gi < L.rows * 9; gi++) { var gid = allInv[state.invScroll * 9 + gi]; stack(L.x0 + 10 + (gi % 9) * L.cell, L.gridY + Math.floor(gi / 9) * L.cell, gid, gid && inv.count[gid], gid && gid === state.selectedBlock()); }
-          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(allInv.length > L.rows * 9 ? "tekerlek: kaydır" : "Çubuk (1-9)", L.x0 + 12, L.barY - 3);
+          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(allInv.length > L.rows * 9 ? "tekerlek: kaydır   " : "Çubuk (1-9)   ", L.x0 + 12, L.barY - 3); c.fillStyle = "#7d7d86"; c.fillText("sol tık: al/koy   sağ tık: yarısı/bir tane   boş yere tık: geri koy   üstündeyken 1-9: çubuğa koy", L.x0 + 12, L.barY + L.cell + 16);
           for (var bi = 0; bi < 9; bi++) { var bid = allInv[startInv + bi]; stack(L.x0 + 10 + bi * L.cell, L.barY, bid, bid && inv.count[bid], startInv + bi === state.slot); }
           var over = state.invHit(K.mouse.x, K.mouse.y), tipId = 0, tipExtra = "";
           if (over) {
             if (over.kind === "grid" || over.kind === "hotbar") { tipId = over.id; tipExtra = state.creative ? "" : "  x" + inv.count[over.id]; }
             else if (over.kind === "cell" && state.cells[over.index]) tipId = state.cells[over.index].id;
+            else if (over.kind === "chest" && state.chestOpen && state.chestOpen.slots[over.index]) tipId = state.chestOpen.slots[over.index].id;
             else if (over.kind === "result") { var rm = state.matchResult(); if (rm) tipId = rm.give[0]; }
           }
           if (tipId && !state.cursor) {
@@ -1520,12 +1660,12 @@
         }
         if (state.showAch) {
           var done = D.ACH.filter(function (a) { return state.ach[a.id]; }).length;
-          c.fillStyle = "rgba(0,0,0,0.85)"; c.fillRect(g.width / 2 - 230, 36, 460, 320);
-          c.fillStyle = "#fff"; c.font = "16px sans-serif"; c.fillText("BAŞARIMLAR  " + done + "/" + D.ACH.length + "   (B kapatır)", g.width / 2 - 215, 62);
+          c.fillStyle = "rgba(0,0,0,0.88)"; c.fillRect(g.width / 2 - 300, 24, 600, 340);
+          c.fillStyle = "#fff"; c.font = "16px sans-serif"; c.fillText("BAŞARIMLAR  " + done + "/" + D.ACH.length + "   (B kapatır)", g.width / 2 - 285, 52);
           D.ACH.forEach(function (a, n) {
-            var col = n % 2, row = Math.floor(n / 2), ok = !!state.ach[a.id];
-            c.fillStyle = ok ? "#ffd54f" : "#6f6f6f"; c.font = "bold 13px sans-serif"; c.fillText((ok ? "★ " : "☆ ") + a.name, g.width / 2 - 215 + col * 225, 88 + row * 26);
-            c.fillStyle = ok ? "#cfd8dc" : "#555"; c.font = "11px sans-serif"; c.fillText(a.desc, g.width / 2 - 197 + col * 225, 101 + row * 26);
+            var col = n % 3, row = Math.floor(n / 3), ok = !!state.ach[a.id];   // three columns, so that all of them fit on the screen
+            c.fillStyle = ok ? "#ffd54f" : "#6f6f6f"; c.font = "bold 13px sans-serif"; c.fillText((ok ? "★ " : "☆ ") + a.name, g.width / 2 - 285 + col * 196, 80 + row * 30);
+            c.fillStyle = ok ? "#cfd8dc" : "#555"; c.font = "11px sans-serif"; c.fillText(a.desc, g.width / 2 - 267 + col * 196, 94 + row * 30);
           });
         }
         if (state.showHelp) {
@@ -1582,7 +1722,7 @@
           once("b", function () { state.showAch = !state.showAch; });
           once("ArrowUp", function () { if (state.showCraft) state.menuMove(-1); else if (state.enchanting) state.enchCursor = Math.max(0, state.enchCursor - 1); else if (state.trade) state.trade.cursor = Math.max(0, state.trade.cursor - 1); }); once("ArrowDown", function () { if (state.showCraft) state.menuMove(1); else if (state.enchanting) state.enchCursor = Math.min(Math.max(0, state.enchantable().length - 1), state.enchCursor + 1); else if (state.trade) state.trade.cursor = Math.min(state.trade.offers.length - 1, state.trade.cursor + 1); });
           once("Enter", function () { if (state.showCraft) state.craft(state.craftList()[state.craftCursor]); else if (state.trade) state.doTrade(state.trade.offers[state.trade.cursor]); });
-          for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(state.craftList()[state.craftPage() + num - 1]); else if (state.enchanting) { if (num <= 3) state.enchant(state.enchantable()[state.enchCursor], num); } else if (state.trade) { if (num <= state.trade.offers.length) { state.trade.cursor = num - 1; state.doTrade(state.trade.offers[num - 1]); } } else state.select(state.windowStart() + num - 1); }); })(n);
+          for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showInv && state.hoverSlot(num)) return; if (state.showCraft) state.craft(state.craftList()[state.craftPage() + num - 1]); else if (state.enchanting) { if (num <= 3) state.enchant(state.enchantable()[state.enchCursor], num); } else if (state.trade) { if (num <= state.trade.offers.length) { state.trade.cursor = num - 1; state.doTrade(state.trade.offers[num - 1]); } } else state.select(state.windowStart() + num - 1); }); })(n);
           var cur = state.selectedBlock(); if (cur !== state.lastSel) { state.lastSel = cur; state.nameT = 2; } state.nameT -= dt;
           state.mineStep(dt, ((K.voxel.keyActions && K.key("f")) || mouseLeft) && !state.uiOpen());   // holding the left button digs
           var ch = state.chunk || { x: 0, z: 0 };

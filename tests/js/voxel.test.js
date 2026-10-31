@@ -7,6 +7,7 @@ const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.v
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
 const world = (K, o = {}) => K.voxel.makeWorld({ seed: 3, biome: 'forest', size: 'medium', caves: 1, ores: 1, lakes: true, trees: 3, ...o });
+const px = () => new Uint8ClampedArray(256 * 160 * 4);   // a picture to render into
 const around = (w, r = 5) => { w.ensureAround(w.S >> 1, w.S >> 1, r); return w; };   // make the chunks in the middle, to count what they hold
 
 test('the registry has the sandbox kit and its features, and checks a spec', () => {
@@ -251,18 +252,18 @@ test('the picture is drawn: sky above, ground below, darker at night, and differ
   const K = fresh();
   const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'small', time: 'day' });
   run(s, 1.5);
-  const img = s.render(new Uint8ClampedArray(160 * 100 * 4));
-  const px = (i, j) => [img[(j * 160 + i) * 4], img[(j * 160 + i) * 4 + 1], img[(j * 160 + i) * 4 + 2]];
+  const img = s.render(new Uint8ClampedArray(256 * 160 * 4));
+  const px = (i, j) => [img[(j * 256 + i) * 4], img[(j * 256 + i) * 4 + 1], img[(j * 256 + i) * 4 + 2]];
   const sky = px(80, 2), ground = px(80, 97);
   assert.ok(sky[2] > sky[0], 'blue sky at the top: ' + sky);
   assert.notDeepStrictEqual(sky, ground);
   const colours = new Set(); for (let k = 0; k < img.length; k += 4 * 37) colours.add(img[k] + ',' + img[k + 1] + ',' + img[k + 2]);
   assert.ok(colours.size > 30, 'textured, not flat');
   K.press('ArrowRight'); run(s, 1); K.press('ArrowRight', false);
-  assert.notDeepStrictEqual(Array.from(img), Array.from(s.render(new Uint8ClampedArray(160 * 100 * 4))));
+  assert.notDeepStrictEqual(Array.from(img), Array.from(s.render(new Uint8ClampedArray(256 * 160 * 4))));
   const night = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'small', time: 'night' });
   run(night, 1.5);
-  const dark = night.render(new Uint8ClampedArray(160 * 100 * 4));
+  const dark = night.render(new Uint8ClampedArray(256 * 160 * 4));
   const bright = (a) => { let t = 0; for (let k = 0; k < a.length; k += 4) t += a[k] + a[k + 1] + a[k + 2]; return t; };
   assert.ok(bright(dark) < bright(img) * 0.6, 'night is darker');
 });
@@ -285,7 +286,7 @@ test('every biome, size and time of day runs for a few seconds, and the music st
     const s = K.kit.run({ kit: 'sandbox', biome, size, world: { seed: 7 }, musicStyle: { mood: 'calm', tempo: 'slow', seed: 3 }, features: ['fly', 'sprint'] });
     run(s, 2);
     assert.ok(Number.isFinite(s.p.x) && Number.isFinite(s.p.y), biome + size);
-    assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+    assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
   }
 });
 
@@ -667,16 +668,16 @@ test('the picture shows a creature in the open and a wall hides it, and it canno
   const K = fresh();
   const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'medium', time: 'day' });
   run(s, 1.5); s.mobs.length = 0; s.p.pitch = 0;
-  const empty = Array.from(s.render(new Uint8ClampedArray(160 * 100 * 4)));
+  const empty = Array.from(s.render(new Uint8ClampedArray(256 * 160 * 4)));
   const cow = placeMob(K, s, 'cow', 3);
   cow.wander = 999; cow.dirx = cow.dirz = 0;
-  const open = Array.from(s.render(new Uint8ClampedArray(160 * 100 * 4)));
+  const open = Array.from(s.render(new Uint8ClampedArray(256 * 160 * 4)));
   let diff = 0; for (let i = 0; i < open.length; i += 4) if (open[i] !== empty[i] || open[i + 1] !== empty[i + 1]) diff++;
   assert.ok(diff > 80, 'the cow shows in the picture: ' + diff + ' pixels');
   const wx = Math.floor(s.p.x + Math.sin(s.p.yaw) * 1.6), wz = Math.floor(s.p.z - Math.cos(s.p.yaw) * 1.6), wy = Math.floor(s.p.y);
   for (let dy = 0; dy < 4; dy++) for (let dx = -1; dx <= 1; dx++) s.set(wx + dx, wy + dy, wz, 3, false);
   assert.notStrictEqual(s.mobTarget(), cow, 'it cannot be hit through the wall');
-  const hidden = Array.from(s.render(new Uint8ClampedArray(160 * 100 * 4)));
+  const hidden = Array.from(s.render(new Uint8ClampedArray(256 * 160 * 4)));
   let same = 0; for (let i = 0; i < hidden.length; i += 4) if (hidden[i] === open[i] && hidden[i + 1] === open[i + 1]) same++;
   assert.ok(same < hidden.length / 4, 'the wall changed the picture');
 });
@@ -880,7 +881,7 @@ test('1.8 stones: granite, diorite and andesite lie in the stone as veins, ores 
   for (const id of [121, 122, 123, 124, 125, 126, 127]) { assert.ok(D.isBlock(id) && D.hasIcon(id), D.NAME[id]); }
   const s = K.kit.run({ kit: 'sandbox', world: { seed: 4 }, size: 'small', trees: 0, time: 'day' });
   run(s, 1);
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
 });
 
 // a flat stone floor to try shaped blocks on, with the player standing at (x, y, z) facing the given way
@@ -1018,7 +1019,7 @@ test('menus: the game opens on a main menu, Esc opens a pause menu, the arrows a
   const x0 = s.p.x, hungerBefore = s.food;
   K.press('w'); run(s, 1); K.press('w', false);
   assert.ok(Math.abs(s.p.x - x0) < 0.01, 'the player does not walk while the menu is open');
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255, 'the world is still drawn behind');
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255, 'the world is still drawn behind');
   const items = s.menuItems(); assert.ok(items.length >= 5); assert.ok(/Oyna|Devam/.test(items[0].label));
   K.press('ArrowDown'); run(s, 0.05); K.press('ArrowDown', false); run(s, 0.05);
   assert.strictEqual(s.menu.index, 1, 'the arrow moves the choice');
@@ -1033,7 +1034,7 @@ test('menus: the game opens on a main menu, Esc opens a pause menu, the arrows a
   s.menuItems().find((i) => /Yaratıcı/.test(i.label)).act(); assert.strictEqual(s.creative, false);
   // controls page and back
   pauseItems.find((i) => /Kontroller/.test(i.label)).act(); assert.strictEqual(s.menu.kind, 'controls-pause');
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
   K.press('Escape'); run(s, 0.05); K.press('Escape', false); run(s, 0.05); assert.strictEqual(s.menu.kind, 'pause');
   // Esc closes the pause menu, and time resumes
   K.press('Escape'); run(s, 0.05); K.press('Escape', false); run(s, 0.05); assert.strictEqual(s.menu.open, false);
@@ -1097,7 +1098,7 @@ test('a portal: the frame needs the right shape, a çakmak lights it, standing i
   run(s, 1.0); assert.strictEqual(s.dim, 'nether'); assert.strictEqual(s.world.dim, 'nether'); assert.ok(s.dimsSeen.nether);
   assert.ok(/Kor/.test(s.message));
   assert.ok(s.world.count(150) >= 6, 'a portal waits here too'); assert.ok(s.get(Math.floor(s.p.x), Math.floor(s.p.y) - 1, Math.floor(s.p.z)) !== 0, 'standing on something');
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255); assert.ok(s.daylight() < 0.45);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255); assert.ok(s.daylight() < 0.45);
   run(s, 3); assert.strictEqual(s.dim, 'nether', 'you are not thrown straight back');
   // a change made here stays here
   const hx = Math.floor(s.p.x) + 3, hz = Math.floor(s.p.z) + 3, hy = s.world.heightAt(hx, hz) + 1;
@@ -1170,11 +1171,11 @@ test('a portal is a see-through veil: what lies behind it shows, tinted purple',
   for (let x = cx - 2; x <= cx + 3; x++) for (let y = gy + 1; y <= gy + 5; y++) s.set(x, y, cz - 1, 0, false);
   for (let y = gy + 1; y <= gy + 3; y++) s.set(cx, y, cz - 3, 10, false), s.set(cx + 1, y, cz - 3, 10, false);   // iron ore wall behind the portal
   stand(s, cx + 1.0, gy + 1.01, cz + 3.5); s.p.yaw = 0; s.p.pitch = -0.2; run(s, 0.1);
-  const out = new Uint8ClampedArray(160 * 100 * 4); s.render(out);
-  const mid = (50 * 160 + 80) * 4;
-  const bare = new Uint8ClampedArray(160 * 100 * 4); for (let a = 0; a <= 1; a++) for (let b = 0; b <= 2; b++) s.set(cx + a, gy + 1 + b, cz, 0, false); s.render(bare);
+  const out = new Uint8ClampedArray(256 * 160 * 4); s.render(out);
+  const mid = (80 * 256 + 128) * 4;
+  const bare = new Uint8ClampedArray(256 * 160 * 4); for (let a = 0; a <= 1; a++) for (let b = 0; b <= 2; b++) s.set(cx + a, gy + 1 + b, cz, 0, false); s.render(bare);
   assert.ok(Math.abs(out[mid] - bare[mid]) + Math.abs(out[mid + 2] - bare[mid + 2]) > 30, 'tinted, not the plain view: ' + [out[mid], out[mid + 1], out[mid + 2]] + ' vs ' + [bare[mid], bare[mid + 1], bare[mid + 2]]);
-  assert.ok(s.depth[50 * 160 + 80] > 5, 'the depth is that of the wall behind, not the veil: ' + s.depth[50 * 160 + 80]);
+  assert.ok(s.depth[80 * 256 + 128] > 5, 'the depth is that of the wall behind, not the veil: ' + s.depth[80 * 256 + 128]);
 });
 
 test('a real game starts with empty hands, the recipe list follows the table and the furnace that are near, and a right click on one opens its recipes', () => {
@@ -1183,7 +1184,7 @@ test('a real game starts with empty hands, the recipe list follows the table and
   run(s, 1);
   assert.deepStrictEqual(s.inv.order.filter((id) => s.inv.count[id] > 0), [], 'no starter things');
   assert.strictEqual(s.hotbar().length, 0);
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255, 'an empty hotbar is drawn without trouble');
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255, 'an empty hotbar is drawn without trouble');
   const by = (r) => s.craftList().filter((x) => x.where === r).length;
   assert.ok(by('hand') > 0 && by('table') === 0 && by('furnace') === 0, 'only the hand recipes at first');
   assert.ok(s.craftList().some((r) => r.name === 'üretim masası') && !s.craftList().some((r) => r.name === 'fırın'));
@@ -1202,7 +1203,7 @@ test('a real game starts with empty hands, the recipe list follows the table and
   let t = null; for (const pitch of [-0.6, -0.5, -0.4, -0.3, -0.2]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 24) { t = h; break; } }
   assert.ok(t, 'the table is under the crosshair'); assert.ok(!s.showInv);
   assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.showInv, true); assert.strictEqual(s.screen, 'table');
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
   s.closeUi(); assert.strictEqual(s.screen, 'inv');
 });
 
@@ -1233,7 +1234,7 @@ test('the inventory opens with E, shows what you hold in a grid, a click moves a
   // clicks: the layout is found by position
   const hit = s.invHit(190 + 0 + 10 + 5 + 0, 0); assert.ok(hit === null || typeof hit === 'object');
   s.closeUi(); assert.strictEqual(s.uiOpen(), false);
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
 });
 
 test('Shift sneaks: slower, the eye is lower, and you do not walk off an edge; W twice runs', () => {
@@ -1276,7 +1277,7 @@ test('rabbits drop meat every time, which cooks and can be eaten; a raised sword
   s.health = 20; s.rightDown(); assert.strictEqual(s.blocking, true); s.hurtPlayer(10, 'test'); const shielded = 20 - s.health;
   assert.ok(shielded * 2 < open, 'the blow is much smaller: ' + shielded + ' against ' + open);
   s.rightUp(); assert.strictEqual(s.blocking, false);
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
 });
 
 test('ores lie in veins at the depths of the 1.8.9 game: coal and iron are common, diamonds only at the very bottom, lapis and kızıltaş low; the emerald is rare and single', () => {
@@ -1334,7 +1335,7 @@ test('experience comes from ores, creatures and furnaces; the büyü masası spe
   // kept with the world
   const again = K.kit.run({ kit: 'sandbox', world: { seed: 99 }, size: 'small', trees: 0, time: 'day' }); run(again, 1);
   assert.deepStrictEqual(again.ench[armor], { prot: 3 }); assert.ok(again.xp > 0);
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
   s.closeUi(); assert.strictEqual(s.enchanting, false);
 });
 
@@ -1375,7 +1376,7 @@ test('villagers live in the village, wander, trade by profession (the better the
   const m = villagers[0]; m.x = s.p.x + 2; m.z = s.p.z; m.y = s.p.y; s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.05);
   assert.strictEqual(s.mobTarget() === m || s.mobTarget() === null || typeof s.mobTarget() === 'object', true);
   s.openTrade(m); assert.ok(s.trade && ['çiftçi', 'demirci', 'rahip', 'kasap'].includes(s.trade.profession)); assert.strictEqual(s.uiOpen(), true);
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
   // a farmer: wheat for zümrüt, zümrüt for bread
   s.openTrade({ x: 1, z: 2, profession: 'çiftçi' });
   const offer = s.trade.offers[0]; s.inv.count[21] = 0; assert.strictEqual(s.canTrade(offer), false); assert.strictEqual(s.doTrade(offer), false);
@@ -1453,5 +1454,106 @@ test('the inventory screen: pick a stack up with the mouse, put it on the grid, 
   for (let i = 0; i < 60 * 4; i++) { s.furnaceUpdate(1 / 60); } assert.ok(s.furn.out && s.furn.out.id === 3 && s.furn.out.n >= 2, 'stone is smelted from cobblestone: ' + JSON.stringify(s.furn.out));
   assert.strictEqual(s.furn.fuel.n, 1, 'one coal is used and burns for eight');
   s.closeUi(); assert.ok(s.inv.count[3] >= 2, 'the smelted stone is back in the inventory');
-  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
+});
+
+test('the inventory: a stack in the hand goes back with a click on nothing, goes to the place you click on the bar or the grid, and a number key over an item puts it in that slot', () => {
+  const K = fresh(); const { s } = yard(K, 110);
+  for (const id of [5, 7, 27, 41, 42, 40, 3, 21, 4, 2, 1, 8]) s.inv.count[id] = 0;
+  s.inv.order = []; s.addItem(5, 3); s.addItem(7, 4); s.addItem(27, 5); s.addItem(41, 2); s.addItem(42, 1);
+  s.openScreen('inv'); const L = s.invLayout(); const at = (x, y) => K.setMouse(x, y, undefined);
+  const barCell = (i) => [L.x0 + 10 + i * L.cell + 2, L.barY + 2], gridCell = (i) => [L.x0 + 10 + (i % 9) * L.cell + 2, L.gridY + Math.floor(i / 9) * L.cell + 2];
+  assert.deepStrictEqual(s.hotbar().slice(0, 5), [5, 7, 27, 41, 42]);
+  at(...barCell(3)); s.uiClick(0); assert.deepStrictEqual({ ...s.cursor }, { id: 41, n: 2 }); assert.ok(!s.hotbar().includes(41), 'in the hand, not in the bar');
+  at(5, 380); s.uiClick(0); assert.strictEqual(s.cursor, null, 'a click on nothing puts it back'); assert.strictEqual(s.inv.count[41], 2); assert.ok(s.hotbar().includes(41));
+  // to a place on the bar: the coal goes to slot 1, the one that was there changes places with it
+  at(...barCell(3)); s.uiClick(0); at(...barCell(0)); s.uiClick(0);
+  assert.strictEqual(s.cursor, null); assert.strictEqual(s.hotbar()[0], 41, 'the coal is in the first slot'); assert.ok(s.hotbar().includes(5));
+  // an empty place after the last one: it goes to the end
+  at(...barCell(0)); s.uiClick(0); at(...barCell(8)); s.uiClick(0); assert.strictEqual(s.hotbar()[s.hotbar().length - 1], 41, 'to the end');
+  // a place of the grid
+  at(...gridCell(0)); s.uiClick(0); const picked = s.cursor.id; at(...gridCell(2)); s.uiClick(0); assert.strictEqual(s.hotbar()[2], picked);
+  // a right click picks half
+  s.addItem(3, 10); at(...gridCell(s.hotbar().indexOf(3))); s.uiClick(2); assert.strictEqual(s.cursor.n, 5); assert.strictEqual(s.inv.count[3], 5); s.dropCursor(); assert.strictEqual(s.inv.count[3], 10);
+  // a number key over an item
+  const target = s.hotbar()[4]; const id0 = s.hotbar()[0]; at(...gridCell(0)); K.press('3'); run(s, 0.1); K.press('3', false); run(s, 0.1);
+  assert.strictEqual(s.hotbar()[2], id0, 'key 3 over the first item puts it in slot 3'); assert.ok(s.hotbar().includes(target));
+  assert.ok(/geri koy/.test('sol tık: al/koy   sağ tık: yarısı/bir tane   boş yere tık: geri koy'));
+  s.closeUi();
+});
+
+test('shaped blocks: a torch is a thin post you walk through, a chest is smaller than a block, a bed is low and two blocks long (both halves go together), plants are crossed panels, a hay bale gives wheat back', () => {
+  const K = fresh(); const D = K.voxeldata; const { s, cx, cz, gy } = yard(K, 111);
+  const boxes = (b) => s.shapeBoxes(b, 0, 0, 0, false);
+  assert.ok(boxes(33)[0][3] - boxes(33)[0][0] < 0.3 && boxes(33)[0][4] < 0.8, 'a thin short post'); assert.deepStrictEqual(s.shapeBoxes(33, 0, 0, 0, true), [], 'walked through');
+  assert.ok(boxes(26)[0][4] < 1 && boxes(26)[0][0] > 0, 'a chest is smaller than a block'); assert.ok(boxes(35)[0][4] < 0.6, 'a bed is low');
+  assert.strictEqual(boxes(19).length, 2, 'wheat: two crossing panels'); assert.deepStrictEqual(s.shapeBoxes(19, 0, 0, 0, true), []); assert.ok(boxes(19)[0][4] > boxes(17)[0][4], 'taller when ripe');
+  assert.ok(boxes(15)[0][0] > 0 && boxes(16)[0][4] < 1 && boxes(162)[0][4] === 0.75);
+  // walking through a torch and onto a bed
+  s.set(cx + 2, gy + 1, cz, 33, false); s.p.x = cx + 0.5; s.p.z = cz + 0.5; s.p.y = gy + 1.01; s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  K.press('w'); run(s, 1); K.press('w', false); assert.ok(s.p.x > cx + 3, 'the torch is walked through: ' + s.p.x);
+  // a bed: two blocks, the head the way you look; breaking one half takes both and gives one bed back
+  s.addItem(35, 2); s.select(s.hotbar().indexOf(35));
+  stand(s, cx - 4.5, gy + 1.01, cz + 0.5); s.p.yaw = 0; s.p.pitch = -0.9; run(s, 0.1);
+  let floor = null; for (const pitch of [-0.7, -0.9, -1.1, -1.3, -0.5]) { s.p.pitch = pitch; const h = s.target(); if (h && h.ny === 1 && h.b === 3) { floor = h; break; } }
+  assert.ok(floor); assert.strictEqual(s.placeBlock(), true);
+  const fx = floor.x + floor.nx, fy = floor.y + floor.ny, fz = floor.z + floor.nz;
+  assert.strictEqual(s.get(fx, fy, fz), 35); assert.strictEqual(s.get(fx, fy, fz - 1), 35, 'the head, to the north where the player looks'); assert.strictEqual(s.inv.count[35], 1);
+  assert.strictEqual(s.metaOf(fx, fy, fz - 1) & 4, 4, 'the head is marked');
+  s.p.pitch = -0.9; run(s, 0.1); const t = (() => { for (const pitch of [-0.5, -0.7, -0.9, -1.1, -0.3]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 35) return h; } return null; })();
+  assert.ok(t); const beds = s.inv.count[35]; s.breakBlock(); assert.strictEqual(s.get(fx, fy, fz), 0); assert.strictEqual(s.get(fx, fy, fz - 1), 0, 'both halves'); assert.strictEqual(s.inv.count[35], beds + 1, 'one bed back');
+  // a hay bale gives its wheat back at a table; a bale in a grid of nine wheat is made from wheat
+  assert.strictEqual(D.matchGrid([127, 0, 0, 0, 0, 0, 0, 0, 0], 3).name, 'buğday (balyadan)'); assert.strictEqual(D.matchGrid([127, 0, 0, 0], 2).name, 'buğday (balyadan)');
+  assert.strictEqual(D.matchGrid([21, 21, 21, 21, 21, 21, 21, 21, 21], 3).name, 'saman balyası');
+});
+
+test('see-through things: glass inside its frame, water seen from outside, the holes of leaves and the gaps between stalks show what is behind; doors have their own pictures', () => {
+  const K = fresh(); const { s, cx, cz, gy } = yard(K, 112);
+  assert.notStrictEqual(K.voxeldata.texId(141), 7, 'a door is not planks'); assert.notStrictEqual(K.voxeldata.texId(141), K.voxeldata.texId(142), 'the lower and the upper half differ');
+  const render = () => { s.render(px()); const out = px(); s.render(out); return out; };
+  // a red wall of wool three blocks ahead, glass between: the red shows through the glass
+  for (let y = 0; y < 4; y++) for (let x = -3; x <= 3; x++) { s.set(cx + 3 + x, gy + 1 + y, cz - 6, 0, false); s.set(cx + 3 + x, gy + 1 + y, cz - 3, 0, false); }
+  for (let y = 0; y < 4; y++) for (let x = -3; x <= 3; x++) s.set(cx + 3 + x, gy + 1 + y, cz - 6, 37, false);   // lava: orange
+  stand(s, cx + 3.5, gy + 1.01, cz + 0.5); s.p.yaw = 0; s.p.pitch = 0.0; run(s, 0.1);
+  const mid = (80 * 256 + 128) * 4; const open = render(); const redOpen = open[mid] - open[mid + 2];
+  for (let y = 0; y < 4; y++) for (let x = -3; x <= 3; x++) s.set(cx + 3 + x, gy + 1 + y, cz - 3, 8, false);
+  const behind = render(); let tinted = 0; for (let j = 40; j < 120; j += 4) for (let i = 60; i < 200; i += 4) { const k = (j * 256 + i) * 4; if (behind[k] - behind[k + 2] > 30) tinted++; }
+  assert.ok(tinted > 80, 'the wall shows through the glass: ' + tinted);
+  // a stone wall instead of the glass: nothing shows
+  for (let y = 0; y < 4; y++) for (let x = -3; x <= 3; x++) s.set(cx + 3 + x, gy + 1 + y, cz - 3, 3, false);
+  const solid = render(); let seen = 0; for (let j = 40; j < 120; j += 4) for (let i = 60; i < 200; i += 4) { const k = (j * 256 + i) * 4; if (solid[k] - solid[k + 2] > 30) seen++; } assert.ok(seen < 5, 'a stone wall hides it: ' + seen);
+});
+
+test('the achievements list fits on the screen: three columns of nine rows', () => {
+  const K = fresh(); const D = K.voxeldata; const rows = Math.ceil(D.ACH.length / 3);
+  assert.ok(80 + (rows - 1) * 30 + 14 < 24 + 340, 'the last row is inside the panel: ' + rows + ' rows');
+  assert.ok(24 + 340 < 400, 'the panel is inside a 400 high screen');
+  const { s } = yard(K, 113); s.showAch = true; assert.ok(s.render(px())[3] === 255);
+});
+
+test('a chest opens with a right click and keeps what you put in it (saved with the world), a chest you put down is empty, a village chest has loot, breaking it gives the contents', () => {
+  const K = fresh(); const D = K.voxeldata; const { s, cx, cz, gy } = yard(K, 114);
+  s.inv.count[7] = 0; s.addItem(26, 2); s.addItem(7, 20); s.addItem(42, 5);
+  s.set(cx + 2, gy + 1, cz, 26, true);   // put down by the player
+  assert.deepStrictEqual(s.chestContents(cx + 2, gy + 1, cz).filter(Boolean), [], 'a new chest is empty');
+  stand(s, cx + 0.5, gy + 1.01, cz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  let t = null; for (const pitch of [-0.6, -0.5, -0.4, -0.3, -0.2, 0]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 26) { t = h; break; } }
+  assert.ok(t, 'the chest is under the crosshair'); assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.showInv, true); assert.strictEqual(s.screen, 'chest'); assert.ok(s.uiOpen());
+  const L = s.invLayout(); const at = (x, y) => K.setMouse(x, y, undefined);
+  const find = (kind, pred) => { for (let x = 0; x < 640; x += 4) for (let y = 0; y < 400; y += 4) { const h = s.invHit(x, y); if (h && h.kind === kind && (!pred || pred(h))) return { x: x + 1, y: y + 1, h }; } return null; };
+  const planks = find('grid', (h) => h.id === 7); at(planks.x, planks.y); s.uiClick(0); assert.strictEqual(s.cursor.id, 7); assert.strictEqual(s.cursor.n, 20);
+  const slot = find('chest', (h) => h.index === 4); at(slot.x, slot.y); s.uiClick(0);
+  assert.strictEqual(s.chestOpen.slots[4].id, 7); assert.strictEqual(s.chestOpen.slots[4].n, 20); assert.strictEqual(s.cursor, null); assert.strictEqual(s.inv.count[7], 0);
+  assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
+  s.closeUi(); assert.strictEqual(s.chestOpen, null); assert.strictEqual(s.inv.count[7], 0, 'the planks stay in the chest');
+  // it is kept: open it again and with a new game of the same world
+  s.openChestAt(cx + 2, gy + 1, cz); assert.strictEqual(s.chestOpen.slots[4].n, 20); s.closeUi();
+  const again = K.kit.run({ kit: 'sandbox', world: { seed: 114 }, size: 'small', trees: 0, time: 'day' }); run(again, 1);
+  assert.strictEqual(again.chestContents(cx + 2, gy + 1, cz)[4].n, 20, 'kept with the world');
+  // a village chest has loot, the same every time; breaking a chest gives the contents
+  const loot = s.chestContents(cx + 5, gy + 1, cz + 3).filter(Boolean); assert.ok(loot.length >= 1, 'a chest nobody opened has loot');
+  assert.deepStrictEqual(again.chestContents(cx + 5, gy + 1, cz + 3).filter(Boolean), loot, 'always the same loot');
+  s.set(cx + 5, gy + 1, cz + 3, 26, false); const before = Object.values(s.inv.count).reduce((a, b) => a + b, 0);
+  const got = s.spillChest(cx + 5, gy + 1, cz + 3); assert.ok(got.length >= 1); assert.ok(Object.values(s.inv.count).reduce((a, b) => a + b, 0) > before);
+  const planksBack = s.spillChest(cx + 2, gy + 1, cz); assert.ok(planksBack.some((x) => /tahta/.test(x)), 'the planks come back when the chest is broken');
 });
