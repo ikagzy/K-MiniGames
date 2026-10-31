@@ -75,6 +75,12 @@
   P.boots = pad16(["", "", "", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "..hhhh....hhhh..", ".hhhhh....hhhhh.", ".hhhhh....hhhhh."]);
   P.sapling = pad16(["", "", "......aa........", ".....aaaa.......", "..aa.aaaa.aa....", ".aaaaaaaaaaaa...", "..aaaabbaaaa....", ".....abba.......", "......bb........", "......bb........", "......dd........", "......dd........", "......dd........", ".....dddd......."]);
   P.apple = pad16(["", "", ".......d........", "......d.........", "....aaddaa......", "...aaaaaaaaa....", "..aacaaaaaaaa...", "..aacaaaaaaaa...", "..aaaaaaaaaaa...", "..aaaaaaaaaaa...", "...aaaaaaaaa....", "....aaa.aaa....."]);
+
+  P.fence = pad16(["", "", "..h..h..h..h..h.", "..h..h..h..h..h.", "hhhhhhhhhhhhhhhh", "hhhhhhhhhhhhhhhh", "..h..h..h..h..h.", "..h..h..h..h..h.", "..h..h..h..h..h.", "hhhhhhhhhhhhhhhh", "hhhhhhhhhhhhhhhh", "..h..h..h..h..h.", "..h..h..h..h..h."]);
+  P.door = pad16(["", "...dddddddd.....", "...daaaaaad.....", "...daaaaaad.....", "...daddaadd.....", "...daddaadd.....", "...daaaaaad.....", "...daaaaaad.....", "...daaaaaad.....", "...daaaacad.....", "...daaaaaad.....", "...daaaaaad.....", "...daaaaaad.....", "...dddddddd....."]);
+  P.ladder = pad16(["", "...d......d.....", "...dddddddd.....", "...d......d.....", "...d......d.....", "...dddddddd.....", "...d......d.....", "...d......d.....", "...dddddddd.....", "...d......d.....", "...d......d.....", "...dddddddd.....", "...d......d....."]);
+  P.stairs = pad16(["", "", "............aaaa", "............abba", "............abba", "........aaaaabba", "........abbbabba", "........abbbabba", "....aaaaabbbabba", "....abbbbbbbabba", "....abbbbbbbabba", "aaaaabbbbbbbabba", "abbbbbbbbbbbabba", "abbbbbbbbbbbabba"]);
+  P.slab = pad16(["", "", "", "", "", "", "..aaaaaaaaaaaa..", ".aaaaaaaaaaaaaa.", ".abbbbbbbbbbbba.", ".abbbbbbbbbbbba.", ".abbbbbbbbbbbba.", "..bbbbbbbbbbbb.."]);
   P.arrow = pad16(["...............w", "..............ww", ".............ww.", "............dd..", "...........dd...", "..........dd....", ".........dd.....", "........dd......", ".......dd.......", "...cc.dd........", "..ccc.d.........", ".ccc............"]);
   var TIER_RGB = [[176, 140, 84], [128, 128, 128], [220, 220, 226], [250, 220, 70], [90, 230, 230]];
   // rows and a palette for an item: { rows: [...], pal: { h: [r,g,b], ... } } or null for blocks (those are drawn as cubes from their textures)
@@ -86,7 +92,7 @@
     var ar = D.armorOf(id);
     if (ar) { pal.h = ARMOR_RGB[ar.tier]; pal.b = shade(pal.h, 0.7); return { rows: P[["helmet", "chestplate", "leggings", "boots"][ar.slot]], pal: pal }; }
     var kind = { 33: "torch", 40: "stick", 41: "coal", 42: "ingot", 43: "ingot", 44: "diamond", 20: "seeds", 21: "wheat", 23: "bread", 80: "meat", 81: "meat", 82: "meat", 83: "meat", 84: "meat", 85: "meat", 86: "meat", 87: "meat", 88: "meat", 89: "meat", 110: "meat", 111: "meat",
-                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 118: "arrow", 38: "sapling", 120: "apple" }[id];
+                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 118: "arrow", 38: "sapling", 120: "apple", 140: "fence", 143: "door", 149: "ladder", 130: "slab", 131: "slab", 132: "slab", 133: "slab", 134: "slab", 144: "stairs", 145: "stairs", 146: "stairs", 147: "stairs", 148: "stairs" }[id];
     if (id === 116) pal.a = [100, 100, 106]; if (id === 117) pal.a = [100, 130, 70]; if (id === 115) { pal.d = [228, 224, 205]; }
     if (id === 41) pal.a = [34, 34, 38];
     if (id === 80) pal.a = [215, 110, 110];
@@ -115,6 +121,27 @@
   NAME[121] = "granit"; COLOR[121] = [[154, 104, 88]]; NAME[122] = "diyorit"; COLOR[122] = [[188, 188, 192]]; NAME[123] = "andezit"; COLOR[123] = [[136, 136, 138]];
   NAME[124] = "cilalı granit"; COLOR[124] = [[168, 118, 100]]; NAME[125] = "cilalı diyorit"; COLOR[125] = [[204, 204, 208]]; NAME[126] = "cilalı andezit"; COLOR[126] = [[150, 150, 152]];
   NAME[127] = "saman balyası"; COLOR[127] = [[205, 175, 60], [190, 160, 50], [205, 175, 60]];
+
+  // ---- shaped blocks: half blocks (slabs), stairs, a fence, a door, a ladder. Ids 130-139 slabs (bottom, top), 140 fence, 141/142 the two halves of a door, 143 the door you carry, 144-148 stairs, 149 ladder ----
+  var SLAB_BASES = D.SLAB_BASES = [3, 27, 7, 29, 28];   // stone, cobblestone, planks, sandstone, stone bricks
+  D.slabOf = function (id) {
+    if (id >= 130 && id <= 134) return { base: SLAB_BASES[id - 130], bottom: id, top: id + 5, isTop: false };
+    if (id >= 135 && id <= 139) return { base: SLAB_BASES[id - 135], bottom: id - 5, top: id, isTop: true };
+    return null;
+  };
+  D.stairOf = function (id) { return id >= 144 && id <= 148 ? { base: SLAB_BASES[id - 144] } : null; };
+  D.texId = function (id) {   // which block's picture a shaped block wears
+    var sl = D.slabOf(id), st = D.stairOf(id);
+    if (sl) return sl.base; if (st) return st.base;
+    return id === 140 || id === 141 || id === 142 || id === 149 ? 7 : id;
+  };
+  SLAB_BASES.forEach(function (base, i) {
+    var baseName = NAME[base] || "blok";
+    NAME[130 + i] = baseName + " yarım blok"; NAME[135 + i] = baseName + " yarım blok (üstte)"; NAME[144 + i] = baseName + " basamak";
+    COLOR[130 + i] = COLOR[135 + i] = COLOR[144 + i] = [(COLOR[base] || [[200, 0, 200]])[0]];
+  });
+  NAME[140] = "çit"; COLOR[140] = [[176, 140, 84]]; NAME[141] = "kapı (alt)"; COLOR[141] = [[150, 110, 60]]; NAME[142] = "kapı (üst)"; COLOR[142] = [[150, 110, 60]];
+  NAME[143] = "kapı"; COLOR[143] = [[150, 110, 60]]; NAME[149] = "merdiven"; COLOR[149] = [[160, 120, 70]];
   NAME[34] = "yün"; COLOR[34] = [[236, 236, 236], [226, 226, 230], [226, 226, 230]];
   D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
 
@@ -147,13 +174,13 @@
     { id: "forester", name: "Ormancı", desc: "diktiğin fidandan ağaç yetiştir", test: function (s) { return s.stats.grown >= 1; } }
   ];
   // a block can be put down: the ground and plant blocks, and the new building blocks (not tools, food or materials)
-  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 35) || id === 38 || (id >= 121 && id <= 127); };
+  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 35) || id === 38 || (id >= 121 && id <= 127) || (id >= 130 && id <= 134) || id === 140 || (id >= 144 && id <= 149); };
 
   // ---- mining: how long a block takes by hand (seconds), which tool is the right one, and the lowest tier that gets something out of it ----
-  var HARD = { 121: 1.5, 122: 1.5, 123: 1.5, 124: 1.5, 125: 1.5, 126: 1.5, 127: 0.5, 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
-  var RIGHT = { 121: "pickaxe", 122: "pickaxe", 123: "pickaxe", 124: "pickaxe", 125: "pickaxe", 126: "pickaxe", 1: "shovel", 2: "shovel", 3: "pickaxe", 4: "shovel", 5: "axe", 7: "axe", 9: "pickaxe", 10: "pickaxe", 11: "pickaxe", 12: "pickaxe", 13: "shovel", 16: "shovel",
+  var HARD = { 130: 1.5, 131: 1.5, 132: 2, 133: 1.5, 134: 1.5, 135: 1.5, 136: 1.5, 137: 2, 138: 1.5, 139: 1.5, 140: 2, 141: 3, 142: 3, 144: 1.5, 145: 1.5, 146: 2, 147: 1.5, 148: 1.5, 149: 0.4, 121: 1.5, 122: 1.5, 123: 1.5, 124: 1.5, 125: 1.5, 126: 1.5, 127: 0.5, 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
+  var RIGHT = { 130: "pickaxe", 131: "pickaxe", 132: "axe", 133: "pickaxe", 134: "pickaxe", 135: "pickaxe", 136: "pickaxe", 137: "axe", 138: "pickaxe", 139: "pickaxe", 140: "axe", 141: "axe", 142: "axe", 144: "pickaxe", 145: "pickaxe", 146: "axe", 147: "pickaxe", 148: "pickaxe", 149: "axe", 121: "pickaxe", 122: "pickaxe", 123: "pickaxe", 124: "pickaxe", 125: "pickaxe", 126: "pickaxe", 1: "shovel", 2: "shovel", 3: "pickaxe", 4: "shovel", 5: "axe", 7: "axe", 9: "pickaxe", 10: "pickaxe", 11: "pickaxe", 12: "pickaxe", 13: "shovel", 16: "shovel",
                 24: "axe", 25: "pickaxe", 26: "axe", 27: "pickaxe", 28: "pickaxe", 29: "pickaxe", 30: "pickaxe", 31: "pickaxe", 32: "pickaxe" };
-  var NEED_TIER = { 121: 0, 122: 0, 123: 0, 124: 0, 125: 0, 126: 0, 3: 0, 9: 0, 10: 1, 11: 2, 12: 2, 25: 0, 27: 0, 28: 0, 29: 0, 30: 1, 31: 2, 32: 2 };   // pickaxe blocks drop nothing without a good enough pickaxe
+  var NEED_TIER = { 130: 0, 131: 0, 133: 0, 134: 0, 135: 0, 136: 0, 138: 0, 139: 0, 144: 0, 145: 0, 147: 0, 148: 0, 121: 0, 122: 0, 123: 0, 124: 0, 125: 0, 126: 0, 3: 0, 9: 0, 10: 1, 11: 2, 12: 2, 25: 0, 27: 0, 28: 0, 29: 0, 30: 1, 31: 2, 32: 2 };   // pickaxe blocks drop nothing without a good enough pickaxe
   var SPEED = [2, 4, 6, 12, 8];   // wood, stone, iron, gold, diamond (gold is fast but soft: it only reaches tier 1 in what it may mine)
   var HARVEST = [0, 1, 2, 0, 3];   // the level a tool tier counts for when asked "is it good enough": gold only counts as wood
   D.rightTool = function (b) { return RIGHT[b] || null; };
@@ -166,6 +193,7 @@
   };
   // what breaking gives: [[id, count], ...] (the farming drops are decided by the kit, they need chance)
   D.drops = function (b, have) {
+    var sl = D.slabOf(b); if (sl) b = sl.bottom;   // an upper half block gives the ordinary one
     var need = NEED_TIER[b];
     if (need !== undefined) {
       var tier = have("pickaxe");
@@ -213,6 +241,13 @@
   add("yatak", "table", [[34, 3], [ID.PLANKS, 3]], [35, 1]);
   add("cilalı granit", "table", [[121, 4]], [124, 4]); add("cilalı diyorit", "table", [[122, 4]], [125, 4]); add("cilalı andezit", "table", [[123, 4]], [126, 4]);
   add("saman balyası", "table", [[ID.WHEAT, 9]], [127, 1]);
+  SLAB_BASES.forEach(function (base, i) {
+    add(NAME[base] + " yarım blok", "table", [[base, 3]], [130 + i, 6]);
+    add(NAME[base] + " basamak", "table", [[base, 6]], [144 + i, 4]);
+  });
+  add("çit", "table", [[ID.PLANKS, 4], [ID.STICK, 2]], [140, 3]);
+  add("kapı", "table", [[ID.PLANKS, 6]], [143, 3]);
+  add("merdiven", "table", [[ID.STICK, 7]], [149, 3]);
   for (var ar = 0; ar < 4; ar++) {
     var armMat = [113, ID.IRON_INGOT, ID.GOLD_INGOT, ID.DIAMOND][ar], armCost = [5, 8, 7, 4];
     for (var part = 0; part < 4; part++) add(ARMOR_TIERS[ar] + " " + ARMOR_PARTS[part][1], "table", [[armMat, armCost[part]]], [D.armorId(ar, part), 1]);

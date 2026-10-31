@@ -10,7 +10,7 @@
   var K = root.K;
   var D = K.voxeldata, NAMES = D.NAME;
   var AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6, PLANKS = 7, GLASS = 8, COAL = 9, IRON = 10, GOLD = 11, DIAMOND = 12, SNOW = 13, WATER = 14, CACTUS = 15;
-  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40;
+  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40, FENCE = 140, DOOR_LO = 141, DOOR_HI = 142, DOOR_ITEM = 143, LADDER = 149;
   var TABLE = 24, FURNACE = 25, TORCH = 33, COAL_ITEM = 41;   // (the coal you carry: COAL above is the ore in the ground)   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
   var BIOMES = { forest: { top: GRASS, trees: 1, amp: 5 }, plains: { top: GRASS, trees: 0.2, amp: 3 }, desert: { top: SAND, trees: 0.6, amp: 4 }, snow: { top: SNOW, trees: 0.5, amp: 6 } };
   var SIZES = { small: 8, medium: 16, large: 32 };   // chunks on a side
@@ -150,6 +150,7 @@
   var COLORS = D.COLOR;
   var textures = {};
   function texture(id, face) {   // face 0 top, 1 side, 2 bottom
+    id = D.texId(id);   // a half block or a stair wears the picture of its block
     var key = id * 3 + face;
     if (textures[key]) return textures[key];
     var set = COLORS[id] || [[255, 0, 255]], base = set[Math.min(face, set.length - 1)], px = new Uint8Array(16 * 16 * 3);
@@ -172,7 +173,7 @@
     return textures[key] = px;
   }
 
-  K.voxel = { cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
+  K.voxel = { menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
 
   K.kit.define("sandbox", {
     defaults: {
@@ -208,20 +209,22 @@
       state.crops = [];
       var get = w.get, solid = function (b) { return b !== AIR && b !== WATER && !(b >= CROP1 && b <= CROP3) && b !== TORCH && b !== LAVA && b !== SAPLING; };   // plants and torches are walked through, and lava is a liquid
       state.get = get;
-      var set = function (x, y, z, b, remember) {
+      var set = function (x, y, z, b, remember, meta) {
         if (!w.set(x, y, z, b)) return false;
+        if (state.meta) { if (meta !== undefined) state.meta[x + "," + y + "," + z] = meta; else if (b === AIR) delete state.meta[x + "," + y + "," + z]; }
         if (remember) {
-          state.edits.push([x, y, z, b]);
+          state.edits.push(meta !== undefined ? [x, y, z, b, meta] : [x, y, z, b]);
           if (state.edits.length > 3000) state.edits.shift();
           try { K.save.set(saveKey, state.edits); } catch (e) { /* no storage: the world is just not kept */ }
         }
         return true;
       };
       state.set = set;
+      var pendingMeta = {};   // the facing and open state of shaped blocks put down in an earlier visit
       var saved; try { saved = K.save.get(saveKey, []); } catch (e) { saved = []; }
       (saved instanceof Array ? saved : []).forEach(function (e) {
-        if (!(e instanceof Array) || e.length !== 4) return;
-        state.edits.push(e); w.queueEdit(e);
+        if (!(e instanceof Array) || (e.length !== 4 && e.length !== 5)) return;
+        state.edits.push(e); w.queueEdit(e); if (e.length === 5) pendingMeta[e[0] + "," + e[1] + "," + e[2]] = e[4];
         if (w.chunks[(e[2] >> 4) * N + (e[0] >> 4)]) w.set(e[0], e[1], e[2], e[3]);   // a chunk that is already there gets it now
       });
 
@@ -246,6 +249,62 @@
 
       // ---- looking: a ray through the cubes (shared by the picture and by breaking / placing) ----
       var hit = { b: 0, x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, t: 0, face: 1, hx: 0, hy: 0, hz: 0 };
+      // ---- shaped blocks: the boxes a block fills (inside its own cell, 0 to 1); a fence reaches out to its neighbours, a door turns, stairs face the way you looked ----
+      state.meta = {};   // facing 0-3 (north, east, south, west) and +4 for an open door, for the blocks that have one
+      var metaOf = function (x, y, z) { return state.meta[x + "," + y + "," + z] || 0; };
+      state.metaOf = metaOf;
+      var isFence = function (b) { return b === FENCE; };
+      var SHAPED = function (b) { return (b >= 130 && b <= 139) || b === FENCE || b === DOOR_LO || b === DOOR_HI || (b >= 144 && b <= 149); };
+      function sideBox(f, thick) {   // a panel of the given thickness against side f
+        return f === 0 ? [0, 0, 0, 1, 1, thick] : f === 1 ? [1 - thick, 0, 0, 1, 1, 1] : f === 2 ? [0, 0, 1 - thick, 1, 1, 1] : [0, 0, 0, thick, 1, 1];
+      }
+      function shapeBoxes(b, x, y, z, forBody) {
+        if (b >= 130 && b <= 134) return [[0, 0, 0, 1, 0.5, 1]];
+        if (b >= 135 && b <= 139) return [[0, 0.5, 0, 1, 1, 1]];
+        if (b >= 144 && b <= 148) {
+          var sf = metaOf(x, y, z) & 3;
+          return [[0, 0, 0, 1, 0.5, 1], sf === 0 ? [0, 0.5, 0, 1, 1, 0.5] : sf === 1 ? [0.5, 0.5, 0, 1, 1, 1] : sf === 2 ? [0, 0.5, 0.5, 1, 1, 1] : [0, 0.5, 0, 0.5, 1, 1]];
+        }
+        if (b === FENCE) {
+          var top = forBody ? 1.5 : 1, out = [[0.375, 0, 0.375, 0.625, top, 0.625]], hs = forBody ? [0.375, 1.5] : [0.375, 0.9375];
+          var join = function (nb) { return isFence(nb) || (nb !== AIR && nb !== WATER && nb !== LAVA && !SHAPED(nb) && solid(nb) && !(nb >= 17 && nb <= 19)); };
+          if (join(get(x, y, z - 1))) out.push([0.4375, hs[0], 0, 0.5625, hs[1], 0.375]);
+          if (join(get(x + 1, y, z))) out.push([0.625, hs[0], 0.4375, 1, hs[1], 0.5625]);
+          if (join(get(x, y, z + 1))) out.push([0.4375, hs[0], 0.625, 0.5625, hs[1], 1]);
+          if (join(get(x - 1, y, z))) out.push([0, hs[0], 0.4375, 0.375, hs[1], 0.5625]);
+          return out;
+        }
+        if (b === DOOR_LO || b === DOOR_HI) {
+          var m = metaOf(x, y, z), f = m & 3, open = (m & 4) !== 0;
+          return [sideBox(open ? (f + 3) % 4 : f, 0.1875)];
+        }
+        if (b === LADDER) return forBody ? [] : [sideBox(metaOf(x, y, z) & 3, 0.125)];
+        return null;
+      }
+      state.shapeBoxes = shapeBoxes;
+      function boxRay(ox, oy, oz, dx, dy, dz, cx, cy, cz, boxes, t0, maxT) {   // where a ray first meets any of the boxes of a cell (null when it passes through)
+        var best = null;
+        for (var i = 0; i < boxes.length; i++) {
+          var bx = boxes[i], lo = [cx + bx[0], cy + bx[1], cz + bx[2]], hi = [cx + bx[3], cy + bx[4], cz + bx[5]], o = [ox, oy, oz], d = [dx, dy, dz], near = -1e30, far = 1e30, axis = -1, sign = 0, miss = false;
+          for (var a = 0; a < 3; a++) {
+            if (d[a] === 0) { if (o[a] < lo[a] || o[a] > hi[a]) { miss = true; break; } continue; }
+            var ta = (lo[a] - o[a]) / d[a], tb = (hi[a] - o[a]) / d[a], enter = ta < tb ? ta : tb, leave = ta < tb ? tb : ta;
+            if (enter > near) { near = enter; axis = a; sign = d[a] > 0 ? -1 : 1; }
+            if (leave < far) far = leave;
+          }
+          if (miss || near > far || far < t0 || near < t0 - 1e-6 || near > maxT) continue;
+          if (!best || near < best.t) best = { t: near, nx: axis === 0 ? sign : 0, ny: axis === 1 ? sign : 0, nz: axis === 2 ? sign : 0 };
+        }
+        return best;
+      }
+      state.toggleDoor = function (x, y, z) {
+        var lowY = get(x, y, z) === DOOR_LO ? y : y - 1;
+        if (get(x, lowY, z) !== DOOR_LO) return false;
+        var m = metaOf(x, lowY, z) ^ 4;
+        set(x, lowY, z, DOOR_LO, true, m); set(x, lowY + 1, z, DOOR_HI, true, m); K.sfx("click");
+        return true;
+      };
+      var facing = function () { return Math.floor(state.p.yaw / (Math.PI / 2) + 0.5) & 3; };   // 0 looking north, 1 east, 2 south, 3 west
       function cast(ox, oy, oz, dx, dy, dz, maxT, skipWater, thin) {
         var x = Math.floor(ox), y = Math.floor(oy), z = Math.floor(oz);
         var sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, sz = dz > 0 ? 1 : -1;
@@ -254,7 +313,14 @@
         var t = 0, nx = 0, ny = 0, nz = 0, steps = 0, first = get(x, y, z);
         while (t <= maxT && steps++ < 200) {
           var b = get(x, y, z);
-          if (b !== AIR && !(skipWater && (b === WATER || b === LAVA)) && !(thin && b === first && b === WATER)) {
+          if (SHAPED(b)) {   // only the parts of the cell that are filled stop the ray
+            var sh = boxRay(ox, oy, oz, dx, dy, dz, x, y, z, shapeBoxes(b, x, y, z, false), t, maxT);
+            if (sh) {
+              hit.b = b; hit.x = x; hit.y = y; hit.z = z; hit.nx = sh.nx; hit.ny = sh.ny; hit.nz = sh.nz; hit.t = sh.t;
+              hit.face = sh.ny !== 0 ? (sh.ny > 0 ? 0 : 2) : 1; hit.hx = ox + dx * sh.t; hit.hy = oy + dy * sh.t; hit.hz = oz + dz * sh.t;
+              return true;
+            }
+          } else if (b !== AIR && !(skipWater && (b === WATER || b === LAVA)) && !(thin && b === first && b === WATER)) {
             hit.b = b; hit.x = x; hit.y = y; hit.z = z; hit.nx = nx; hit.ny = ny; hit.nz = nz; hit.t = t;
             hit.face = ny !== 0 ? (ny > 0 ? 0 : 2) : 1; hit.hx = ox + dx * t; hit.hy = oy + dy * t; hit.hz = oz + dz * t;
             return true;
@@ -319,6 +385,7 @@
         K.sfx(b === DIRT || b === GRASS || b === SAND ? "click" : "hit");
         set(tx, ty, tz, AIR, true); state.hud.broken++;
         var kindUsed = D.rightTool(b); if (kindUsed) state.useTool(kindUsed);
+        if (b === DOOR_LO || b === DOOR_HI) { var dl = b === DOOR_LO ? ty : ty - 1; set(tx, dl, tz, AIR, true); set(tx, dl + 1, tz, AIR, true); state.addItem(DOOR_ITEM, 1); return true; }
         for (var sy2 = ty + 1; sy2 <= ty + 8; sy2++) if (get(tx, sy2, tz) === SAND) state.settle(tx, sy2, tz);   // the sand above falls into the hole
         if (b === LEAVES) { if (hash(9, tx, ty, tz) < 0.1) state.addItem(SAPLING, 1); if (hash(10, tx, ty, tz) < 0.03) state.addItem(APPLE, 1); }
         if (b === CROP3) { state.addItem(WHEAT, 1); state.addItem(SEEDS, 1 + (hash(8, tx, ty, tz) < 0.5 ? 1 : 0)); state.hud.harvested++; }
@@ -329,6 +396,71 @@
         }
         return true;
       };
+      // ---- menus: the main menu when the game opens, and the pause menu on Esc; the world keeps drawing behind them ----
+      state.menu = { open: K.voxel.menuAtStart !== false, kind: "main", index: 0, confirm: false };
+      state.musicOn = true; state.menuStarted = state.menu.open;
+      state.openMenu = function (kind) { state.menu.open = true; state.menu.kind = kind; state.menu.index = 0; state.menu.confirm = false; g.ui.items = {}; try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* not in a page */ } };
+      state.closeMenu = function () { state.menu.open = false; state.menu.confirm = false; };
+      state.toggleMusic = function () { state.musicOn = !state.musicOn; if (state.musicOn) { if (tune) K.music.play(tune); } else K.music.stop(); };
+      state.resetWorld = function () {   // the saved changes and the achievements of this world are deleted; in a page it opens again from scratch
+        try { K.save.set(saveKey, []); K.save.set(saveKey + ".ach", {}); } catch (e) { /* nothing was kept anyway */ }
+        state.edits.length = 0; state.resetRequested = true;
+        if (typeof location !== "undefined" && location.reload) location.reload();
+      };
+      state.menuItems = function () {
+        var m = state.menu, toggleCreative = { label: "Yaratıcı mod: " + (state.creative ? "açık" : "kapalı"), act: function () { state.setCreative(!state.creative); } };
+        var music = { label: "Müzik: " + (state.musicOn ? "açık" : "kapalı"), act: state.toggleMusic };
+        var controls = { label: "Kontroller", act: function () { m.kind = m.kind === "main" ? "controls-main" : "controls-pause"; m.index = 0; } };
+        if (m.kind === "main") return [
+          { label: state.edits.length || state.hud.broken || state.hud.placed ? "Devam et" : "Oyna", act: state.closeMenu }, controls, toggleCreative, music,
+          { label: m.confirm ? "Emin misin? Tekrar seç: dünya sıfırlanır" : "Dünyayı sıfırla (kaydı sil)", act: function () { if (m.confirm) state.resetWorld(); else m.confirm = true; } }];
+        return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
+      };
+      var CONTROL_LINES = ["W A S D  yürü       Boşluk  zıpla       Shift  koş", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
+                           "Tekerlek, Q ya da 1-9  eşya seç       I  envanter       X  tarifler", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)"];
+      state.menuUpdate = function (dt) {
+        var m = state.menu;
+        g.ui.items = {};
+        if (m.kind === "main") { state.p.yaw += dt * 0.12; state.p.pitch = -0.08; }   // the world turns slowly behind the main menu
+        if (m.kind.indexOf("controls") === 0) {
+          once("Escape", function () { m.kind = m.kind === "controls-main" ? "main" : "pause"; m.index = 1; });
+          once("Enter", function () { m.kind = m.kind === "controls-main" ? "main" : "pause"; m.index = 1; });
+          return;
+        }
+        var items = state.menuItems();
+        once("ArrowUp", function () { m.index = (m.index + items.length - 1) % items.length; m.confirm = false; });
+        once("ArrowDown", function () { m.index = (m.index + 1) % items.length; m.confirm = false; });
+        once("Enter", function () { items[Math.min(m.index, items.length - 1)].act(); });
+        once(" ", function () { items[Math.min(m.index, items.length - 1)].act(); });
+        once("Escape", function () { if (m.kind === "pause") state.closeMenu(); });
+        if (K.mouse) {   // the mouse: over a row selects it, a click does it
+          var hover = Math.floor((K.mouse.y - (g.height / 2 - items.length * 22)) / 44);
+          if (K.mouse.x > g.width / 2 - 150 && K.mouse.x < g.width / 2 + 150 && hover >= 0 && hover < items.length) {
+            if (m.mouseSeen !== hover) { m.index = hover; m.mouseSeen = hover; }
+            if (K.mouse.down && !m.clickDown) { m.clickDown = true; items[hover].act(); } else if (!K.mouse.down) m.clickDown = false;
+          } else if (!K.mouse.down) m.clickDown = false;
+        }
+      };
+      function drawMenu(c) {
+        var m = state.menu;
+        c.fillStyle = "rgba(10,14,20,0.62)"; c.fillRect(0, 0, g.width, g.height);
+        c.textAlign = "center";
+        if (m.kind.indexOf("controls") === 0) {
+          c.fillStyle = "#fff"; c.font = "bold 20px sans-serif"; c.fillText("KONTROLLER", g.width / 2, 90);
+          c.font = "15px sans-serif"; CONTROL_LINES.forEach(function (line, i) { c.fillText(line, g.width / 2, 140 + i * 34); });
+          c.fillStyle = "#cfd8dc"; c.font = "13px sans-serif"; c.fillText("Esc ya da Enter: geri", g.width / 2, g.height - 40);
+          c.textAlign = "left"; return;
+        }
+        var items = state.menuItems(), y0 = g.height / 2 - items.length * 22;
+        items.forEach(function (it, i) {
+          var on = i === m.index;
+          c.fillStyle = on ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.38)"; c.fillRect(g.width / 2 - 150, y0 + i * 44, 300, 38);
+          c.strokeStyle = on ? "#ffe082" : "rgba(255,255,255,0.25)"; c.lineWidth = on ? 2 : 1; c.strokeRect(g.width / 2 - 150, y0 + i * 44, 300, 38);
+          c.fillStyle = on ? "#ffe082" : "#fff"; c.font = (on ? "bold " : "") + "16px sans-serif"; c.fillText(it.label, g.width / 2, y0 + i * 44 + 25);
+        });
+        c.fillStyle = "#cfd8dc"; c.font = "12px sans-serif"; c.fillText("yukarı/aşağı seç   Enter ya da tık onayla" + (m.kind === "pause" ? "   Esc devam" : ""), g.width / 2, g.height - 30);
+        c.textAlign = "left";
+      }
       // ---- creatures: animals that wander and can be hunted, and hostile ones that come out at night ----
       var M = K.voxelmobs;
       var mr = (function () { var q = (seed * 7919 + 13) >>> 0; return function () { q = (q * 1664525 + 1013904223) >>> 0; return q / 4294967296; }; })();
@@ -448,6 +580,7 @@
       };
       state.placeBlock = function () {
         var bedT = target(); if (bedT && bedT.b === BED) return state.sleep();
+        if (bedT && (bedT.b === DOOR_LO || bedT.b === DOOR_HI)) return state.toggleDoor(bedT.x, bedT.y, bedT.z);   // a right click on a door opens or shuts it
         if (D.FOOD[state.selectedBlock()]) return state.eat(state.selectedBlock());
         var t = target(), id = state.selectedBlock();
         if (!t || !id || (!state.creative && !(inv.count[id] > 0))) return false;
@@ -465,6 +598,42 @@
           if (t.ny !== 1 || (t.b !== GRASS && t.b !== DIRT) || get(t.x, t.y + 1, t.z) !== AIR) return false;
           set(t.x, t.y + 1, t.z, SAPLING, true); state.saplings.push({ x: t.x, y: t.y + 1, z: t.z, age: 0 }); K.sfx("click");
           if (!state.creative) { inv.count[SAPLING]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
+          return true;
+        }
+        if (id === DOOR_ITEM) {   // a door stands in the cell next to what you clicked, on solid ground, two high
+          var dx0 = t.x + t.nx, dy0 = t.y + t.ny, dz0 = t.z + t.nz;
+          if (get(dx0, dy0, dz0) !== AIR || get(dx0, dy0 + 1, dz0) !== AIR || !solid(get(dx0, dy0 - 1, dz0)) || SHAPED(get(dx0, dy0 - 1, dz0))) return false;
+          var df = (facing() + 2) & 3;   // the panel is on the side you stand on
+          set(dx0, dy0, dz0, DOOR_LO, true, df); set(dx0, dy0 + 1, dz0, DOOR_HI, true, df); K.sfx("click"); state.hud.placed++;
+          if (!state.creative) { inv.count[id]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
+          return true;
+        }
+        if (id === LADDER) {   // a ladder is fixed to the side of a solid block
+          if (t.ny !== 0 || !solid(get(t.x, t.y, t.z)) || SHAPED(t.b)) return false;
+          var lx = t.x + t.nx, lz = t.z + t.nz;
+          if (get(lx, t.y, lz) !== AIR) return false;
+          set(lx, t.y, lz, LADDER, true, t.nx === 1 ? 3 : t.nx === -1 ? 1 : t.nz === 1 ? 0 : 2); K.sfx("click"); state.hud.placed++;
+          if (!state.creative) { inv.count[id]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
+          return true;
+        }
+        var slabItem = D.slabOf(id);
+        if (slabItem) {   // a half block goes low or high by where you clicked, and two of a kind make a whole block
+          var tSlab = D.slabOf(t.b), done = false;
+          if (tSlab && tSlab.base === slabItem.base && ((t.ny === 1 && t.b === tSlab.bottom) || (t.ny === -1 && t.b === tSlab.top))) { set(t.x, t.y, t.z, slabItem.base, true); done = true; }
+          else {
+            var sx2 = t.x + t.nx, sy2 = t.y + t.ny, sz2 = t.z + t.nz;
+            if (get(sx2, sy2, sz2) !== AIR && get(sx2, sy2, sz2) !== WATER) return false;
+            var high = t.ny === -1 ? true : t.ny === 1 ? false : (t.hy - Math.floor(t.hy)) >= 0.5;
+            set(sx2, sy2, sz2, high ? slabItem.top : slabItem.bottom, true); done = true;
+          }
+          if (done) { state.hud.placed++; K.sfx("click"); if (!state.creative) { inv.count[id]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); } }
+          return done;
+        }
+        if (D.stairOf(id)) {   // stairs rise the way you are looking
+          var tx3 = t.x + t.nx, ty3 = t.y + t.ny, tz3 = t.z + t.nz;
+          if (get(tx3, ty3, tz3) !== AIR && get(tx3, ty3, tz3) !== WATER) return false;
+          set(tx3, ty3, tz3, id, true, facing()); state.hud.placed++; K.sfx("click");
+          if (!state.creative) { inv.count[id]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
           return true;
         }
         if (!D.isBlock(id)) return false;   // food, tools and materials are not placed
@@ -528,7 +697,16 @@
       // ---- the player ----
       function collides(x, y, z) {
         for (var bx = Math.floor(x - 0.3); bx <= Math.floor(x + 0.3); bx++) for (var bz = Math.floor(z - 0.3); bz <= Math.floor(z + 0.3); bz++)
-          for (var by = Math.floor(y); by <= Math.floor(y + 1.79); by++) if (solid(get(bx, by, bz))) return true;
+          for (var by = Math.floor(y) - 1; by <= Math.floor(y + 1.79); by++) {
+            var b = get(bx, by, bz);
+            if (SHAPED(b)) {   // only the filled boxes of a shaped block are in the way
+              var boxes = shapeBoxes(b, bx, by, bz, true);
+              for (var k = 0; k < boxes.length; k++) {
+                var q = boxes[k];
+                if (x + 0.3 > bx + q[0] && x - 0.3 < bx + q[3] && z + 0.3 > bz + q[2] && z - 0.3 < bz + q[5] && y + 1.79 > by + q[1] && y < by + q[4]) return true;
+              }
+            } else if (by >= Math.floor(y) && solid(b)) return true;
+          }
         return false;
       }
       state.say = function (text) { state.message = text; state.messageT = 4; };
@@ -596,15 +774,19 @@
         if (space && !spaceHeld) { if (state.canFly && state.time0 - lastSpace < 0.3) state.flying = !state.flying; lastSpace = state.time0; }   // twice quickly: fly on / off
         spaceHeld = space;
         flying = state.canFly && state.flying;
+        var ladderHere = get(Math.floor(p.x), Math.floor(p.y + 0.5), Math.floor(p.z)) === LADDER || get(Math.floor(p.x), Math.floor(p.y + 1.2), Math.floor(p.z)) === LADDER;
         if (flying) { p.vy = ((space ? 1 : 0) - (K.key("Shift") ? 1 : 0)) * 6; }
+        else if (ladderHere) { p.vy = ((space || K.key("w") ? 1 : 0) - (K.key("Shift") || K.key("s") ? 1 : 0)) * 3; p.peak = p.y; }   // a ladder is climbed, not fallen
         else {
           p.vy -= (inWater ? 8 : 26) * dt;
           if (inWater) p.vy = Math.max(p.vy, -3);
           if (space && (p.onGround || inWater)) { p.vy = inWater ? 3.2 : 8.2; p.onGround = false; }
         }
         p.peak = (p.onGround || inWater || flying) ? p.y : Math.max(p.peak, p.y);
-        var nx = p.x + p.vx * dt; if (!collides(nx, p.y, p.z)) p.x = nx;
-        var nz = p.z + p.vz * dt; if (!collides(p.x, p.y, nz)) p.z = nz;
+        var nx = p.x + p.vx * dt;   // a step of up to half a block is climbed without jumping (half blocks, stairs)
+        if (!collides(nx, p.y, p.z)) p.x = nx; else if (p.onGround && !flying && !collides(nx, p.y + 0.55, p.z) && !collides(p.x, p.y + 0.55, p.z)) { p.x = nx; p.y += 0.55; }
+        var nz = p.z + p.vz * dt;
+        if (!collides(p.x, p.y, nz)) p.z = nz; else if (p.onGround && !flying && !collides(p.x, p.y + 0.55, nz) && !collides(p.x, p.y + 0.55, p.z)) { p.z = nz; p.y += 0.55; }
         var ny = p.y + p.vy * dt;
         if (!collides(p.x, ny, p.z)) { p.y = ny; p.onGround = false; }
         else { if (p.vy < 0) { p.onGround = true; if (flying && !space) state.flying = false; state.landed(p); } p.vy = 0; }
@@ -814,7 +996,7 @@
         if (!small) { small = document.createElement("canvas"); small.width = RW; small.height = RH; smallCtx = small.getContext("2d"); image = smallCtx.createImageData(RW, RH); }
         render(image.data); smallCtx.putImageData(image, 0, 0);
         c.imageSmoothingEnabled = false; c.drawImage(small, 0, 0, g.width, g.height);
-        drawHud(c);
+        if (state.menu.open) drawMenu(c); else drawHud(c);
       } }];
       state.drawHud = drawHud; state.icon = iconOf;
 
@@ -822,8 +1004,9 @@
       var mouseLeft = false;
       if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) {
         var canvas = g.canvas;
-        canvas.addEventListener("click", function () { if (canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (e) { /* no lock: keys still work */ } } });
-        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });
+        canvas.addEventListener("click", function () { if (!state.menu.open && canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (e) { /* no lock: keys still work */ } } });
+        document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && !state.menu.open && g.current === "play" && state.menuStarted) state.openMenu("pause"); });   // Esc gives the mouse back: the pause menu opens
+        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.menu.open) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });
         canvas.addEventListener("mousedown", function (e) {
           if (e.button === 0) mouseLeft = true; else if (e.button === 2) state.placeBlock();
         });
@@ -836,6 +1019,8 @@
       function once(key, fn) { var now = K.key(key); if (now && !held[key]) { held[key] = true; fn(); } else if (!now) held[key] = false; }
       g.scene("play", {
         update: function (game, dt) {
+          if (state.menu.open) { state.menuUpdate(dt); return; }
+          once("Escape", function () { state.openMenu("pause"); });
           state.step(dt);
           once("e", state.placeBlock); once("q", function () { state.select(state.slot + 1); });
           once("i", function () { state.showInv = !state.showInv; }); once("Tab", function () { state.showInv = !state.showInv; });

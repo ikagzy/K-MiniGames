@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { load } = require('./helpers');
 
 const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxelmobs.js', 'kgame.voxel.js'];
-const fresh = () => load(...FILES);
+const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; return K; };   // the tests play without the main menu
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
 const world = (K, o = {}) => K.voxel.makeWorld({ seed: 3, biome: 'forest', size: 'medium', caves: 1, ores: 1, lakes: true, trees: 3, ...o });
@@ -488,7 +488,7 @@ test('the hotbar is a window over everything you hold, so new tools show up, and
 
 test('every thing you can hold has a picture: a cube from its textures for a block, pixel art in 16 rows of 16 for the rest', () => {
   const K = fresh(); const D = K.voxeldata;
-  const never = new Set([14, 16, 17, 18, 19, 37]);   // water and the field and crops are never carried
+  const never = new Set([14, 16, 17, 18, 19, 37, 135, 136, 137, 138, 139, 141, 142]);   // upper slabs and door halves are never carried   // water and the field and crops are never carried
   for (const id of Object.keys(D.NAME).map(Number).filter((n) => !never.has(n))) {
     assert.ok(D.hasIcon(id), D.NAME[id] + ' (' + id + ') has an icon');
     if (!D.isBlock(id)) {
@@ -880,4 +880,165 @@ test('1.8 stones: granite, diorite and andesite lie in the stone as veins, ores 
   const s = K.kit.run({ kit: 'sandbox', world: { seed: 4 }, size: 'small', trees: 0, time: 'day' });
   run(s, 1);
   assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+});
+
+// a flat stone floor to try shaped blocks on, with the player standing at (x, y, z) facing the given way
+function flatYard(K) {
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1.5);
+  const cx = 60, cz = 60, gy = s.world.heightAt(cx, cz);
+  for (let x = cx - 8; x <= cx + 8; x++) for (let z = cz - 8; z <= cz + 8; z++) {
+    for (let y = gy + 1; y <= gy + 6; y++) s.set(x, y, z, 0, false);
+    s.set(x, gy, z, 3, false);
+  }
+  s.mobs.length = 0; s.set(cx + 1, gy + 1, cz + 1, 24, false);   // a crafting table at hand
+  return { s, cx, cz, gy };
+}
+
+test('shaped blocks: half blocks sit low or high, a ray passes over the empty half, and you walk up onto one without jumping', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const { s, cx, cz, gy } = flatYard(K);
+  assert.ok(D.slabOf(130).bottom === 130 && D.slabOf(135).bottom === 130 && D.slabOf(130).top === 135);
+  s.set(cx + 3, gy + 2, cz, 130, false);   // a bottom slab at eye height
+  s.set(cx + 5, gy + 2, cz, 135, false);   // a top slab at eye height
+  const boxes = s.shapeBoxes(130, 0, 0, 0, true); assert.deepStrictEqual(boxes, [[0, 0, 0, 1, 0.5, 1]]);
+  s.p.x = cx + 0.5; s.p.z = cz + 0.5; s.p.y = gy + 1.01; s.p.yaw = Math.PI / 2; s.p.pitch = 0; s.p.vy = 0; run(s, 0.1);
+  // the eye is at about 1.62 above the feet: a bottom slab (0.5 high) lets the ray over, the top slab at the other cell is hit
+  const t = s.target(); assert.ok(t && t.x === cx + 5 && t.b === 135, 'the look goes over the low slab and hits the high one: ' + (t && t.x));
+  // walking: a bottom slab is climbed by itself
+  s.set(cx + 3, gy + 2, cz, 0, false); s.set(cx + 5, gy + 2, cz, 0, false); s.set(cx + 3, gy + 1, cz, 130, false); s.set(cx + 5, gy + 2, cz, 135, false);
+  s.p.x = cx + 1.5; s.p.z = cz + 0.5; s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  K.press('w'); run(s, 0.55); K.press('w', false); run(s, 0.3);
+  assert.ok(s.p.x > cx + 3, 'went onto the slab: ' + s.p.x);
+  assert.ok(Math.abs(s.p.y - (gy + 1.5)) < 0.1, 'stands on top of the half block: ' + s.p.y);
+  // the high slab is above the head's low part: you walk under it, no step
+  s.p.x = cx + 4.2; s.p.y = gy + 1.01; run(s, 0.1);
+  K.press('w'); run(s, 0.4); K.press('w', false);
+  assert.ok(s.p.y < gy + 1.2 || s.p.x < cx + 5.0, 'the high slab is in the way at head height');
+  // placing: a slab put on the top half of a side goes high, on the floor goes low, two of a kind make a block
+  s.set(cx + 3, gy + 1, cz, 0, false); s.set(cx + 5, gy + 2, cz, 0, false);
+  s.addItem(130, 4); s.select(s.hotbar().indexOf(130)); assert.strictEqual(s.selectedBlock(), 130);
+  s.p.x = cx + 0.5; s.p.z = cz + 0.5; s.p.y = gy + 1.01; s.p.yaw = 0; s.p.pitch = -0.9; run(s, 0.1);
+  let floor = null; for (const pitch of [-0.9, -0.7, -0.5, -0.3, -1.1]) { s.p.pitch = pitch; const h = s.target(); if (h && h.ny === 1 && h.b === 3) { floor = h; break; } }
+  assert.ok(floor, 'the floor in front');
+  const px = floor.x + floor.nx, py = floor.y + floor.ny, pz = floor.z + floor.nz;
+  assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.get(px, py, pz), 130, 'low on the floor');
+  const t2 = s.target(); assert.ok(t2 && t2.b === 130 && t2.ny === 1);
+  assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.get(px, py, pz), 3, 'two slabs make a whole stone block');
+  s.set(px, py, pz, 0, false); s.set(px, py, pz, 135, false);
+  s.breakBlock();   // an upper slab broken: the ordinary one is given
+});
+
+test('a fence is a thin post that reaches for its neighbours, is 1.5 high for the body, and cannot be jumped over', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const { s, cx, cz, gy } = flatYard(K);
+  s.set(cx + 2, gy + 1, cz, 140, false);
+  assert.strictEqual(s.shapeBoxes(140, cx + 2, gy + 1, cz, false).length, 1, 'alone it is a post');
+  s.set(cx + 3, gy + 1, cz, 140, false); s.set(cx + 2, gy + 1, cz + 1, 3, false);
+  const joined = s.shapeBoxes(140, cx + 2, gy + 1, cz, false);
+  assert.strictEqual(joined.length, 3, 'a post, an arm to the next fence and an arm to the stone: ' + joined.length);
+  const body = s.shapeBoxes(140, cx + 2, gy + 1, cz, true); assert.strictEqual(body[0][4], 1.5);
+  // walking into it stops you, and a jump does not clear it
+  s.set(cx + 3, gy + 1, cz, 0, false); s.set(cx + 2, gy + 1, cz + 1, 0, false);
+  s.p.x = cx + 0.5; s.p.z = cz + 0.5; s.p.y = gy + 1.01; s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  K.press('w'); K.press(' '); run(s, 1.5); K.press('w', false); K.press(' ', false);
+  assert.ok(s.p.x < cx + 2.1, 'the fence holds: ' + s.p.x);
+  // a ray goes through the gap beside the post but hits the post when aimed at it
+  s.p.x = cx + 0.5; s.p.z = cz + 0.5; s.p.y = gy + 1.01; s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  let t = null; for (const pitch of [-0.5, -0.6, -0.7, -0.8]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 140) { t = h; break; } }
+  assert.ok(t && t.x === cx + 2, 'the post is under the crosshair');
+  assert.ok(D.isBlock(140) && D.hasIcon(140) && D.recipes[D.recipeIndex('çit')]);
+  s.addItem(7, 4); s.addItem(D.ID ? D.ID.STICK : 40, 2);
+});
+
+test('a door: it is placed two high, opens and shuts with a right click, lets you through when open, is kept with the world, and breaking it gives it back', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const { s, cx, cz, gy } = flatYard(K);
+  s.addItem(7, 6); assert.strictEqual(s.craft('kapı'), true); assert.strictEqual(s.inv.count[143], 3);
+  s.p.x = cx + 0.5; s.p.z = cz + 0.5; s.p.y = gy + 1.01; s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  let floor = null; for (const pitch of [-0.9, -1.0, -1.1, -1.2, -1.3]) { s.p.pitch = pitch; const h = s.target(); if (h && h.ny === 1 && h.b === 3 && h.y === gy) { floor = h; break; } }
+  assert.ok(floor, 'a floor to stand the door on');
+  s.select(s.hotbar().indexOf(143)); assert.strictEqual(s.selectedBlock(), 143);
+  const dx = floor.x + floor.nx, dy = floor.y + floor.ny, dz = floor.z + floor.nz;
+  assert.strictEqual(s.placeBlock(), true);
+  assert.strictEqual(s.get(dx, dy, dz), 141); assert.strictEqual(s.get(dx, dy + 1, dz), 142);
+  assert.strictEqual(s.inv.count[143], 2);
+  const closed = s.metaOf(dx, dy, dz); assert.ok((closed & 4) === 0);
+  // shut: you cannot walk through
+  s.set(dx - 1, dy, dz, 0, false);
+  assert.ok(s.shapeBoxes(141, dx, dy, dz, true).length === 1);
+  // aim at the door and right click it
+  const aim = () => { for (let yaw = 0; yaw < Math.PI * 2; yaw += 0.05) for (const pitch of [0, -0.1, -0.2, -0.3]) { s.p.yaw = yaw; s.p.pitch = pitch; const h = s.target(); if (h && (h.b === 141 || h.b === 142)) return h; } return null; };
+  s.p.x = dx + 0.5 - 1.2; s.p.z = dz + 0.5; s.p.y = dy + 0.01;
+  const t = aim(); assert.ok(t, 'the door can be pointed at');
+  assert.strictEqual(s.placeBlock(), true, 'a right click on a door opens it');
+  assert.ok((s.metaOf(dx, dy, dz) & 4) !== 0, 'open'); assert.ok((s.metaOf(dx, dy + 1, dz) & 4) !== 0, 'both halves open');
+  assert.strictEqual(s.toggleDoor(dx, dy + 1, dz), true); assert.ok((s.metaOf(dx, dy, dz) & 4) === 0, 'shut again by the upper half');
+  s.toggleDoor(dx, dy, dz);
+  // kept with the world
+  const saved = K.save.get('sandbox.forest.small.2', null);
+  const mine = s.edits.filter((e) => e.length === 5);
+  assert.ok(mine.length >= 2, 'the facing and open state are saved: ' + mine.length);
+  // breaking either half gives one door back and removes both
+  const before = s.inv.count[143] || 0;
+  s.set(dx, dy, dz, 141, false);
+  const t3 = aim(); assert.ok(t3);
+  s.breakBlock();
+  for (let i = 0; i < 400 && s.get(dx, dy, dz) === 141; i++) { s.p.pitch = s.p.pitch; s.step ? s.step(1 / 60) : s.g.step(1 / 60); aim(); K.press('f'); }
+  K.press('f', false);
+  assert.strictEqual(s.get(dx, dy, dz), 0, 'the lower half is gone'); assert.strictEqual(s.get(dx, dy + 1, dz), 0, 'and the upper');
+  assert.strictEqual(s.inv.count[143] || 0, before + 1);
+});
+
+test('stairs face the way you look, are walked up, and a ladder is climbed', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const { s, cx, cz, gy } = flatYard(K);
+  s.set(cx + 3, gy + 1, cz, 144, true, 1);
+  assert.strictEqual(s.metaOf(cx + 3, gy + 1, cz), 1);
+  const stairBoxes = s.shapeBoxes(144, cx + 3, gy + 1, cz, true); assert.strictEqual(stairBoxes.length, 2, 'a low step and a high half');
+  const saved = s.edits.filter((e) => e.length === 5 && e[3] === 144); assert.strictEqual(saved.length, 1);
+  assert.deepStrictEqual(saved[0], [cx + 3, gy + 1, cz, 144, 1]);
+  assert.ok(D.stairOf(146).base === 7 && D.hasIcon(146) && D.isBlock(146));
+  assert.strictEqual(D.recipes[D.recipeIndex('kırık taş basamak')].give[1], 4);
+  // a ladder against a wall: climbing up
+  s.set(cx - 3, gy + 1, cz, 3, false); s.set(cx - 3, gy + 2, cz, 3, false); s.set(cx - 3, gy + 3, cz, 3, false); s.set(cx - 3, gy + 4, cz, 3, false);
+  for (let y = gy + 1; y <= gy + 4; y++) s.set(cx - 2, y, cz, 149, true, 3);
+  s.p.x = cx - 1.5; s.p.z = cz + 0.5; s.p.y = gy + 1.01; s.p.vy = 0; run(s, 0.1);
+  s.p.x = cx - 1.7; run(s, 0.05);
+  K.press(' '); run(s, 1.0); K.press(' ', false);
+  assert.ok(s.p.y > gy + 2.2, 'the ladder lifts: ' + s.p.y);
+  assert.ok(D.hasIcon(149) && D.recipes[D.recipeIndex('merdiven')].give[1] === 3);
+});
+
+test('menus: the game opens on a main menu, Esc opens a pause menu, the arrows and Enter choose, the world waits behind it, and the options work', () => {
+  const K = load(...FILES);   // the real default: the menu opens first
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'day' });
+  assert.strictEqual(s.menu.open, true); assert.strictEqual(s.menu.kind, 'main');
+  const x0 = s.p.x, hungerBefore = s.food;
+  K.press('w'); run(s, 1); K.press('w', false);
+  assert.ok(Math.abs(s.p.x - x0) < 0.01, 'the player does not walk while the menu is open');
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255, 'the world is still drawn behind');
+  const items = s.menuItems(); assert.ok(items.length >= 5); assert.ok(/Oyna|Devam/.test(items[0].label));
+  K.press('ArrowDown'); run(s, 0.05); K.press('ArrowDown', false); run(s, 0.05);
+  assert.strictEqual(s.menu.index, 1, 'the arrow moves the choice');
+  K.press('ArrowUp'); run(s, 0.05); K.press('ArrowUp', false); run(s, 0.05); assert.strictEqual(s.menu.index, 0);
+  K.press('Enter'); run(s, 0.05); K.press('Enter', false); run(s, 0.05);
+  assert.strictEqual(s.menu.open, false, 'Oyna starts the game');
+  K.press('Escape'); run(s, 0.05); K.press('Escape', false); run(s, 0.05);
+  assert.strictEqual(s.menu.open, true); assert.strictEqual(s.menu.kind, 'pause');
+  const pauseItems = s.menuItems(); assert.ok(pauseItems.some((i) => /Ana menü/.test(i.label)));
+  // creative from the menu
+  s.creative = false; const create = pauseItems.find((i) => /Yaratıcı/.test(i.label)); create.act(); assert.strictEqual(s.creative, true);
+  s.menuItems().find((i) => /Yaratıcı/.test(i.label)).act(); assert.strictEqual(s.creative, false);
+  // controls page and back
+  pauseItems.find((i) => /Kontroller/.test(i.label)).act(); assert.strictEqual(s.menu.kind, 'controls-pause');
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  K.press('Escape'); run(s, 0.05); K.press('Escape', false); run(s, 0.05); assert.strictEqual(s.menu.kind, 'pause');
+  // Esc closes the pause menu, and time resumes
+  K.press('Escape'); run(s, 0.05); K.press('Escape', false); run(s, 0.05); assert.strictEqual(s.menu.open, false);
+  // the main menu asks twice before wiping the world
+  s.openMenu('main'); const wipe = () => s.menuItems().find((i) => /sıfırla|Emin/.test(i.label));
+  assert.ok(/sıfırla/.test(wipe().label)); wipe().act(); assert.ok(/Emin/.test(wipe().label), 'a second choice is needed');
+  s.menu.index = 0; K.press('ArrowDown'); run(s, 0.05); K.press('ArrowDown', false); assert.strictEqual(s.menu.confirm, false, 'moving away cancels it');
+  assert.strictEqual(s.food, hungerBefore, 'nothing was eaten or lost while in the menus');
 });
