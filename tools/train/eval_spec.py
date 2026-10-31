@@ -13,12 +13,14 @@ from pathlib import Path
 
 import specdata
 import specdata_sandbox
+import specdata_fps
 import specdata_shooter
 
 KITS = {   # per kit: how the app's messages are made for it, how a generated example is scored, how a hand-written expectation is checked
     "platformer": (specdata._messages, specdata.score, specdata.expect_ok),
     "shooter": (specdata_shooter.messages, specdata_shooter.score_shooter, specdata_shooter.expect_ok_shooter),
     "sandbox": (specdata_sandbox.messages, specdata_sandbox.score_sandbox, specdata_sandbox.expect_ok_sandbox),
+    "fps": (specdata_fps.messages, specdata_fps.score_fps, specdata_fps.expect_ok_fps),
 }
 
 DATA = Path(__file__).resolve().parent / "data"

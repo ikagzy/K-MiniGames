@@ -52,8 +52,8 @@ def _difficulty(text: str):
     """1-5 when the text names one level of difficulty; None for a ramp (easy to hard), a negation or no word at all."""
     if re.search(r"kolaydan zora|giderek|yavas yavas|olmayan|degil|olmasin", text):
         return None
-    for value, rx in ((3, r"orta\w* zorluk|dengeli|ne kolay ne zor|ortalama"), (1, r"cok kolay|en kolay|cocuklar icin"),
-                      (5, r"cok zor|en zor|acimasiz|kabus"), (2, r"kolay|rahat|kolay zorluk"), (4, r"zor|zorlu|zorlayici")):
+    for value, rx in ((3, r"\borta\w* zorluk|dengeli|ne kolay ne zor|ortalama"), (1, r"cok kolay|en kolay|cocuklar icin"),
+                      (5, r"cok zor|en zor|acimasiz|kabus"), (2, r"\bkolay\b|\brahat\b|kolay zorluk"), (4, r"\bzor\b|\bzorlu\b|zorlayici")):
         if re.search(rx, text):
             return value
     return None
