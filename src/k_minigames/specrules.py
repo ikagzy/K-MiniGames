@@ -8,7 +8,7 @@ _NUMBERS = {"iki": 2, "uc": 3, "dort": 4, "bes": 5, "alti": 6, "yedi": 7, "sekiz
             "on uc": 13, "on dort": 14, "on bes": 15, "on alti": 16, "on yedi": 17, "on sekiz": 18, "on dokuz": 19, "yirmi": 20}
 _NUMBER = "|".join(sorted(_NUMBERS, key=len, reverse=True)) + r"|\d+"
 
-THEMES = {"sky": r"gokyuz|gunduz|bulut", "cave": r"magara|yeralti", "castle": r"\bkale|\bsato", "night": r"\bgece\b|\bgecesi|yildiz",
+THEMES = {"sky": r"gokyuz|gunduz|bulut", "cave": r"magara|yeralti", "castle": r"\bkale|\bsato", "night": r"\bgece\b|\bgecesi|yildizli gece",
           "underwater": r"su alti|\bdeniz|okyanus", "space": r"\buzay|galaksi", "forest": r"\borman"}
 FEATURES = {"spring": r"\byay(lar|li)?\b", "dashPad": r"hiz zemin|hizlandiran zemin", "rings": r"\bhalka",
             "checkpoint": r"kontrol nokta|checkpoint|ara kayit", "ice": r"\bbuz|kaygan zemin",

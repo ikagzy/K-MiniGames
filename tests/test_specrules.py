@@ -34,3 +34,8 @@ def test_mood_needs_the_word_music_and_difficulty_a_clear_word():
     assert "musicStyle" not in specrules.apply(spec(), "gizemli bir orman")
     assert specrules.apply(spec(), "çok zor bir oyun")["generate"][0]["difficulty"] == 5
     assert "difficulty" not in specrules.apply(spec(), "kolaydan zora giden")["generate"][0]
+
+
+def test_a_star_in_a_block_is_not_the_night_theme():
+    assert "theme" not in specrules.apply(spec(), "bloklardan yıldız çıksın")
+    assert specrules.apply(spec(), "yıldızlı gece teması")["theme"] == "night"

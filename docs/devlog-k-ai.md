@@ -121,3 +121,7 @@ Düzeltilmiş GGUF ile Ollama ölçümü (117 üretilmiş + 32 elle yazılmış 
 
 Ham Ollama sayıları HF ölçümleriyle birebir aynı. Uygulamada `game_model` = `k-ai-v3`. Onarım ve kurallar katmanı kaldı (hâlâ +0,03-0,06 ekliyor).
 Not: v3'ün elle yazılmış tarif artışının bir kısmı "bol" ve yazılı sayı düzeltmelerinden. Önceki "Ollama'da v3 v2'den kötü" ölçümleri hatalı GGUF'a aitti, geçersiz.
+
+### Kural düzeltmesi (yıldız ≠ gece)
+`specrules`: "bloklardan yıldız çıksın" cümlesindeki "yıldız" gece temasını tetikliyordu (üretilmiş sette tema 76/78 → 71/78). Kural artık "yıldızlı gece" arıyor. Sonuç (v3, Ollama):
+ham 0,972 / elle yazılmış 0,875-0,932 → uygulama (onarım + kurallar) **0,976** / **0,938-0,973**. Tema hâlâ 1 alanda geride (75/78 / 76/78). Exe ve arkadaş paketi yenilendi.
