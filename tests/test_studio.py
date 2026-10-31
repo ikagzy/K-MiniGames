@@ -210,7 +210,7 @@ class ChatStub:
     def __init__(self, *answers):
         self.answers, self.calls = list(answers), []
 
-    def chat(self, model, messages, on_token=None, cancel=None):
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
         self.calls.append("\n".join(m["content"] for m in messages))
         return self.answers.pop(0)
 

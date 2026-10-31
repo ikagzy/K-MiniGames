@@ -6,7 +6,7 @@ class FakeClient:
     def __init__(self, answer: str):
         self.answer, self.calls = answer, []
 
-    def chat(self, model, messages, on_token=None, cancel=None):
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
         self.calls.append((model, messages))
         if on_token:
             on_token(self.answer)

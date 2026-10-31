@@ -11,6 +11,7 @@ from k_minigames import memory as memory_notes
 from k_minigames.ollama_client import OllamaError
 
 HISTORY_WITH_MEMORY = 6   # with a memory summary only the latest messages are sent
+CHAT_TOKENS = 400         # the most the advisor may write in one answer
 LONG_HISTORY = 10         # a history longer than this is cut when there is a memory
 
 _JSON_OBJECT = re.compile(r"\{[^{}]*\}")
@@ -94,7 +95,7 @@ class Advisor:
         if head and len(history) > LONG_HISTORY:
             history = history[-HISTORY_WITH_MEMORY:]
         messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": user_text}]
-        answer = self.client.chat(self.model, messages, on_token=on_token, cancel=cancel)
+        answer = self.client.chat(self.model, messages, on_token=on_token, cancel=cancel, max_tokens=CHAT_TOKENS)   # a small model that rambles stops here
         reply = AdvisorReply(_without_proposals(answer), extract_proposal(answer))
         if reply.proposal and not advisor_rules.understood(history, user_text):   # a short wish gets questions first
             return AdvisorReply(advisor_rules.question_for(history, user_text), None)

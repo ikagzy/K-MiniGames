@@ -73,13 +73,15 @@ def _fallback(previous: str, user_text: str) -> str:
 
 def update(client, model: str, previous: str, user_text: str, reply_text: str, cancel=None) -> str:
     """The new memory after one exchange. Never raises and never loses the old memory."""
+    if model.startswith("k-ai"):   # our small models only know their own jobs: they copy their last answer into the notes (and can take minutes), so the notes are the user's own words
+        return _fallback(previous, user_text)
     messages = [
         {"role": "system", "content": _SUMMARISER},
         {"role": "user", "content": f"Eski not:\n{previous.strip() or '(boş)'}\n\nKullanıcı:\n{user_text}\n\n"
                                     f"Cevap:\n{reply_text}"},
     ]
     try:
-        answer = (client.chat(model, messages, cancel=cancel) or "").strip()
+        answer = (client.chat(model, messages, cancel=cancel, max_tokens=MAX_CHARS // 2) or "").strip()   # a rambling model is cut off
     except Exception:  # any failure of the summariser: the app must go on with the old memory
         return _fallback(previous, user_text)
     if not answer or len(answer) > MAX_CHARS * _TOO_LONG:

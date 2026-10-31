@@ -159,7 +159,7 @@ class ChatStub:
     def __init__(self, answer):
         self.answer, self.calls = answer, []
 
-    def chat(self, model, messages, on_token=None, cancel=None):
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
         self.calls.append(messages)
         return self.answer
 

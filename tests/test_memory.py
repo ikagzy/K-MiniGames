@@ -12,7 +12,7 @@ class Chat:
     def __init__(self, answer="", error=None):
         self.answer, self.error, self.calls = answer, error, []
 
-    def chat(self, model, messages, on_token=None, cancel=None):
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
         self.calls.append((model, messages))
         if self.error:
             raise self.error
@@ -98,7 +98,7 @@ def test_a_multi_line_request_stays_on_one_line_in_the_fallback():
 
 class SlowChat:
     """A summariser that keeps everything it is given, slowly (so two updates can overlap)."""
-    def chat(self, model, messages, on_token=None, cancel=None):
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
         time.sleep(0.15)
         text = messages[1]["content"]
         previous = text.split("Eski not:\n", 1)[1].split("\n\nKullanıcı:", 1)[0]
@@ -131,3 +131,11 @@ def test_a_memory_file_saved_in_an_old_code_page_is_still_read(tmp_path):
     path.write_bytes("Amaç: çöl şövalyesi\n".encode("cp1254"))
     text = memory.load(path)
     assert text.startswith("Ama") and "l" in text and len(text) > 10
+
+
+def test_our_small_models_do_not_write_the_notes_the_users_words_are_kept():
+    class Boom:
+        def chat(self, *a, **k):
+            raise AssertionError("the small model must not be asked")
+    out = memory.update(Boom(), "k-ai-chat:latest", "- minecraft tarzı bi oyun", "evet olsun ormanda geçsin", "Süper, hemen bakalım. orta boy model uygun.")
+    assert "ormanda geçsin" in out and "orta boy model" not in out and "minecraft" in out

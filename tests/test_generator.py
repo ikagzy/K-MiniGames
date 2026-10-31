@@ -19,7 +19,7 @@ class FakeClient:
     def __init__(self, *answers):
         self.answers, self.calls = list(answers), []
 
-    def chat(self, model, messages, on_token=None, cancel=None):
+    def chat(self, model, messages, on_token=None, cancel=None, **kwargs):
         self.calls.append((model, messages))
         answer = self.answers.pop(0)
         if isinstance(answer, Exception):
