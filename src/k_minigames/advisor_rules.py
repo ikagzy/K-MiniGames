@@ -21,6 +21,18 @@ QUESTIONS_EN = {
     "platformer": "Okay! What should the hero be like, and what world should the levels be in? How many lives?",
     None: "Sounds fun! What kind of game: a run-and-jump platformer, a space shooter or a cube world for mining and building?",
 }
+STRONG_FPS = re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pompal[iı]", re.I)   # words that mean a first person shooter and nothing else
+KIT_MODULES = ("platformer", "shooter", "sandbox", "fps")
+
+
+def fix_modules(history: list, names: list) -> list:
+    """The kit among the chosen modules, put right by the words of the user: a small model that has never seen the newest kit picks the nearest old one (a shooter for an FPS)."""
+    said = " ".join(m["content"] for m in history if m.get("role") == "user")
+    if STRONG_FPS.search(said) and "fps" not in names:
+        return [n for n in names if n not in KIT_MODULES] + ["fps"]
+    return names
+
+
 _ENGLISH = re.compile(r"\b(the|want|make|game|please|with|and|a)\b", re.I)
 
 

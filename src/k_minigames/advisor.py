@@ -86,7 +86,7 @@ class Advisor:
         except (OllamaError, ValueError, TypeError):
             return ["core"]
         names = data.get("modules") if isinstance(data, dict) else None
-        return kgamelib.normalize(names if isinstance(names, list) else [])
+        return kgamelib.normalize(advisor_rules.fix_modules(history, names if isinstance(names, list) else []))
 
     def ask(self, history: list[dict], user_text: str, memory: str = "", on_token: Callable | None = None,
             cancel: Callable[[], bool] | None = None) -> AdvisorReply:

@@ -143,3 +143,19 @@ def test_a_proposal_after_an_answer_a_decision_or_a_detailed_wish_goes_through()
 def test_an_answer_without_a_proposal_is_left_alone():
     client = FakeClient("Hangi türde bir oyun istersin?")
     assert Advisor(client, "m").ask([], "bi oyun").text == "Hangi türde bir oyun istersin?"
+
+
+def test_a_first_person_wish_gets_the_fps_kit_even_when_the_model_picks_the_shooter():
+    class Picker:
+        def __init__(self, names):
+            self.names = names
+
+        def chat(self, model, messages, **kwargs):
+            return '{"modules": %s}' % __import__("json").dumps(self.names)
+
+    ask = lambda text, names: Advisor(Picker(names), "m").choose_modules([{"role": "user", "content": text}])
+    assert ask("Laboratuvarda geçen, pompalı ve tüfekli bir FPS olsun", ["core", "shooter"]) == ["core", "kits", "hud", "audio2", "fps"] or "fps" in ask("bir FPS oyunu", ["core", "shooter"])
+    assert "shooter" not in ask("Doom gibi bir oyun yap", ["core", "shooter"]) and "fps" in ask("Doom gibi bir oyun yap", ["core", "shooter"])
+    assert "shooter" in ask("uzayda düşman gemileri vuran bir oyun", ["core", "shooter"]) and "fps" not in ask("uzayda düşman gemileri vuran bir oyun", ["core", "shooter"])
+    assert "fps" in ask("birinci şahıs nişancı", ["core", "platformer"]) and "platformer" not in ask("birinci şahıs nişancı", ["core", "platformer"])
+    assert "sandbox" in ask("minecraft gibi", ["core", "sandbox"]) and "fps" not in ask("minecraft gibi", ["core", "sandbox"])
