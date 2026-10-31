@@ -154,3 +154,23 @@ test('arena mode: one room with pillars, enemies come in waves, clearing the las
   const walk = (f) => { const t = K.kit.run(spec({ features: f })); run(t, 0.1); const x = t.p.x, y = t.p.y; K.press('w'); run(t, 0.4); K.press('w', false); return Math.hypot(t.p.x - x, t.p.y - y); };
   assert.ok(walk(['sprint']) > walk([]) * 1.15, 'the sprint feature is faster');
 });
+
+test('looking up and down: the arrows and the mouse tilt the view, the horizon moves, a shot follows the line of sight, so aiming too high or too low misses', () => {
+  const K = fresh(); const s = K.kit.run(spec({ enemies: ['guard'], boss: false })); run(s, 0.2);
+  const p = s.p, L = s.level; assert.strictEqual(p.pitch, 0);
+  K.press('ArrowUp'); run(s, 0.5); K.press('ArrowUp', false); assert.ok(p.pitch > 0.3, 'looking up: ' + p.pitch);
+  K.press('ArrowDown'); run(s, 3); K.press('ArrowDown', false); assert.ok(p.pitch <= -0.45 && p.pitch >= -0.5, 'the limit: ' + p.pitch);
+  const x0 = p.x, y0 = p.y; K.press('ArrowUp'); run(s, 0.3); K.press('ArrowUp', false); assert.ok(Math.hypot(p.x - x0, p.y - y0) < 0.01, 'the arrows only look, they do not walk');
+  // the horizon: looking up shows more floor, looking down more ceiling
+  const row = (pitch) => { p.pitch = pitch; const out = px(); s.render(out); let first = -1; const wall = (j) => out[(j * 160 + 5) * 4]; for (let j = 0; j < 99; j++) if (Math.abs(out[(j * 160 + 80) * 4] - out[((j + 1) * 160 + 80) * 4]) > 18) { first = j; break; } return first; };
+  const flat = row(0), up = row(0.4), down = row(-0.4); assert.ok(flat >= 0 && up >= 0 && down >= 0);
+  assert.ok(s.render(px())[3] === 255);
+  // a shot: an enemy 6 cells ahead, level aim hits, too high and too low miss
+  for (let y = 3; y < 12; y++) for (let x = 3; x < 20; x++) L.cells[y * L.W + x] = 0;
+  s.enemies.forEach((e) => { e.dead = true; }); p.x = 5.5; p.y = 6.5; p.a = 0; p.pitch = 0;
+  const e = { ...s.enemies[0], dead: false, hp: 1000, x: 11.5, y: 6.5, state: 'idle', flash: 0, cd: 99, age: 0, dir: 0, kind: 'guard' }; s.enemies.push(e);
+  const shoot = (pitch) => { e.hp = 1000; e.dead = false; p.pitch = pitch; p.ammo.bullets = 99; s.fireT = 0; s.selectWeapon(0); let hits = 0; for (let i = 0; i < 30; i++) { s.fireT = 0; const before = e.hp; s.fire(); if (e.hp < before) hits++; e.state = 'idle'; } return hits; };
+  assert.ok(shoot(0) >= 25, 'level aim hits'); assert.strictEqual(shoot(0.2), 0, 'too high (the shot passes over its head)'); assert.strictEqual(shoot(-0.2), 0, 'too low (the shot hits the floor first)');
+  assert.ok(shoot(0.02) >= 20, 'a little up still hits: the enemy is tall'); assert.ok(shoot(-0.03) >= 20, 'a little down hits too');
+  p.x = 10.5; assert.ok(shoot(-0.3) >= 25, 'close up, aiming down hits'); p.pitch = 0; p.x = 5.5;
+});

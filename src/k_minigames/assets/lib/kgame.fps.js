@@ -1,7 +1,7 @@
 /* kgame.fps.js: birinci şahıs nişancı kiti (fps). Model yalnızca bir özet yazar:
    K.kit.run({ kit:'fps', title:'Sığınak', theme:'bunker', difficulty:3, levels:3, size:'medium', enemies:['guard','runner','sniper'], weapons:['pistol','shotgun','rifle'], boss:true, ammo:'normal', mode:'campaign', world:{seed:5}, features:['regen'] })
    Kit; tohumdan bölümler üretir (odalar, koridorlar, kapılar, kilitli kapı ve anahtar, çıkış), düşük çözünürlüklü ışın izlemeyle birinci şahıs görüntüyü çizer (160x100, ölçeklenir),
-   düşmanları (nöbetçi, koşucu, keskin nişancı, iri, taret, patron) ve toplanan şeyleri (can, zırh, mermi, anahtar) hazır getirir. Kontroller: W A S D yürür, FARE ya da oklar bakar (önce ekrana tıkla),
+   düşmanları (nöbetçi, koşucu, keskin nişancı, iri, taret, patron) ve toplanan şeyleri (can, zırh, mermi, anahtar) hazır getirir. Kontroller: W A S D yürür, FARE bakar, yukarı aşağı da (oklar da bakar; önce ekrana tıkla),
    sol tık / Boşluk ateş, 1-4 / Q / tekerlek silah, Shift koşar, E kapıyı açar, Esc duraklatır. Mod: campaign (bölümler) ya da arena (dalgalar). Özellikler: sprint, regen, armor.
    Önce kgame.js, kgame.kits.js ve kgame.audio2.js yüklenmiş olmalı. Doku, düşman ve silah çizimlerinin hepsi kodla üretilir. */
 (function (root) {
@@ -200,8 +200,8 @@
         state.enemies = L.enemies.map(function (e) { return make(e.kind, e.x, e.y); });
         state.pickups = L.pickups.map(function (p) { return { kind: p.kind, ammo: p.ammo, x: p.x, y: p.y, n: p.n, taken: false }; });
         if (L.exit) state.pickups.push({ kind: "exit", x: L.exit.x, y: L.exit.y, taken: false, n: 0, fixed: true });
-        if (!state.p) state.p = { x: L.start.x, y: L.start.y, a: -Math.PI / 2, hp: 100, armor: state.startArmor, ammo: { bullets: 0, shells: 0, heavy: 0 }, weapon: 0, keys: 0, vx: 0, vy: 0, bob: 0 };
-        else { state.p.x = L.start.x; state.p.y = L.start.y; state.p.a = -Math.PI / 2; state.p.keys = 0; }
+        if (!state.p) state.p = { x: L.start.x, y: L.start.y, a: -Math.PI / 2, hp: 100, armor: state.startArmor, ammo: { bullets: 0, shells: 0, heavy: 0 }, weapon: 0, keys: 0, vx: 0, vy: 0, bob: 0, pitch: 0 };
+        else { state.p.x = L.start.x; state.p.y = L.start.y; state.p.a = -Math.PI / 2; state.p.keys = 0; state.p.pitch = 0; }
         if (spec.mode === "arena") { state.waves = spec.levels * 2 + 1; state.wave = 0; state.waveQueue = []; state.betweenT = 2; }
         state.say(spec.mode === "arena" ? "Arena: dalgalar geliyor!" : "Bölüm " + (index + 1) + (L.locked ? ": çıkış kilitli, anahtarı bul" : ""));
         state.message2 = "";
@@ -239,12 +239,15 @@
       state.los = los;
       function hitscan(ox, oy, angle, dmg, spread) {
         var a = angle + (rnd() - 0.5) * 2 * spread, dx = Math.cos(a), dy = Math.sin(a), wall = rayWall(ox, oy, dx, dy, FAR), best = null, bestT = wall;
+        var slope = (state.p ? state.p.pitch : 0) + (rnd() - 0.5) * 2 * spread;   // height of the shot at distance t: 0.5 + t * slope (the eye is half way up the wall)
+        if (slope < -0.001) bestT = Math.min(bestT, 0.5 / -slope); else if (slope > 0.001) bestT = Math.min(bestT, 0.5 / slope);
         state.enemies.forEach(function (e) {
           if (e.dead) return;
           var rx = e.x - ox, ry = e.y - oy, t = rx * dx + ry * dy;
           if (t < 0.05 || t > bestT) return;
           var perp = Math.abs(rx * dy - ry * dx);
-          if (perp < 0.3 * e.def.size) { best = e; bestT = t; }
+          var zAt = 0.5 + t * slope;
+          if (perp < 0.3 * e.def.size && zAt >= 0 && zAt <= 0.95 * e.def.size) { best = e; bestT = t; }
         });
         if (best) { damageEnemy(best, dmg); return true; }
         return false;
@@ -336,7 +339,8 @@
         state.flash = Math.max(0, state.flash - dt); state.shake = Math.max(0, state.shake - dt); state.messageT = Math.max(0, state.messageT - dt); state.hurtT += dt;
         if (state.ended) return;
         var turn = (K.key("ArrowRight") ? 1 : 0) - (K.key("ArrowLeft") ? 1 : 0); p.a += turn * 2.4 * dt;
-        var f = (K.key("w") || K.key("ArrowUp") ? 1 : 0) - (K.key("s") || K.key("ArrowDown") ? 1 : 0), side = (K.key("d") ? 1 : 0) - (K.key("a") ? 1 : 0);
+        var tilt = (K.key("ArrowUp") ? 1 : 0) - (K.key("ArrowDown") ? 1 : 0); p.pitch = Math.max(-0.5, Math.min(0.5, p.pitch + tilt * 0.9 * dt));   // pitch is the slope of the line of sight: up is positive
+        var f = (K.key("w") ? 1 : 0) - (K.key("s") ? 1 : 0), side = (K.key("d") ? 1 : 0) - (K.key("a") ? 1 : 0);
         var speed = 3.2 * state.sprintMul * (K.key("Shift") ? 1.55 : 1), len = Math.sqrt(f * f + side * side) || 1;
         var vx = (Math.cos(p.a) * f - Math.sin(p.a) * side) / len * speed, vy = (Math.sin(p.a) * f + Math.cos(p.a) * side) / len * speed;
         if (f || side) p.bob += dt * 9; p.vx = vx; p.vy = vy;
@@ -374,12 +378,13 @@
       };
 
       // ---- the picture: RW x RH rays into a small image, scaled up ----
+      function horizon() { return Math.round(RH / 2 + state.p.pitch * RH); }
       function sprite(art, x, y, scale, flash, out, depthOnly) {
         var p = state.p, sx = x - p.x, sy = y - p.y, dirX = Math.cos(p.a), dirY = Math.sin(p.a), pl = Math.tan(FOV / 2), planeX = -dirY * pl, planeY = dirX * pl;
         var inv = 1 / (planeX * dirY - dirX * planeY), tx = inv * (dirY * sx - dirX * sy), ty = inv * (-planeY * sx + planeX * sy);
         if (ty < 0.15) return;
         var screenX = Math.floor(RW / 2 * (1 + tx / ty)), size = Math.abs(RH / ty) * scale, cols = art.rows[0].length, nrows = art.rows.length;
-        var wPx = size * cols / nrows, x0 = Math.floor(screenX - wPx / 2), x1 = Math.ceil(screenX + wPx / 2), floorY = RH / 2 + RH / ty / 2 * 0.95, y1 = Math.ceil(floorY), y0 = Math.floor(floorY - size);
+        var wPx = size * cols / nrows, x0 = Math.floor(screenX - wPx / 2), x1 = Math.ceil(screenX + wPx / 2), floorY = horizon() + RH / ty / 2 * 0.95, y1 = Math.ceil(floorY), y0 = Math.floor(floorY - size);
         var fog = Math.min(1, ty / FAR); fog = fog * fog;
         for (var cx = Math.max(0, x0); cx < Math.min(RW, x1); cx++) {
           if (ty >= zbuf[cx]) continue;
@@ -397,8 +402,9 @@
       function enemyArt(e) { var key = e.kind; if (!artCache[key]) artCache[key] = { rows: e.kind === "brute" ? BRUTE : e.kind === "turret" ? TURRET : HUMAN, pal: e.def.pal }; return artCache[key]; }
       function render(out) {
         var p = state.p, L = state.level, i, j, k;
+        var hz = horizon();
         for (j = 0; j < RH; j++) {   // ceiling and floor: a gradient into the fog
-          var half = RH / 2, t = j < half ? 1 - j / half : (j - half) / half, base = j < half ? theme.ceil : theme.floor, m = 0.35 + 0.65 * (1 - t) * (j < half ? 0.6 : 1) + 0.2 * t;
+          var t = j < hz ? 1 - j / Math.max(1, hz) : (j - hz) / Math.max(1, RH - hz), base = j < hz ? theme.ceil : theme.floor;
           for (i = 0; i < RW; i++) { k = (j * RW + i) * 4; out[k] = base[0] * (1 - t * 0.6) + theme.fog[0] * t * 0.6; out[k + 1] = base[1] * (1 - t * 0.6) + theme.fog[1] * t * 0.6; out[k + 2] = base[2] * (1 - t * 0.6) + theme.fog[2] * t * 0.6; out[k + 3] = 255; }
         }
         var dirX = Math.cos(p.a), dirY = Math.sin(p.a), pl = Math.tan(FOV / 2), planeX = -dirY * pl, planeY = dirX * pl;
@@ -414,7 +420,7 @@
           }
           zbuf[i] = hitCell ? Math.max(0.05, perp) : FAR + 1;
           if (!hitCell) continue;
-          var h = Math.min(RH * 3, RH / Math.max(0.05, perp)), y0 = Math.floor(RH / 2 - h / 2), y1 = Math.floor(RH / 2 + h / 2);
+          var h = Math.min(RH * 3, RH / Math.max(0.05, perp)), y0 = Math.floor(hz - h / 2), y1 = Math.floor(hz + h / 2);
           var wx = side === 0 ? p.y + perp * rdy : p.x + perp * rdx; wx -= Math.floor(wx);
           var tex = wallTexture(hitCell, spec.theme), tu = Math.floor(wx * 16) & 15, fog = Math.min(1, perp / FAR); fog = fog * fog;
           var shade = side === 1 ? 0.78 : 1;
@@ -481,7 +487,7 @@
         var canvas = g.canvas;
         canvas.addEventListener("click", function () { if (canvas.requestPointerLock && document.pointerLockElement !== canvas && !state.ended) { try { canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } });
         document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && g.current === "play" && !state.ended) state.paused = true; });
-        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.paused && state.p) state.p.a += e.movementX * 0.0024; });
+        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.paused && state.p) { state.p.a += e.movementX * 0.0024; state.p.pitch = Math.max(-0.5, Math.min(0.5, state.p.pitch - e.movementY * 0.0024)); } });
         canvas.addEventListener("mousedown", function (e) { if (e.button === 0) { if (state.paused) { state.paused = false; return; } state.firing = true; } });
         document.addEventListener("mouseup", function (e) { if (e.button === 0) state.firing = false; });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
