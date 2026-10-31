@@ -106,3 +106,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-97 | 2026-10-31 | k-ai v6 eğitildi ve kuruldu (fps kiti dahil: üretilmiş doğruluk 0,979, fps 0,975); specrules zorluk kuralları hatası düzeltildi (\b yerine 0x08); 542 Python testi | 30fcc43 |
 | CP-98 | 2026-10-31 | FPS isteği uzay nişancısı çıkıyordu: Don'un modül seçimi kuralla düzeltildi (fix_modules); 543 Python testi | b0bb76f |
 | CP-99 | 2026-10-31 | fps: yukarı aşağı bakış (fare/oklar), ufuk kayması, dikey nişan; 231 JS testi | e330eec |
+| CP-100 | 2026-10-31 | küp dünya: sandık ekranı, envanterde istenen yere koyma, şekilli meşale/yatak/sandık/ekin, kapı ve yeni dokular (64x64, 256x160), saydam cam/su/yaprak, başarımlar sığar, müzik erken başlar; 236 JS testi | 5134d0e |
