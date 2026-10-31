@@ -99,3 +99,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-90 | 2026-10-31 | Don hafızası k-ai-chat ile kirleniyordu (Bob'da tekrarlayan mesajlar, 2 dk bekleme): kullanıcının sözleri tutulur, jeton sınırı; hafıza silme bat'ı | 56cb52b |
 | CP-91 | 2026-10-31 | küp dünya: E envanter ızgarası, Ctrl koş/Shift eğil, klavye kırma-koyma kalktı; müzik kapatma hatası düzeltildi; 214 JS testi | 268bbab |
 | CP-92 | 2026-10-31 | küp dünya: yemek animasyonu/iyileşme, kılıç kalkanı, tavşan eti, damar madenler (lapis, kızıltaş, zümrüt, 1.8.9 derinlikleri), geçit ipucu; 217 JS testi | f528677 |
+| CP-93 | 2026-10-31 | küp dünya: büyü masası + deneyim + 4 büyü, köyler (ev, çiftlik, kuyu, saman), çöl tapınağı, köylüler ve takas, sandık ganimeti; 220 JS testi | 0e4c717 |
