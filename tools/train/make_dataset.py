@@ -12,6 +12,7 @@ from pathlib import Path
 import random
 
 import specdata
+import specdata_sandbox
 import specdata_shooter
 
 OUT = Path(__file__).resolve().parent / "data"
@@ -24,6 +25,8 @@ def main(argv=None) -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--shooter", type=int, default=0, help="also write this many shooter-kit training examples (mixed in with the platformer ones)")
     parser.add_argument("--shooter-eval", type=int, default=0)
+    parser.add_argument("--sandbox", type=int, default=0, help="also this many cube-world (sandbox kit) training examples")
+    parser.add_argument("--sandbox-eval", type=int, default=0)
     args = parser.parse_args(argv)
     train, held = specdata.build_examples(args.train, args.eval, args.seed)
     for e in train + held:
@@ -31,7 +34,10 @@ def main(argv=None) -> int:
     if args.shooter or args.shooter_eval:
         s_train, s_held = specdata_shooter.build_shooter_examples(args.shooter, args.shooter_eval, args.seed)
         train, held = train + s_train, held + s_held
-        random.Random(args.seed).shuffle(train)
+    if args.sandbox or args.sandbox_eval:
+        b_train, b_held = specdata_sandbox.build_sandbox_examples(args.sandbox, args.sandbox_eval, args.seed)
+        train, held = train + b_train, held + b_held
+    random.Random(args.seed).shuffle(train)
     OUT.mkdir(parents=True, exist_ok=True)
     with (OUT / "train.jsonl").open("w", encoding="utf-8") as f:
         for example in train:
@@ -39,7 +45,7 @@ def main(argv=None) -> int:
     with (OUT / "eval.jsonl").open("w", encoding="utf-8") as f:
         for example in held:
             f.write(json.dumps(example, ensure_ascii=False) + "\n")
-    (OUT / "hand_eval.json").write_text(json.dumps(specdata.HAND_EVAL + (specdata_shooter.HAND_EVAL_SHOOTER if args.shooter_eval else []), ensure_ascii=False, indent=1), encoding="utf-8")
+    (OUT / "hand_eval.json").write_text(json.dumps(specdata.HAND_EVAL + (specdata_shooter.HAND_EVAL_SHOOTER if args.shooter_eval else []) + (specdata_sandbox.HAND_EVAL_SANDBOX if args.sandbox_eval else []), ensure_ascii=False, indent=1), encoding="utf-8")
     stats = {
         "train": len(train), "eval": len(held), "seed": args.seed,
         "kinds": dict(Counter(e["kind"] for e in train)), "languages": dict(Counter(e["lang"] for e in train)), "kits": dict(Counter(e["kit"] for e in train)),

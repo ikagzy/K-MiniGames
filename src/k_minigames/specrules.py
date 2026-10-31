@@ -182,7 +182,7 @@ def apply_sandbox(spec: dict, description: str) -> dict:
         spec["lakes"] = True
     if re.search(r"gece\s*(?:ve|-)?\s*gunduz|gunduz\s*(?:ve|-)?\s*gece|\bdongu", text):
         spec["time"] = "cycle"
-    elif re.search(r"hep gece|surekli gece|\bkaranlik", text):
+    elif re.search(r"hep gece|surekli gece", text):   # "dark cave" is not a night
         spec["time"] = "night"
     elif re.search(r"hep gunduz|surekli gunduz", text):
         spec["time"] = "day"

@@ -12,7 +12,14 @@ import time
 from pathlib import Path
 
 import specdata
+import specdata_sandbox
 import specdata_shooter
+
+KITS = {   # per kit: how the app's messages are made for it, how a generated example is scored, how a hand-written expectation is checked
+    "platformer": (specdata._messages, specdata.score, specdata.expect_ok),
+    "shooter": (specdata_shooter.messages, specdata_shooter.score_shooter, specdata_shooter.expect_ok_shooter),
+    "sandbox": (specdata_sandbox.messages, specdata_sandbox.score_sandbox, specdata_sandbox.expect_ok_sandbox),
+}
 
 DATA = Path(__file__).resolve().parent / "data"
 
@@ -42,7 +49,7 @@ def hf_answer(model: str, adapter: str | None):
     net.eval()
 
     def ask(text, kit="platformer"):
-        messages = (specdata_shooter.messages if kit == "shooter" else specdata._messages)("create", text, {"kit": kit}, None)[:-1]
+        messages = KITS[kit][0]("create", text, {"kit": kit}, None)[:-1]
         ids = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt", return_dict=True)["input_ids"].to("cuda")
         with torch.no_grad():
             out = net.generate(ids, max_new_tokens=900, do_sample=False)
@@ -72,14 +79,14 @@ def main(argv=None) -> int:
     for example in held:
         kit = example.get("kit", "platformer")
         pred = ask(example["description"], kit)
-        scorer = specdata_shooter.score_shooter if kit == "shooter" else specdata.score
+        scorer = KITS[kit][1]
         results.append(scorer(pred, example["spec"], example["mentioned"]) | {"id": example["id"], "kit": kit})
     hand = json.loads((DATA / "hand_eval.json").read_text(encoding="utf-8"))
     hand_results = []
     for item in hand:
         kit = item.get("kit", "platformer")
         pred = ask(item["prompt"], kit)
-        met = (specdata_shooter.expect_ok_shooter if kit == "shooter" else specdata.expect_ok)(pred, item["expect"])
+        met = KITS[kit][2](pred, item["expect"])
         hand_results.append({"prompt": item["prompt"], "met": met, "all": all(met.values()) if met else pred is not None})
     valid = sum(r["valid"] for r in results) / max(1, len(results))
     report = {
