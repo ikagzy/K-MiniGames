@@ -92,7 +92,7 @@
     var ar = D.armorOf(id);
     if (ar) { pal.h = ARMOR_RGB[ar.tier]; pal.b = shade(pal.h, 0.7); return { rows: P[["helmet", "chestplate", "leggings", "boots"][ar.slot]], pal: pal }; }
     var kind = { 33: "torch", 40: "stick", 41: "coal", 42: "ingot", 43: "ingot", 44: "diamond", 20: "seeds", 21: "wheat", 23: "bread", 80: "meat", 81: "meat", 82: "meat", 83: "meat", 84: "meat", 85: "meat", 86: "meat", 87: "meat", 88: "meat", 89: "meat", 110: "meat", 111: "meat",
-                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 155: "coal", 118: "arrow", 38: "sapling", 120: "apple", 152: "ingot", 140: "fence", 143: "door", 149: "ladder", 130: "slab", 131: "slab", 132: "slab", 133: "slab", 134: "slab", 144: "stairs", 145: "stairs", 146: "stairs", 147: "stairs", 148: "stairs" }[id];
+                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 155: "coal", 159: "ingot", 160: "coal", 161: "diamond", 118: "arrow", 38: "sapling", 120: "apple", 152: "ingot", 140: "fence", 143: "door", 149: "ladder", 130: "slab", 131: "slab", 132: "slab", 133: "slab", 134: "slab", 144: "stairs", 145: "stairs", 146: "stairs", 147: "stairs", 148: "stairs" }[id];
     if (id === 116) pal.a = [100, 100, 106]; if (id === 117) pal.a = [100, 130, 70]; if (id === 115) { pal.d = [228, 224, 205]; }
     if (id === 41) pal.a = [34, 34, 38];
     if (id === 155) pal.a = [240, 140, 40];
@@ -146,6 +146,8 @@
   NAME[150] = "geçit"; COLOR[150] = [[140, 60, 210]]; NAME[151] = "kara kaya"; COLOR[151] = [[28, 20, 40]]; NAME[152] = "çakmak"; COLOR[152] = [[200, 200, 210]];
   NAME[153] = "kızıl taş"; COLOR[153] = [[122, 42, 42]]; NAME[154] = "ışık taşı"; COLOR[154] = [[250, 220, 120]];
   NAME[155] = "köz tozu"; COLOR[155] = [[240, 140, 40]];
+  NAME[156] = "lapis cevheri"; COLOR[156] = [[128, 128, 128], [40, 70, 200]]; NAME[157] = "kızıltaş cevheri"; COLOR[157] = [[128, 128, 128], [210, 30, 30]]; NAME[158] = "zümrüt cevheri"; COLOR[158] = [[128, 128, 128], [60, 210, 100]];
+  NAME[159] = "lapis"; COLOR[159] = [[40, 70, 200]]; NAME[160] = "kızıltaş tozu"; COLOR[160] = [[210, 30, 30]]; NAME[161] = "zümrüt"; COLOR[161] = [[60, 210, 100]];
   NAME[34] = "yün"; COLOR[34] = [[236, 236, 236], [226, 226, 230], [226, 226, 230]];
   D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
 
@@ -180,13 +182,13 @@
     { id: "forester", name: "Ormancı", desc: "diktiğin fidandan ağaç yetiştir", test: function (s) { return s.stats.grown >= 1; } }
   ];
   // a block can be put down: the ground and plant blocks, and the new building blocks (not tools, food or materials)
-  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 35) || id === 38 || (id >= 121 && id <= 127) || (id >= 130 && id <= 134) || id === 140 || (id >= 144 && id <= 149) || id === 151 || id === 153 || id === 154; };
+  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 35) || id === 38 || (id >= 121 && id <= 127) || (id >= 130 && id <= 134) || id === 140 || (id >= 144 && id <= 149) || id === 151 || id === 153 || id === 154 || (id >= 156 && id <= 158); };
 
   // ---- mining: how long a block takes by hand (seconds), which tool is the right one, and the lowest tier that gets something out of it ----
-  var HARD = { 151: 6, 153: 0.8, 154: 0.5, 130: 1.5, 131: 1.5, 132: 2, 133: 1.5, 134: 1.5, 135: 1.5, 136: 1.5, 137: 2, 138: 1.5, 139: 1.5, 140: 2, 141: 3, 142: 3, 144: 1.5, 145: 1.5, 146: 2, 147: 1.5, 148: 1.5, 149: 0.4, 121: 1.5, 122: 1.5, 123: 1.5, 124: 1.5, 125: 1.5, 126: 1.5, 127: 0.5, 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
-  var RIGHT = { 151: "pickaxe", 153: "pickaxe", 154: "pickaxe", 130: "pickaxe", 131: "pickaxe", 132: "axe", 133: "pickaxe", 134: "pickaxe", 135: "pickaxe", 136: "pickaxe", 137: "axe", 138: "pickaxe", 139: "pickaxe", 140: "axe", 141: "axe", 142: "axe", 144: "pickaxe", 145: "pickaxe", 146: "axe", 147: "pickaxe", 148: "pickaxe", 149: "axe", 121: "pickaxe", 122: "pickaxe", 123: "pickaxe", 124: "pickaxe", 125: "pickaxe", 126: "pickaxe", 1: "shovel", 2: "shovel", 3: "pickaxe", 4: "shovel", 5: "axe", 7: "axe", 9: "pickaxe", 10: "pickaxe", 11: "pickaxe", 12: "pickaxe", 13: "shovel", 16: "shovel",
+  var HARD = { 156: 3, 157: 3, 158: 3, 151: 6, 153: 0.8, 154: 0.5, 130: 1.5, 131: 1.5, 132: 2, 133: 1.5, 134: 1.5, 135: 1.5, 136: 1.5, 137: 2, 138: 1.5, 139: 1.5, 140: 2, 141: 3, 142: 3, 144: 1.5, 145: 1.5, 146: 2, 147: 1.5, 148: 1.5, 149: 0.4, 121: 1.5, 122: 1.5, 123: 1.5, 124: 1.5, 125: 1.5, 126: 1.5, 127: 0.5, 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
+  var RIGHT = { 156: "pickaxe", 157: "pickaxe", 158: "pickaxe", 151: "pickaxe", 153: "pickaxe", 154: "pickaxe", 130: "pickaxe", 131: "pickaxe", 132: "axe", 133: "pickaxe", 134: "pickaxe", 135: "pickaxe", 136: "pickaxe", 137: "axe", 138: "pickaxe", 139: "pickaxe", 140: "axe", 141: "axe", 142: "axe", 144: "pickaxe", 145: "pickaxe", 146: "axe", 147: "pickaxe", 148: "pickaxe", 149: "axe", 121: "pickaxe", 122: "pickaxe", 123: "pickaxe", 124: "pickaxe", 125: "pickaxe", 126: "pickaxe", 1: "shovel", 2: "shovel", 3: "pickaxe", 4: "shovel", 5: "axe", 7: "axe", 9: "pickaxe", 10: "pickaxe", 11: "pickaxe", 12: "pickaxe", 13: "shovel", 16: "shovel",
                 24: "axe", 25: "pickaxe", 26: "axe", 27: "pickaxe", 28: "pickaxe", 29: "pickaxe", 30: "pickaxe", 31: "pickaxe", 32: "pickaxe" };
-  var NEED_TIER = { 151: 0, 153: 0, 130: 0, 131: 0, 133: 0, 134: 0, 135: 0, 136: 0, 138: 0, 139: 0, 144: 0, 145: 0, 147: 0, 148: 0, 121: 0, 122: 0, 123: 0, 124: 0, 125: 0, 126: 0, 3: 0, 9: 0, 10: 1, 11: 2, 12: 2, 25: 0, 27: 0, 28: 0, 29: 0, 30: 1, 31: 2, 32: 2 };   // pickaxe blocks drop nothing without a good enough pickaxe
+  var NEED_TIER = { 156: 1, 157: 2, 158: 2, 151: 0, 153: 0, 130: 0, 131: 0, 133: 0, 134: 0, 135: 0, 136: 0, 138: 0, 139: 0, 144: 0, 145: 0, 147: 0, 148: 0, 121: 0, 122: 0, 123: 0, 124: 0, 125: 0, 126: 0, 3: 0, 9: 0, 10: 1, 11: 2, 12: 2, 25: 0, 27: 0, 28: 0, 29: 0, 30: 1, 31: 2, 32: 2 };   // pickaxe blocks drop nothing without a good enough pickaxe
   var SPEED = [2, 4, 6, 12, 8];   // wood, stone, iron, gold, diamond (gold is fast but soft: it only reaches tier 1 in what it may mine)
   var HARVEST = [0, 1, 2, 0, 3];   // the level a tool tier counts for when asked "is it good enough": gold only counts as wood
   D.rightTool = function (b) { return RIGHT[b] || null; };
@@ -207,6 +209,9 @@
     }
     if (b === ID.STONE) return [[ID.COBBLE, 1]];
     if (b === ID.COAL_ORE) return [[ID.COAL, 1]];
+    if (b === 156) return [[159, 5]];   // lapis, kızıltaş tozu and zümrüt: the ore gives its stuff
+    if (b === 157) return [[160, 4]];
+    if (b === 158) return [[161, 1]];
     if (b === ID.DIAMOND_ORE) return [[ID.DIAMOND, 1]];
     if (b === ID.GLASS || b === ID.LEAVES || b === 150) return [];
     if (b === ID.GRASS || b === ID.FARMLAND) return [[ID.DIRT, 1]];
@@ -254,7 +259,7 @@
   add("çit", "table", [[ID.PLANKS, 4], [ID.STICK, 2]], [140, 3]);
   add("kapı", "table", [[ID.PLANKS, 6]], [143, 3]);
   add("merdiven", "table", [[ID.STICK, 7]], [149, 3]);
-  add("kara kaya", "table", [[ID.COBBLE, 2], [41, 1]], [151, 1]);   // the frame of a portal to the Kor Diyarı
+  add("kara kaya", "table", [[ID.COBBLE, 4], [41, 1]], [151, 4]);   // the frame of a portal to the Kor Diyarı
   add("çakmak", "table", [[42, 1], [41, 1]], [152, 1]);
   add("ışık taşı", "table", [[155, 2]], [154, 2]);   // köz tozu comes from the creatures of the Kor Diyarı
   for (var ar = 0; ar < 4; ar++) {

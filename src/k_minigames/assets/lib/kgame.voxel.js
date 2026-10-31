@@ -10,7 +10,7 @@
   var K = root.K;
   var D = K.voxeldata, NAMES = D.NAME;
   var AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6, PLANKS = 7, GLASS = 8, COAL = 9, IRON = 10, GOLD = 11, DIAMOND = 12, SNOW = 13, WATER = 14, CACTUS = 15;
-  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40, FENCE = 140, DOOR_LO = 141, DOOR_HI = 142, DOOR_ITEM = 143, LADDER = 149, PORTAL = 150, OBSIDIAN = 151, LIGHTER = 152, NETHERRACK = 153, GLOWSTONE = 154;
+  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40, FENCE = 140, DOOR_LO = 141, DOOR_HI = 142, DOOR_ITEM = 143, LADDER = 149, LAPIS_ORE = 156, REDSTONE_ORE = 157, EMERALD_ORE = 158, PORTAL = 150, OBSIDIAN = 151, LIGHTER = 152, NETHERRACK = 153, GLOWSTONE = 154;
   var TABLE = 24, FURNACE = 25, TORCH = 33, COAL_ITEM = 41;   // (the coal you carry: COAL above is the ore in the ground)   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
   var BIOMES = { forest: { top: GRASS, trees: 1, amp: 5 }, plains: { top: GRASS, trees: 0.2, amp: 3 }, desert: { top: SAND, trees: 0.6, amp: 4 }, snow: { top: SNOW, trees: 0.5, amp: 6 } };
   var SIZES = { small: 8, medium: 16, large: 32 };   // chunks on a side
@@ -86,6 +86,34 @@
         }
       }
     }
+    // ores lie in veins (blobs), at the depths of the 1.8.9 game scaled to a world 32 high: coal and iron nearly everywhere, kızıltaş and gold low,
+    // lapis lower, diamonds only at the very bottom next to the lava; the zümrüt (emerald) is single and only under tall hills
+    var ORE_VEINS = [[COAL, 5, 1, 2.4, 1, 15], [IRON, 4, 1, 1.9, 1, 13], [REDSTONE_ORE, 2, 1, 1.7, 1, 6], [GOLD, 2, 0.7, 1.5, 1, 8], [LAPIS_ORE, 1, 0.8, 1.6, 2, 9], [DIAMOND, 1, 0.8, 1.4, 1, 5]];
+    var isRock = function (b) { return b === STONE || (b >= 121 && b <= 123); };
+    function placeVeins(blocks, hm, cx, cz, at) {
+      if (ores <= 0) return;
+      var rich = 0.5 + ores * 0.5, tallest = 0;
+      for (var i = 0; i < hm.length; i++) if (hm[i] > tallest) tallest = hm[i];
+      ORE_VEINS.forEach(function (v, vi) {
+        var attempts = Math.max(1, Math.round(v[1] * rich * 0.67));
+        for (var a = 0; a < attempts; a++) {
+          if (hash(seed + 300 + vi, cx, a, cz) > v[2]) continue;
+          var lx0 = 3 + Math.floor(hash(seed + 310 + vi, cx, a, cz) * 10), lz0 = 3 + Math.floor(hash(seed + 320 + vi, cz, a, cx) * 10);
+          var y0 = v[4] + Math.floor(hash(seed + 330 + vi, cx + a, 7, cz) * (v[5] - v[4] + 1)), r = v[3] * (0.75 + 0.25 * hash(seed + 350 + vi, a, cx, cz));
+          for (var dx = -3; dx <= 3; dx++) for (var dy = -3; dy <= 3; dy++) for (var dz = -3; dz <= 3; dz++) {
+            if (dx * dx + dy * dy + dz * dz > r * r || hash(seed + 340 + vi, (cx * CH + lx0 + dx) * 3 + dy, dy + 9, cz * CH + lz0 + dz) > 0.82) continue;
+            var yy = y0 + dy; if (yy < 1 || yy >= SY) continue;
+            var cell = at(lx0 + dx, yy, lz0 + dz);
+            if (isRock(blocks[cell])) blocks[cell] = v[0];
+          }
+        }
+      });
+      if (tallest >= 14) for (var e = 0; e < 3; e++) {   // emeralds: single blocks inside the rock under tall ground
+        if (hash(seed + 360, cx, e, cz) > 0.5) continue;
+        var ex = 2 + Math.floor(hash(seed + 361, cx, e, cz) * 12), ez = 2 + Math.floor(hash(seed + 362, cz, e, cx) * 12), top = hm[ez * CH + ex], ey = 4 + Math.floor(hash(seed + 363, cx, e, cz) * Math.max(1, top - 8));
+        if (top >= 14 && isRock(blocks[at(ex, ey, ez)])) blocks[at(ex, ey, ez)] = EMERALD_ORE;
+      }
+    }
     function gen(cx, cz) {
       var idx = cz * N + cx, blocks = new Uint8Array(CH * SY * CH), hm = new Int16Array(CH * CH);
       var at = function (lx, y, lz) { return (y * CH + lz) * CH + lx; };
@@ -102,15 +130,9 @@
         for (var wy = h + 1; wy <= SEA; wy++) blocks[at(lx, wy, lz)] = WATER;
         for (y = 3; y < h - 2; y++) {
           if (caves > 0 && noise3(seed + 3, x, y, z, 7) > 0.78 - caves * 0.045) { blocks[at(lx, y, lz)] = y <= 5 ? LAVA : AIR; continue; }   // the lowest caves are lava lakes
-          if (ores > 0 && (blocks[at(lx, y, lz)] === STONE || (blocks[at(lx, y, lz)] >= 121 && blocks[at(lx, y, lz)] <= 123))) {
-            var r = hash(seed + 11, x, y, z), rich = 0.5 + ores * 0.5;
-            if (y < 6 && r < 0.004 * rich) blocks[at(lx, y, lz)] = DIAMOND;
-            else if (y < 10 && r < 0.010 * rich) blocks[at(lx, y, lz)] = GOLD;
-            else if (y < 16 && r < 0.022 * rich) blocks[at(lx, y, lz)] = IRON;
-            else if (r < 0.04 * rich) blocks[at(lx, y, lz)] = COAL;
-          }
         }
       }
+      if (dim === "over") placeVeins(blocks, hm, cx, cz, at);
       for (lx = 2; lx < CH - 2; lx++) for (lz = 2; lz < CH - 2; lz++) {   // trees stay inside their chunk (leaves reach 2 blocks)
         var gx = cx * CH + lx, gz = cz * CH + lz, ht = hm[lz * CH + lx], ground = blocks[at(lx, ht, lz)];
         if (trees <= 0 || ht <= SEA + 1 || hash(seed + 5, gx, 0, gz) > trees * 0.018) continue;
@@ -195,7 +217,7 @@
     for (var v = 0; v < 16; v++) for (var u = 0; u < 16; u++) {
       var n = hash(id * 17 + face, u, 0, v), c = base, k = 0.86 + n * 0.28;
       if (id === 1 && face === 1 && v < 4) c = COLORS[1][0];
-      if ((id >= 9 && id <= 12) && set.length > 1 && hash(id + 90, u >> 1, 3, v >> 1) > 0.78) c = set[1];
+      if (((id >= 9 && id <= 12) || (id >= 156 && id <= 158)) && set.length > 1 && hash(id + 90, u >> 1, 3, v >> 1) > 0.78) c = set[1];
       if (id === 5 && face === 1 && u % 4 === 0) k *= 0.8;
       if (id === 7 && v % 4 === 0) k *= 0.75;
       if (id === 8 && (u === 0 || v === 0 || u === 15 || v === 15)) k = 1.1;
@@ -525,7 +547,11 @@
         Object.keys(inv.count).forEach(function (k) { var a = D.armorOf(+k); if (a && inv.count[k] > 0 && a.points > best[a.slot]) best[a.slot] = a.points; });
         return best[0] + best[1] + best[2] + best[3];
       };
-      state.hurtPlayer = function (n, why) { return state.hurt(Math.max(1, Math.round(n * (1 - Math.min(20, state.armorPoints()) * 0.04))), why); };   // each armour point takes off 4 percent
+      state.hurtPlayer = function (n, why) {
+        var amount = Math.max(1, Math.round(n * (1 - Math.min(20, state.armorPoints()) * 0.04)));
+        if (state.blocking && !state.creative) { amount = Math.max(1, Math.round(amount * 0.35)); K.sfx("click"); state.useTool("sword"); }   // a raised sword takes most of the blow
+        return state.hurt(amount, why);
+      };   // each armour point takes off 4 percent
       state.explode = function (x, y, z) {
         var p = state.p, dist = Math.sqrt((p.x - x) * (p.x - x) + (p.y + 0.9 - y) * (p.y + 0.9 - y) + (p.z - z) * (p.z - z));
         for (var bx = -3; bx <= 3; bx++) for (var by = -3; by <= 3; by++) for (var bz = -3; bz <= 3; bz++) {
@@ -619,6 +645,7 @@
         var gain = D.FOOD[id];
         if (!gain || state.food >= 20 || (!state.creative && !(inv.count[id] > 0))) return false;
         state.food = Math.min(20, state.food + gain);
+        state.heal.left += Math.round(gain * 0.8); state.heal.rate = 0.35 + gain * 0.1;   // the better the food, the more it heals and the faster
         if (!state.creative) inv.count[id]--;
         if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1);
         K.sfx("coin"); state.stats.eaten++; return true;
@@ -830,6 +857,29 @@
         if (state.portalT >= 1.2) { var code = metaOf(fx, cellY, fz) >> 2; state.travel(DIM_BY_CODE[code] || "over"); }
       };
 
+      // ---- eating and blocking: a right click held on food eats it in a moment (and heals faster the better the food), on a sword it raises it as a shield ----
+      state.eating = null; state.blocking = false; state.heal = { left: 0, rate: 0, acc: 0 };
+      state.rightDown = function () {
+        var t = target(), id = state.selectedBlock(), interact = t && (t.b === BED || t.b === TABLE || t.b === FURNACE || t.b === DOOR_LO || t.b === DOOR_HI || (state.interactive && state.interactive(t.b)));
+        if (!interact && D.FOOD[id] && state.food < 20 && (state.creative || inv.count[id] > 0)) { state.eating = { id: id, t: 0, bite: 0 }; return true; }
+        var tool = D.toolOf(id);
+        if (!interact && tool && tool.kind === "sword") { state.blocking = true; return true; }
+        return state.placeBlock();
+      };
+      state.rightUp = function () { state.eating = null; state.blocking = false; };
+      state.useUpdate = function (dt) {
+        if (state.menu.open || state.uiOpen()) { state.eating = null; state.blocking = false; return; }
+        var e = state.eating;
+        if (e) {
+          if (state.selectedBlock() !== e.id || state.food >= 20) { state.eating = null; return; }
+          e.t += dt; e.bite += dt;
+          if (e.bite >= 0.3) { e.bite = 0; K.sfx("click"); }   // a bite every moment
+          if (e.t >= 1.6) { state.eat(e.id); state.eating = null; }
+        }
+        var h = state.heal;
+        if (h.left > 0 && state.health < 20) { h.acc += dt * h.rate; while (h.acc >= 1 && h.left > 0 && state.health < 20) { state.health++; h.left--; h.acc--; } }
+        else if (state.health >= 20) { h.left = 0; h.acc = 0; }
+      };
       // ---- the inventory screen: where the cells are, which one the mouse is over, moving an item to the chosen slot ----
       state.invScroll = 0; state.lastClicks = K.mouse ? K.mouse.clicks : 0;
       function invLayout() { var x0 = Math.floor(g.width / 2 - 190), y0 = 40, cell = 40, rows = 4; return { x0: x0, y0: y0, cell: cell, rows: rows, w: 380, h: 34 + rows * cell + 18 + cell + 24, gridY: y0 + 34, barY: y0 + 34 + rows * cell + 18 }; }
@@ -909,6 +959,9 @@
       state.vitals = function (dt) {
         var p = state.p;
         state.achT += dt; if (state.achT >= 0.5) { state.achT = 0; state.checkAch(); }
+        state.hinted = state.hinted || {};   // the way to another world is told once, when the first piece is in your hands
+        if (state.ever[151] && !state.hinted.frame) { state.hinted.frame = true; state.say("Geçit: kara kayadan 4 geniş 5 yüksek çerçeve yap (köşeler boş), içi boş kalsın. Cam çerçeve = Gök Adaları."); }
+        else if (state.ever[152] && !state.hinted.lighter) { state.hinted.lighter = true; state.say("Çakmak: çerçeveye bakıp sağ tıkla, geçit açılır. İçine girip bekle."); }
         var inLava = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA || get(Math.floor(p.x), Math.floor(p.y + 1), Math.floor(p.z)) === LAVA;
         if (inLava) { state.lavaT = (state.lavaT || 0) + dt; if (state.lavaT >= 0.5) { state.lavaT = 0; state.hurt(4, "lav"); } } else state.lavaT = 0;
         state.hungerT += dt * (K.key("Control") ? 1.8 : 1);
@@ -930,7 +983,7 @@
         var f = (K.key("w") ? 1 : 0) - (K.key("s") ? 1 : 0), r = (K.key("d") ? 1 : 0) - (K.key("a") ? 1 : 0);
         var sneak = K.key("Shift") && !flying, run = K.key("Control") && !flying && !sneak;   // Ctrl runs, Shift sneaks (slower, and you do not walk off an edge)
         state.sneaking = sneak;
-        var speed = 4.3 * state.sprintMul * (run ? 1.5 : sneak ? 0.35 : flying ? 1.6 : 1);
+        var speed = 4.3 * state.sprintMul * (run ? 1.5 : sneak ? 0.35 : flying ? 1.6 : 1) * (state.blocking || state.eating ? 0.6 : 1);
         var len = Math.sqrt(f * f + r * r) || 1;
         var sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
         var wx = (sin * f + cos * r) / len * speed, wz = (-cos * f + sin * r) / len * speed;
@@ -1095,7 +1148,15 @@
         if (!state.showInv && !state.showCraft && !state.showAch && !state.showHelp) {   // the thing in your hand, bottom right: it sways when you walk and swings when you dig
           var heldId = state.selectedBlock(), sp = Math.min(1, Math.sqrt(state.p.vx * state.p.vx + state.p.vz * state.p.vz) / 4), digging = state.mining && state.mining.progress > 0;
           var hx = g.width - 290 + Math.sin(state.phase * 7) * 5 * sp, hy = g.height - 150 + Math.abs(Math.cos(state.phase * 7)) * 6 * sp + (digging ? Math.sin(state.phase * 16) * 14 : 0), hs = 104;
-          if (heldId) drawIcon(c, heldId, hx, hy, hs);
+          if (state.eating && heldId) {   // eating: the food comes up to the mouth, shrinks bite by bite and crumbs fly
+            var ee = state.eating, eat01 = ee.t / 1.6, bob = Math.abs(Math.sin(ee.t * 18)) * 12, size = hs * (1 - 0.45 * eat01);
+            drawIcon(c, heldId, g.width / 2 - size / 2 + 40, g.height - 200 + bob + eat01 * 30, size);
+            var fc = (COLORS[heldId] || [[200, 160, 80]])[0]; c.fillStyle = "rgb(" + fc[0] + "," + fc[1] + "," + fc[2] + ")";
+            for (var cr = 0; cr < 5; cr++) { var seed2 = Math.floor(ee.t * 6) * 7 + cr; c.fillRect(g.width / 2 + 40 + ((seed2 * 37) % 50) - 25, g.height - 150 + ((seed2 * 53) % 40) + (ee.t * 60) % 20, 4, 4); }
+            c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(g.width / 2 - 30, g.height / 2 + 36, 60, 5); c.fillStyle = "#a5d6a7"; c.fillRect(g.width / 2 - 30, g.height / 2 + 36, 60 * eat01, 5);
+          } else if (state.blocking && heldId) {   // a raised sword: held across in front of you
+            c.save(); c.translate(g.width / 2 + 30, g.height - 90); c.rotate(-0.7); drawIcon(c, heldId, -70, -90, 150); c.restore();
+          } else if (heldId) drawIcon(c, heldId, hx, hy, hs);
           else { c.fillStyle = "#d9a27a"; c.fillRect(hx + 40, hy + 30, 44, 84); c.fillStyle = "#b8835e"; c.fillRect(hx + 40, hy + 96, 44, 18); }   // an empty hand
         }
         var all = state.hotbar(), start = state.windowStart(), bar = all.slice(start, start + 9), slot = 38, x0 = g.width / 2 - 9 * slot / 2, y0 = g.height - slot - 8;
@@ -1211,9 +1272,9 @@
         document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.menu.open) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });
         canvas.addEventListener("mousedown", function (e) {
           if (state.menu.open || state.uiOpen()) return;
-          if (e.button === 0) mouseLeft = true; else if (e.button === 2) state.placeBlock();
+          if (e.button === 0) mouseLeft = true; else if (e.button === 2) state.rightDown();
         });
-        document.addEventListener("mouseup", function (e) { if (e.button === 0) mouseLeft = false; });
+        document.addEventListener("mouseup", function (e) { if (e.button === 0) mouseLeft = false; else if (e.button === 2) state.rightUp(); });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
         canvas.addEventListener("wheel", function (e) { e.preventDefault(); if (state.showCraft) state.menuMove(e.deltaY > 0 ? 1 : -1); else if (state.showInv) state.invScroll = Math.max(0, state.invScroll + (e.deltaY > 0 ? 1 : -1)); else state.select(state.slot + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
       }
@@ -1223,7 +1284,7 @@
       g.scene("play", {
         update: function (game, dt) {
           if (state.menu.open) { state.menuUpdate(dt); return; }
-          state.invUpdate();
+          state.invUpdate(); state.useUpdate(dt);
           if (state.uiOpen() && typeof document !== "undefined" && document.pointerLockElement && document.exitPointerLock) { try { document.exitPointerLock(); } catch (e) { /* not locked */ } }   // a screen with items needs the mouse
           once("Escape", function () { if (state.uiOpen()) state.closeUi(); else state.openMenu("pause"); });
           state.step(dt);

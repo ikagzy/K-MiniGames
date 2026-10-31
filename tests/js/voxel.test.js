@@ -1080,8 +1080,8 @@ test('the Kor Diyarı and the Gök Adaları are made from the seed: a red cave w
 test('a portal: the frame needs the right shape, a çakmak lights it, standing in it takes you to the other world, which has a way back and keeps its own changes', () => {
   const K = fresh(); const D = K.voxeldata;
   const { s, cx, cz, gy } = yard(K, 77);
-  s.addItem(27, 2); s.addItem(41, 2); s.addItem(42, 1);
-  assert.strictEqual(s.craft('kara kaya'), true); assert.strictEqual(s.craft('çakmak'), true); assert.strictEqual(s.inv.count[151], 1); assert.strictEqual(s.inv.count[152], 1);
+  s.addItem(27, 4); s.addItem(41, 2); s.addItem(42, 1);
+  assert.strictEqual(s.craft('kara kaya'), true); assert.strictEqual(s.craft('çakmak'), true); assert.strictEqual(s.inv.count[151], 4); assert.strictEqual(s.inv.count[152], 1);
   assert.ok(D.hasIcon(152) && D.isBlock(151) && D.isBlock(153) && D.isBlock(154) && !D.isBlock(150));
   // a frame with a hole in the ring does not light
   const ix = cx, iy = gy + 1, iz = cz;
@@ -1245,4 +1245,57 @@ test('Shift sneaks: slower, the eye is lower, and you do not walk off an edge; C
   assert.ok(s.p.x < cx + 1.4 && s.p.y > gy + 1, 'stayed on the edge: ' + s.p.x + ',' + s.p.y);
   stand(s, cx + 0.5, gy + 1.01, cz + 0.5); run(s, 0.3);
   K.press('w'); run(s, 2); K.press('w', false); assert.ok(s.p.x > cx + 1.5, 'without Shift you walk off');
+});
+
+test('eating takes a moment with the button held, stops when let go, and the better the food the more and the faster it heals', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const { s } = yard(K, 95);
+  s.addItem(83, 3); s.addItem(23, 3); s.select(s.hotbar().indexOf(83));
+  s.food = 6; s.health = 10;
+  s.rightDown(); assert.ok(s.eating, 'it starts');
+  run(s, 0.8); assert.strictEqual(s.food, 6, 'not yet'); assert.ok(s.eating.t > 0.7);
+  s.rightUp(); assert.strictEqual(s.eating, null, 'let go: nothing eaten'); assert.strictEqual(s.inv.count[83], 3);
+  s.rightDown(); run(s, 1.8);
+  assert.strictEqual(s.food, 6 + D.FOOD[83]); assert.strictEqual(s.inv.count[83], 2); assert.strictEqual(s.eating, null);
+  assert.ok(s.heal.left > 0, 'healing is queued'); const h0 = s.health; run(s, 1);
+  const steak = s.health - h0; assert.ok(steak >= 1, 'steak heals within a second: ' + steak);
+  // bread heals less and slower than steak
+  const quick = (id) => { const t = fresh(); const y = yard(t, 96).s; y.addItem(id, 1); y.select(y.hotbar().indexOf(id)); y.food = 4; y.health = 4; const start = y.health; y.rightDown(); run(y, 1.8); run(y, 3); return y.health - start; };   // 3 s after the last bite: the better food has healed more already
+  assert.ok(quick(83) > quick(23), 'cooked steak heals more than bread');
+  s.food = 20; s.rightDown(); assert.strictEqual(s.eating, null, 'a full stomach does not eat');
+  const empty = yard(K, 97).s; empty.rightDown(); assert.strictEqual(empty.eating, null);
+});
+
+test('rabbits drop meat every time, which cooks and can be eaten; a raised sword takes most of a blow', () => {
+  const K = fresh(); const D = K.voxeldata; const M = K.voxelmobs;
+  for (let i = 0; i < 40; i++) assert.ok(M.drops('rabbit', Math.random).some(([id, n]) => id === 110 && n >= 1), 'meat each time');
+  assert.ok(D.FOOD[110] > 0 && D.FOOD[111] > D.FOOD[110]); assert.ok(D.recipeIndex('eritme: tavşan eti') >= 0);
+  const { s } = yard(K, 98);
+  s.addItem(D.toolId('sword', 1), 1); s.select(s.hotbar().indexOf(D.toolId('sword', 1)));
+  s.health = 20; s.hurtPlayer(10, 'test'); const open = 20 - s.health;
+  s.health = 20; s.rightDown(); assert.strictEqual(s.blocking, true); s.hurtPlayer(10, 'test'); const shielded = 20 - s.health;
+  assert.ok(shielded * 2 < open, 'the blow is much smaller: ' + shielded + ' against ' + open);
+  s.rightUp(); assert.strictEqual(s.blocking, false);
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+});
+
+test('ores lie in veins at the depths of the 1.8.9 game: coal and iron are common, diamonds only at the very bottom, lapis and kızıltaş low; the emerald is rare and single', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const w = K.voxel.makeWorld({ seed: 4, biome: 'snow', size: 'medium', caves: 2, ores: 2, lakes: true, trees: 1 }); w.ensureAround(128, 128, 16);
+  const depth = {}; let rock = 0;
+  for (let x = 0; x < 256; x += 1) for (let z = 0; z < 256; z += 1) for (let y = 1; y < 32; y++) { const b = w.get(x, y, z); if (b === 3 || (b >= 121 && b <= 123)) rock++; if ([9, 10, 11, 12, 156, 157, 158].includes(b)) { depth[b] = depth[b] || []; depth[b].push(y); } }
+  const share = (id) => (depth[id] || []).length / rock;
+  assert.ok(share(9) > 0.015, 'coal is common: ' + share(9)); assert.ok(share(10) > 0.01, 'iron is common: ' + share(10));
+  assert.ok(share(11) > 0.002 && share(12) > 0.0008 && share(156) > 0.0008 && share(157) > 0.004, 'the rare ones are still found');
+  assert.ok(share(9) > share(10) && share(10) > share(11) && share(11) > share(12), 'rarer with the value');
+  assert.ok(Math.max(...depth[12]) <= 6, 'diamonds only at the very bottom'); assert.ok(Math.max(...depth[157]) <= 7); assert.ok(Math.max(...depth[156]) <= 10); assert.ok(Math.max(...depth[11]) <= 9);
+  assert.ok(Math.max(...depth[10]) > Math.max(...depth[12]), 'iron lies higher than diamonds');
+  assert.ok((depth[158] || []).length < 100, 'emeralds are rare');
+  for (const id of [156, 157, 158]) assert.ok(D.isBlock(id) && D.hasIcon(id) && D.rightTool(id) === 'pickaxe');
+  assert.deepStrictEqual(D.drops(156, (k) => (k === 'pickaxe' ? 1 : -1)), [[159, 5]], 'a stone pickaxe takes lapis');
+  assert.deepStrictEqual(D.drops(157, (k) => (k === 'pickaxe' ? 1 : -1)), [], 'kızıltaş needs an iron pickaxe');
+  assert.deepStrictEqual(D.drops(157, (k) => (k === 'pickaxe' ? 2 : -1)), [[160, 4]]); assert.deepStrictEqual(D.drops(158, (k) => (k === 'pickaxe' ? 2 : -1)), [[161, 1]]);
+  for (const id of [159, 160, 161]) assert.ok(D.hasIcon(id) && D.NAME[id]);
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 4 }, size: 'small', trees: 0, time: 'day', ores: 0 }); run(s, 1);
+  s.world.ensureAround(64, 64, 8); assert.strictEqual(s.world.count(12) + s.world.count(10) + s.world.count(9), 0, 'ores: 0 means none');
 });

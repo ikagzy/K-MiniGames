@@ -15,7 +15,7 @@
     pig: { name: "domuz", kind: "passive", hp: 10, w: 0.9, h: 0.9, speed: 1.3, drops: [[DROP.RAW_PORK, [1, 3]]] },
     sheep: { name: "koyun", kind: "passive", hp: 8, w: 0.9, h: 1.3, speed: 1.2, drops: [[DROP.WOOL, [1, 1]], [DROP.RAW_MUTTON, [1, 2]]] },
     chicken: { name: "tavuk", kind: "passive", hp: 4, w: 0.4, h: 0.7, speed: 1.1, drops: [[DROP.RAW_CHICKEN, [1, 1]], [DROP.FEATHER, [0, 2]]] },
-    rabbit: { name: "tavşan", kind: "passive", hp: 3, w: 0.4, h: 0.5, speed: 2.2, drops: [[DROP.RAW_RABBIT, [0, 1]]] },
+    rabbit: { name: "tavşan", kind: "passive", hp: 3, w: 0.4, h: 0.5, speed: 2.2, drops: [[DROP.RAW_RABBIT, [1, 2]], [DROP.LEATHER, [0, 1]]] },
     zombie: { name: "zombi", kind: "hostile", hp: 20, w: 0.6, h: 1.8, speed: 1.9, dmg: 3, burns: true, drops: [[DROP.ROTTEN, [0, 2]]] },
     skeleton: { name: "iskelet", kind: "hostile", hp: 20, w: 0.6, h: 1.8, speed: 1.6, ranged: true, burns: true, drops: [[DROP.BONE, [0, 2]], [DROP.ARROW, [0, 2]]] },
     bomber: { name: "patlayıcı", kind: "hostile", hp: 20, w: 0.6, h: 1.7, speed: 1.7, explode: true, drops: [[DROP.GUNPOWDER, [0, 2]]] },
