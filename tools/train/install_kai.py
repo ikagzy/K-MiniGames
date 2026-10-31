@@ -35,6 +35,9 @@ def main(argv=None) -> int:
     if not adapter.is_dir() or not python.exists() or not convert.exists() or BASE is None:
         print("missing:", [str(p) for p in (adapter, python, convert) if not p.exists()] + ([] if BASE else ["the base model in the Hugging Face cache"]))
         return 1
+    if "K-MiniGames patch" not in convert.read_text(encoding="utf-8"):   # without it the GGUF gets rope base 10000 instead of 1000000 and the model is badly wrong
+        print("convert_hf_to_gguf.py lacks the rope_theta patch (see docs/DEVIR-NOTU.md, k-ai Ollama kurulumu); not converting.")
+        return 1
     cpu = {"CUDA_VISIBLE_DEVICES": "", "HF_HUB_OFFLINE": "1", "PYTHONIOENCODING": "utf-8", "NO_LOCAL_GGUF": "1"}
     run([python, ROOT / "tools/train/merge_adapter.py", "--model", BASE, "--adapter", adapter, "--out", merged], cpu)
     run([python, "-I", convert, merged, "--outfile", gguf, "--outtype", "q8_0"], cpu)

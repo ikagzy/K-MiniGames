@@ -101,3 +101,23 @@ Ollama üzerinde ölçüm (117 üretilmiş + 32 elle yazılmış tarif):
 | v3 + onarım + kurallar | %93 | 0,78 | 0,72 / 0,87 |
 
 Karar: uygulamada `game_model` = `k-ai-v2` (kurallarla en iyisi). Ham v3 uygulamaya konamaz (PyTorch gerektirir); llama.cpp'li v3 de v2+kurallardan iyi değil ve uygulamaya bağlı değil.
+
+## ÇÖZÜLDÜ: Ollama'da bozulmanın sebebi (rope_theta)
+Sebep: transformers 5.x, birleştirilmiş modelin config'ine rope tabanını `rope_parameters.rope_theta` olarak yazıyor; llama.cpp b6000 dönüştürme
+betiği yalnızca `rope_theta` okuyor ve bulamayınca **10000** yazıyordu (model 1.000.000 ile eğitildi). llama.cpp günlüğünde `freq_base_train = 10000`
+görünüyordu. Konumlar yanlış kodlandığı için küçük hatalar birikiyor, özet bozuluyordu. v1, v2 ve v3'ün hepsi etkilenmişti. Seed, sıkıştırma,
+Ollama, önbellek, ceza: hiçbiri sebep değildi (hepsi elendi; HF `generate`'in sessizce `repetition_penalty 1.1` uyguladığı da bulundu ama doğruluğu değiştirmiyor).
+Düzeltme: `<train env>/llamacpp/convert_hf_to_gguf.py` içindeki `load_hparams`'a "K-MiniGames patch" eklendi (rope_parameters'tan rope_theta kopyalanıyor);
+`install_kai.py` yama yoksa dönüştürmeyi reddediyor. Doğrulama: aynı istemde HF ve llama.cpp olasılıkları 0,01 içinde aynı (öncesinde 0,5-11 fark).
+
+Düzeltilmiş GGUF ile Ollama ölçümü (117 üretilmiş + 32 elle yazılmış tarif):
+
+| model / yol | geçerli | doğruluk | elle yazılmış hepsi / alan |
+|---|---|---|---|
+| v2 ham Ollama (onarım ve kural yok) | %100 | 0,925 | 0,688 / 0,851 |
+| v2 uygulama (onarım + kurallar) | %100 | 0,961 | 0,906 / 0,959 |
+| v3 ham Ollama | %100 | 0,972 | 0,875 / 0,932 |
+| **v3 uygulama (onarım + kurallar)** | %100 | **0,969** | **0,938 / 0,973** |
+
+Ham Ollama sayıları HF ölçümleriyle birebir aynı. Uygulamada `game_model` = `k-ai-v3`. Onarım ve kurallar katmanı kaldı (hâlâ +0,03-0,06 ekliyor).
+Not: v3'ün elle yazılmış tarif artışının bir kısmı "bol" ve yazılı sayı düzeltmelerinden. Önceki "Ollama'da v3 v2'den kötü" ölçümleri hatalı GGUF'a aitti, geçersiz.
