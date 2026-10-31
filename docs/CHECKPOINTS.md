@@ -72,3 +72,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-63 | 2026-10-28 | k-ai v1 Ollama'ya GGUF ile kuruldu, uygulamada Bob'un modeli yapıldı (game_model), install_kai.py, exe yeniden derlendi; v2 eğitimi sürüyor | 4259461 |
 | CP-64 | 2026-10-28 | k-ai v2 eğitildi ve ölçüldü (HF'de yeni özellikler %100, genel 0,98); Ollama'da v2 bozuluyor (açık sorun); k-ai için şemasız çağrı; devlog | 34b738c |
 | CP-65 | 2026-10-28 | v2 sorunu Ollama'da değil: aynı GGUF llama.cpp'de de bozuk (elle yazılmış 0,41); eğitimsiz 14B elle yazılmış 0,44 (k-ai v2 0,69) | a722418 |
+| CP-66 | 2026-10-28 | v2 sorununun sebebi bulundu: öğrenilemeyen rastgele seed rakamları (dönüştürme bozuk değil); seed artık modele yazdırılmıyor, uygulama dolduruyor; v3 eğitimi bekliyor | b67ba09 |
