@@ -321,7 +321,7 @@ class Generator:
             spec = kits.parse_spec(answer, kit)
         except kits.SpecError as exc:
             raise GenerationError(str(exc)) from exc
-        return kits.fill_seeds(spec)
+        return kits.repair_spec(spec, kit)
 
     def _chat_schema(self, messages: list[dict], schema, cancel) -> str:
         extra = {"keep_alive": self.keep_alive} if self.keep_alive else {}

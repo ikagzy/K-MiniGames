@@ -85,9 +85,19 @@ def test_the_schema_bounds_every_list_and_string_so_a_model_cannot_ramble_foreve
     assert props["title"]["maxLength"] <= 60 and props["world"]["maxLength"] <= 10
 
 
-def test_fill_seeds_gives_every_level_the_campaign_and_the_music_a_seed_without_touching_the_ones_there():
-    spec = {"kit": "platformer", "generate": [{"width": 60}, {"seed": 5}], "campaign": {"count": 6}, "musicStyle": {"mood": "calm", "seed": 0}}
-    out = kits.fill_seeds(spec)
-    assert 0 <= out["generate"][0]["seed"] <= 9999 and out["generate"][1]["seed"] == 5
-    assert 0 <= out["campaign"]["seed"] <= 9999 and out["musicStyle"]["seed"] == 0
-    assert kits.fill_seeds({"kit": "platformer"}) == {"kit": "platformer"}
+def test_repair_spec_keeps_what_the_schema_allows_and_picks_every_seed_itself():
+    spec = {"kit": "x", "theme": "lava", "features": ["ice", "ice", "spring"], "hero": {"lives": 99, "jump": "high", "extra": 1},
+            "campaign": {"count": 40, "seed": 5}, "musicStyle": {"mood": "calm", "seed": 9999},
+            "generate": [{"width": 5000, "pits": 3, "seed": 7}], "bogus": True}
+    out = kits.repair_spec(spec, "platformer")
+    assert out["kit"] == "platformer" and "bogus" not in out and "theme" not in out
+    assert out["features"] == ["ice", "spring"]
+    assert out["hero"]["lives"] <= 9 and "extra" not in out["hero"] and "jump" not in out["hero"]
+    assert out["campaign"]["count"] == 20 and out["generate"][0]["width"] == 160 and out["generate"][0]["pits"] == 3
+    seeds = [out["generate"][0]["seed"], out["campaign"]["seed"], out["musicStyle"]["seed"]]
+    assert all(0 <= x <= 9999 for x in seeds) and seeds != [7, 5, 9999]
+
+
+def test_repair_spec_gives_a_spec_without_levels_one_default_level():
+    out = kits.repair_spec({"kit": "platformer", "theme": "sky"}, "platformer")
+    assert out["generate"] == [{"seed": out["generate"][0]["seed"]}]

@@ -325,6 +325,6 @@ def test_a_spec_followed_by_more_text_or_a_repeat_still_gives_the_first_spec():
     from k_minigames.generator import Generator
     repeated = '{"theme": "night", "features": ["ice"]}, {"theme": "night", "features": ["ice"]}]'
     spec = Generator(SpecClient(repeated), "k-ai").create_spec("gece", "platformer")
-    assert spec == {"kit": "platformer", "theme": "night", "features": ["ice"]}
+    assert spec["theme"] == "night" and spec["features"] == ["ice"] and len(spec["generate"]) == 1   # the app adds a level (and its seed)
     spec = Generator(SpecClient('Tabii: {"theme": "cave"} umarım işe yarar'), "k-ai").create_spec("mağara", "platformer")
     assert spec["theme"] == "cave"

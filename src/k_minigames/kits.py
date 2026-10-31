@@ -75,16 +75,60 @@ def parse_spec(text: str, kit: str) -> dict:
     raise SpecError("Modelin cevabında geçerli bir oyun özeti (JSON) yok")
 
 
-def fill_seeds(spec: dict) -> dict:
-    """Gives the levels, the campaign and the music a random seed when the spec has none. The k-ai models do not write seeds (random
-    digits cannot be learned, and a model that tries is thrown off by them), and without one every level would be the same."""
-    def seeded(part):
-        if isinstance(part, dict) and "seed" not in part:
-            part["seed"] = random.randint(0, 9999)
-    for level in spec.get("generate") if isinstance(spec.get("generate"), list) else []:
-        seeded(level)
-    seeded(spec.get("campaign"))
-    seeded(spec.get("musicStyle"))
+def _repair(value, node):
+    """`value` brought into the shape of the schema `node`: unknown keys and values outside an enum are dropped, numbers are held
+    inside their range, lists are cut to their length (a repeated entry of a list of names is dropped). None when nothing is left."""
+    kind = node.get("type")
+    if "enum" in node:
+        return value if value in node["enum"] else None
+    if kind == "integer" or kind == "number":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        value = round(value) if kind == "integer" else value
+        return min(node.get("maximum", value), max(node.get("minimum", value), value))
+    if kind == "string":
+        return value[:node.get("maxLength", len(value))] if isinstance(value, str) else None
+    if kind == "boolean":
+        return value if isinstance(value, bool) else None
+    if kind == "object":
+        if not isinstance(value, dict):
+            return None
+        out = {}
+        for key, sub in node.get("properties", {}).items():
+            if key in value:
+                fixed = _repair(value[key], sub)
+                if fixed is not None:
+                    out[key] = fixed
+        return out
+    if kind == "array":
+        if not isinstance(value, list):
+            return None
+        items = [x for x in (_repair(v, node.get("items", {})) for v in value) if x is not None]
+        if node.get("items", {}).get("enum"):
+            items = list(dict.fromkeys(items))
+        items = items[:node.get("maxItems", len(items))]
+        return items if len(items) >= node.get("minItems", 0) else None
+    return value
+
+
+def repair_spec(spec: dict, kit: str) -> dict:
+    """A small model's spec made safe: it keeps only what the kit's schema allows, holds numbers in their range, always has a level
+    list, and gets its seeds from the app, never from the model: a seed is a random number and the models cannot write one (they
+    are thrown off by the digits, and without a seed every level would be the same)."""
+    node, drawn = schema(kit), spec.get("levels")   # levels drawn by hand are not in the schema, the kit still plays them
+    if node:
+        fixed = _repair(spec, node)
+        spec = fixed if isinstance(fixed, dict) else spec
+        if isinstance(drawn, list) and drawn:
+            spec["levels"] = drawn
+    spec["kit"] = kit
+    if not spec.get("generate") and not spec.get("levels"):
+        spec["generate"] = [{}]
+    for level in spec.get("generate") or []:
+        level["seed"] = random.randint(0, 9999)
+    for part in ("campaign", "musicStyle"):
+        if isinstance(spec.get(part), dict):
+            spec[part]["seed"] = random.randint(0, 9999)
     return spec
 
 

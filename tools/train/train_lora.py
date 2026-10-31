@@ -56,6 +56,7 @@ def main(argv=None) -> int:
     parser.add_argument("--accum", type=int, default=8)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--save-every", type=int, default=25, help="a checkpoint every this many steps (0: none)")
+    parser.add_argument("--init-adapter", help="start from this trained adapter instead of a fresh one (a short extra round on corrected data)")
     parser.add_argument("--resume", action="store_true", help="continue from the newest checkpoint in --out")
     args = parser.parse_args(argv)
 
@@ -68,8 +69,12 @@ def main(argv=None) -> int:
     model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16, attn_implementation="sdpa").to("cuda")
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
-    model = get_peft_model(model, LoraConfig(r=args.rank, lora_alpha=2 * args.rank, lora_dropout=0.05, task_type="CAUSAL_LM",
-                                              target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
+    if args.init_adapter:
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, args.init_adapter, is_trainable=True)
+    else:
+        model = get_peft_model(model, LoraConfig(r=args.rank, lora_alpha=2 * args.rank, lora_dropout=0.05, task_type="CAUSAL_LM",
+                                                  target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
     model.print_trainable_parameters()
 
     def collate(batch):

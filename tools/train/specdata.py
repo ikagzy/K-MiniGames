@@ -124,6 +124,10 @@ TR["features"].extend(MORE_TR_LISTS["features"])
 EN["spikes"] = {0: ["no spikes"], 1: ["a few spikes"], 3: ["lots of spikes"], 5: ["spikes everywhere"]}
 EN["flyers"] = {0: ["no flying enemies"], 1: ["a few flying enemies"], 3: ["lots of flying enemies"], 5: ["flying enemies everywhere"]}
 EN["blocks"] = {1: ["few blocks"], 3: ["lots of blocks"], 5: ["blocks everywhere"]}
+for _field in ("enemies", "coins", "pits", "pipes", "blocks", "flyers", "spikes"):   # "bol / lots of" means 4 (high), the same as the evaluation expects
+    for _table in (TR, EN):
+        if 3 in _table.get(_field, {}):
+            _table[_field].setdefault(4, []).extend(_table[_field].pop(3))
 FEATURE_TR = {
     "spring": ["yaylar olsun", "zıplatan yaylar", "üstüne basınca fırlatan yaylar"],
     "dashPad": ["hız zeminleri olsun", "hızlandıran zemin parçaları", "üstünden geçince hızlanılan zeminler"],
@@ -136,6 +140,8 @@ CHARACTER_TR = {"runner": ["turuncu tilki karakter", "tilki kahraman", "hızlı 
 RAMPS = {"ramp": ((1, 5), ["kolaydan zora doğru ilerlesin", "giderek zorlaşsın"]),
          "gentle": ((1, 3), ["yavaş yavaş zorlaşsın", "hafif artan zorlukla"]),
          "hard": ((3, 5), ["baştan zor, sonda çok zor", "en başından zorlu olsun"])}
+NUMBER_WORDS_TR = {5: "beş", 6: "altı", 7: "yedi", 8: "sekiz", 9: "dokuz", 10: "on", 11: "on bir", 12: "on iki", 13: "on üç", 14: "on dört",
+                   15: "on beş", 16: "on altı", 17: "on yedi", 18: "on sekiz", 19: "on dokuz", 20: "yirmi"}
 CAMPAIGN_TR = ["{n} seviyeli bir kampanya", "{n} bölümlük macera", "tam {n} seviye olsun"]
 MOODS_TR = {"happy": ["neşeli müzik", "şen bir melodi"], "calm": ["sakin müzik", "dinlendirici melodi"],
             "tense": ["gerilimli müzik", "tedirgin edici melodi"], "epic": ["epik müzik", "destansı bir müzik"],
@@ -227,7 +233,7 @@ def mentions(text: str, field: str, spec: dict) -> bool:
     if field == "campaign":
         n, ft, to = v
         ramp = next(name for name, (pair, _) in RAMPS.items() if pair == (ft, to))
-        return str(n) in text and any(fold(p) in text for p in RAMPS[ramp][1])
+        return (str(n) in text or fold(NUMBER_WORDS_TR[n]) in text) and any(fold(p) in text for p in RAMPS[ramp][1])
     if field == "musicStyle":
         mood, tempo = v
         return any(fold(p) in text for p in MOODS_TR[mood]) and (tempo == "medium" or any(fold(p) in text for p in TEMPOS_TR[tempo]))
@@ -317,7 +323,7 @@ def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=Non
         base["width"] = rng.randint(lo, hi)
     for d in DENSITIES:
         if d in fields:
-            pool = (0, 1, 2, 3, 4, 5) if d in ("flyers", "spikes") else (0, 1, 3, 4, 5)
+            pool = (0, 1, 2, 4, 5) if d in ("flyers", "spikes") else (0, 1, 4, 5)   # 3 has no wording any more: "bol" means 4
             value = rng.choice(pool)
             if value or d not in ("flyers", "spikes"):
                 base[d] = value   # no flyers or spikes is the default: left out
@@ -358,7 +364,8 @@ def _phrase(rng: random.Random, field: str, spec: dict, lang: str, eval_mode: bo
     if field == "campaign":
         n, ft, to = v
         ramp = next(name for name, (pair, _) in RAMPS.items() if pair == (ft, to))
-        return f"{rng.choice(CAMPAIGN_TR).format(n=n)}, {rng.choice(RAMPS[ramp][1])}"
+        count = NUMBER_WORDS_TR[n] if rng.random() < 0.35 else n   # also spelled out: "on iki bölümlük"
+        return f"{rng.choice(CAMPAIGN_TR).format(n=count)}, {rng.choice(RAMPS[ramp][1])}"
     if field == "musicStyle":
         mood, tempo = v
         return rng.choice(MOODS_TR[mood]) + (", " + rng.choice(TEMPOS_TR[tempo]) if tempo != "medium" else "")
