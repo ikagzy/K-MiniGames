@@ -1,0 +1,15 @@
+# k-ai-chat: Don's small model (Qwen2.5-0.5B-Instruct + our LoRA, merged). Install: python tools/train/install_kai.py --adapter k-ai-chat --name k-ai-chat --base models--Qwen--Qwen2.5-0.5B-Instruct --modelfile tools/train/ollama/Modelfile.k-ai-chat
+FROM ../out/k-ai-chat-q8.gguf
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
+"""
+PARAMETER stop <|im_end|>
+PARAMETER stop <|im_start|>
+PARAMETER num_ctx 4096
+PARAMETER temperature 0.3
+PARAMETER top_k 20
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1

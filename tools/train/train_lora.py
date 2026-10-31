@@ -14,8 +14,8 @@ from pathlib import Path
 DATA = Path(__file__).resolve().parent / "data"
 
 
-def load_examples(tokenizer, limit: int | None, max_len: int, seed: int):
-    rows = [json.loads(line)["messages"] for line in (DATA / "train.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+def load_examples(tokenizer, limit: int | None, max_len: int, seed: int, data: Path | None = None):
+    rows = [json.loads(line)["messages"] for line in (data or DATA / "train.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
     random.Random(seed).shuffle(rows)
     if limit:
         rows = rows[:limit]
@@ -48,6 +48,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, help="a Hugging Face id or a local folder")
     parser.add_argument("--out", required=True)
+    parser.add_argument("--data", help="a training file other than data/train.jsonl (one {\"messages\": [...]} per line), for example data/don/train.jsonl")
     parser.add_argument("--epochs", type=float, default=2)
     parser.add_argument("--limit", type=int, default=0, help="use only this many examples (a quick pilot)")
     parser.add_argument("--max-len", type=int, default=4096)
@@ -65,7 +66,7 @@ def main(argv=None) -> int:
     from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    examples = load_examples(tokenizer, args.limit or None, args.max_len, args.seed)
+    examples = load_examples(tokenizer, args.limit or None, args.max_len, args.seed, Path(args.data) if args.data else None)
     model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16, attn_implementation="sdpa").to("cuda")
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()

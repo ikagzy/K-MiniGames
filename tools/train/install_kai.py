@@ -27,22 +27,27 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--adapter", required=True, help="a folder name under tools/train/out, for example k-ai-v2")
     parser.add_argument("--name", required=True, help="the Ollama model name, for example k-ai or k-ai-v2")
+    parser.add_argument("--base", default="models--Qwen--Qwen2.5-Coder-1.5B-Instruct", help="the base model folder in the Hugging Face cache (k-ai-chat: models--Qwen--Qwen2.5-0.5B-Instruct)")
+    parser.add_argument("--modelfile", default="tools/train/ollama/Modelfile.k-ai", help="its parameters; everything from TEMPLATE on is used")
     args = parser.parse_args(argv)
+    base = next((Path.home() / f".cache/huggingface/hub/{args.base}/snapshots").glob("*"), None)
+    template = (ROOT / args.modelfile).read_text(encoding="utf-8")
+    template = template[template.index("TEMPLATE"):]
     python = TRAIN_ENV / "venv/Scripts/python.exe"
     convert = TRAIN_ENV / "llamacpp/convert_hf_to_gguf.py"
     out = ROOT / "tools/train/out"
     adapter, merged, gguf = out / args.adapter, out / f"{args.adapter}-merged", out / f"{args.adapter}-q8.gguf"
-    if not adapter.is_dir() or not python.exists() or not convert.exists() or BASE is None:
-        print("missing:", [str(p) for p in (adapter, python, convert) if not p.exists()] + ([] if BASE else ["the base model in the Hugging Face cache"]))
+    if not adapter.is_dir() or not python.exists() or not convert.exists() or base is None:
+        print("missing:", [str(p) for p in (adapter, python, convert) if not p.exists()] + ([] if base else ["the base model in the Hugging Face cache"]))
         return 1
     if "K-MiniGames patch" not in convert.read_text(encoding="utf-8"):   # without it the GGUF gets rope base 10000 instead of 1000000 and the model is badly wrong
         print("convert_hf_to_gguf.py lacks the rope_theta patch (see docs/DEVIR-NOTU.md, k-ai Ollama kurulumu); not converting.")
         return 1
     cpu = {"CUDA_VISIBLE_DEVICES": "", "HF_HUB_OFFLINE": "1", "PYTHONIOENCODING": "utf-8", "NO_LOCAL_GGUF": "1"}
-    run([python, ROOT / "tools/train/merge_adapter.py", "--model", BASE, "--adapter", adapter, "--out", merged], cpu)
+    run([python, ROOT / "tools/train/merge_adapter.py", "--model", base, "--adapter", adapter, "--out", merged], cpu)
     run([python, "-I", convert, merged, "--outfile", gguf, "--outtype", "q8_0"], cpu)
     modelfile = out / f"Modelfile.{args.adapter}"
-    modelfile.write_text(f"FROM ./{gguf.name}\n{TEMPLATE}", encoding="utf-8")
+    modelfile.write_text(f"FROM ./{gguf.name}\n{template}", encoding="utf-8")
     run(["ollama", "create", args.name, "-f", modelfile])
     print(f"done: ollama model '{args.name}'. The app uses it when settings game_model is '{args.name}'.")
     return 0
