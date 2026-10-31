@@ -104,3 +104,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-95 | 2026-10-31 | Bob oyunu yapıp kaydedince Don'un hafızası otomatik silinir; 532 Python testi | 067ed7e |
 | CP-96 | 2026-10-31 | fps kiti (birinci şahıs nişancı): ışın izleme, bölüm üretici, 5 düşman, 4 silah, patron, arena, Python entegrasyonu; 230 JS + 536 Python test | d4478f5 |
 | CP-97 | 2026-10-31 | k-ai v6 eğitildi ve kuruldu (fps kiti dahil: üretilmiş doğruluk 0,979, fps 0,975); specrules zorluk kuralları hatası düzeltildi (\b yerine 0x08); 542 Python testi | 30fcc43 |
+| CP-98 | 2026-10-31 | FPS isteği uzay nişancısı çıkıyordu: Don'un modül seçimi kuralla düzeltildi (fix_modules); 543 Python testi | b0bb76f |
