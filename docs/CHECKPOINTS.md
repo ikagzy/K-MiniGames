@@ -93,3 +93,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-84 | 2026-10-31 | Kor Diyarı canlıları (közcü, kor bekçisi), köz tozu ve ışık taşı tarifi, saydam geçit; 209 JS testi | ba04203 |
 | CP-85 | 2026-10-31 | küp dünya: eşyasız başlangıç, masa/fırın yakınlığına göre tarifler, sağ tıkla menü, elde tutulan eşya; 210 JS testi | 46e6a38 |
 | CP-86 | 2026-10-31 | küp dünya: sudan kıyıya çıkma düzeltmesi; 211 JS testi | f5d4b1f |
+| CP-87 | 2026-10-31 | Oyna eski oyunun kütüphane dosyalarını yeniler (eski oyunda eşyayla başlama/masa/envanter sorunu), kısa tuş vuruşu; 525 Python+211 JS test | 761022f |
