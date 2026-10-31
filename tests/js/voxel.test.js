@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { load } = require('./helpers');
 
 const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxelmobs.js', 'kgame.voxel.js'];
-const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; return K; };   // the tests play without the main menu
+const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true; return K; };   // the tests play without the main menu
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
 const world = (K, o = {}) => K.voxel.makeWorld({ seed: 3, biome: 'forest', size: 'medium', caves: 1, ores: 1, lakes: true, trees: 3, ...o });
@@ -1174,4 +1174,33 @@ test('a portal is a see-through veil: what lies behind it shows, tinted purple',
   const bare = new Uint8ClampedArray(160 * 100 * 4); for (let a = 0; a <= 1; a++) for (let b = 0; b <= 2; b++) s.set(cx + a, gy + 1 + b, cz, 0, false); s.render(bare);
   assert.ok(Math.abs(out[mid] - bare[mid]) + Math.abs(out[mid + 2] - bare[mid + 2]) > 30, 'tinted, not the plain view: ' + [out[mid], out[mid + 1], out[mid + 2]] + ' vs ' + [bare[mid], bare[mid + 1], bare[mid + 2]]);
   assert.ok(s.depth[50 * 160 + 80] > 5, 'the depth is that of the wall behind, not the veil: ' + s.depth[50 * 160 + 80]);
+});
+
+test('a real game starts with empty hands, the recipe list follows the table and the furnace that are near, and a right click on one opens its recipes', () => {
+  const K = load(...FILES); K.voxel.menuAtStart = false;   // the real default: nothing is carried
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 5 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1);
+  assert.deepStrictEqual(s.inv.order.filter((id) => s.inv.count[id] > 0), [], 'no starter things');
+  assert.strictEqual(s.hotbar().length, 0);
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255, 'an empty hotbar is drawn without trouble');
+  const by = (r) => s.craftList().filter((x) => x.where === r).length;
+  assert.ok(by('hand') > 0 && by('table') === 0 && by('furnace') === 0, 'only the hand recipes at first');
+  assert.ok(s.craftList().some((r) => r.name === 'üretim masası') && !s.craftList().some((r) => r.name === 'fırın'));
+  // the way up: log, planks, table
+  s.addItem(5, 2); assert.strictEqual(s.craft('tahta'), true); assert.strictEqual(s.craft('tahta'), true);
+  assert.strictEqual(s.craft('üretim masası'), true); assert.strictEqual(s.inv.count[24], 1);
+  assert.strictEqual(s.craft('fırın'), false, 'a furnace needs a table nearby');
+  const px = Math.floor(s.p.x), py = Math.floor(s.p.y), pz = Math.floor(s.p.z);
+  s.set(px + 2, py, pz, 24, false);
+  assert.ok(by('table') > 0 && by('furnace') === 0, 'a table near opens the table recipes');
+  s.addItem(27, 8); assert.strictEqual(s.craft('fırın'), true);
+  s.set(px - 2, py, pz, 25, false); assert.ok(by('furnace') > 0, 'a furnace near opens the smelting recipes');
+  s.set(px + 2, py, pz, 0, false); s.set(px - 2, py, pz, 0, false); assert.strictEqual(by('table') + by('furnace'), 0, 'walking away closes them again');
+  // a right click on a table opens the menu
+  s.set(px + 2, py + 1, pz, 24, false); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+  let t = null; for (const pitch of [-0.6, -0.5, -0.4, -0.3, -0.2]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 24) { t = h; break; } }
+  assert.ok(t, 'the table is under the crosshair'); assert.ok(!s.showCraft);
+  assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.showCraft, true);
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+  s.craftCursor = 999; s.menuMove(1); assert.ok(s.craftCursor < s.craftList().length);
 });

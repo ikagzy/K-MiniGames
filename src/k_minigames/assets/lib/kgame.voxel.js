@@ -215,7 +215,7 @@
     return textures[key] = px;
   }
 
-  K.voxel = { menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
+  K.voxel = { starter: false, menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
 
   K.kit.define("sandbox", {
     defaults: {
@@ -286,7 +286,7 @@
         state.creative = on;
         if (on) [GRASS, DIRT, STONE, SAND, LOG, LEAVES, PLANKS, GLASS, SNOW, COAL, IRON, GOLD, DIAMOND, CACTUS].forEach(function (id) { if (inv.order.indexOf(id) < 0) inv.order.push(id); if (!inv.count[id]) inv.count[id] = 1; });
       };
-      [[STONE, 20], [DIRT, 20], [PLANKS, 20], [GLASS, 8], [LOG, 10], [D.hoeId(0), 1], [SEEDS, 6]].forEach(function (s) { state.addItem(s[0], s[1]); });
+      if (K.voxel.starter) [[STONE, 20], [DIRT, 20], [PLANKS, 20], [GLASS, 8], [LOG, 10], [D.hoeId(0), 1], [SEEDS, 6]].forEach(function (s) { state.addItem(s[0], s[1]); });   // a real game starts with empty hands
       state.ever = {};   // the starter things do not count
 
       // ---- looking: a ray through the cubes (shared by the picture and by breaking / placing) ----
@@ -625,6 +625,7 @@
       };
       state.placeBlock = function () {
         var bedT = target(); if (bedT && bedT.b === BED) return state.sleep();
+        if (bedT && (bedT.b === TABLE || bedT.b === FURNACE) && !K.key("Shift")) { state.showCraft = true; state.craftCursor = 0; return true; }   // a right click on a table or a furnace opens its recipes (Shift puts a block next to it)
         if (bedT && (bedT.b === DOOR_LO || bedT.b === DOOR_HI)) return state.toggleDoor(bedT.x, bedT.y, bedT.z);   // a right click on a door opens or shuts it
         if (D.FOOD[state.selectedBlock()]) return state.eat(state.selectedBlock());
         var t = target(), id = state.selectedBlock();
@@ -725,7 +726,7 @@
         return true;
       };
       state.craft = function (which) {   // by number in the list or by name
-        var r = typeof which === "string" ? state.recipes[D.recipeIndex(which)] : state.recipes[which];
+        var r = typeof which === "string" ? state.recipes[D.recipeIndex(which)] : which && typeof which === "object" ? which : state.recipes[which];
         if (!r || !state.canCraft(r)) return false;
         if (r.where === "furnace") { if (state.fuel <= 0) { inv.count[COAL_ITEM]--; state.fuel = 8; } state.fuel--; }   // a coal smelts eight
         r.need.forEach(function (n) { inv.count[n[0]] -= n[1]; });
@@ -733,8 +734,13 @@
         state.stats.crafted[r.name] = (state.stats.crafted[r.name] || 0) + 1; if (r.where === "furnace") state.stats.smelted++;
         return true;
       };
+      state.stations = function () { return { table: state.near(TABLE, 5), furnace: state.near(FURNACE, 5) }; };
+      state.craftList = function () {   // what the menu shows: by hand always, and the recipes of a table or a furnace only while one is near
+        var st = state.stations();
+        return state.recipes.filter(function (r) { return r.where === "hand" || (r.where === "table" && st.table) || (r.where === "furnace" && st.furnace); });
+      };
       state.craftPage = function () { return Math.floor(state.craftCursor / 8) * 8; };
-      state.menuMove = function (d) { state.craftCursor = Math.max(0, Math.min(state.recipes.length - 1, state.craftCursor + d)); };
+      state.menuMove = function (d) { state.craftCursor = Math.max(0, Math.min(state.craftList().length - 1, state.craftCursor + d)); };
       (saved instanceof Array ? saved : []).forEach(function (e) {   // crops that were growing when the world was saved go on growing
         if (e instanceof Array && e[3] === SAPLING && get(e[0], e[1], e[2]) === SAPLING) state.saplings.push({ x: e[0], y: e[1], z: e[2], age: 0 });
         if (e instanceof Array && e[3] >= CROP1 && e[3] < CROP3 && get(e[0], e[1], e[2]) === e[3]) state.crops.push({ x: e[0], y: e[1], z: e[2], age: (e[3] - CROP1) * CROP_SECONDS });
@@ -1054,6 +1060,12 @@
       }
       function drawHud(c) {
         c.fillStyle = "#fff"; c.fillRect(g.width / 2 - 8, g.height / 2 - 1, 16, 2); c.fillRect(g.width / 2 - 1, g.height / 2 - 8, 2, 16);
+        if (!state.showInv && !state.showCraft && !state.showAch && !state.showHelp) {   // the thing in your hand, bottom right: it sways when you walk and swings when you dig
+          var heldId = state.selectedBlock(), sp = Math.min(1, Math.sqrt(state.p.vx * state.p.vx + state.p.vz * state.p.vz) / 4), digging = state.mining && state.mining.progress > 0;
+          var hx = g.width - 290 + Math.sin(state.phase * 7) * 5 * sp, hy = g.height - 150 + Math.abs(Math.cos(state.phase * 7)) * 6 * sp + (digging ? Math.sin(state.phase * 16) * 14 : 0), hs = 104;
+          if (heldId) drawIcon(c, heldId, hx, hy, hs);
+          else { c.fillStyle = "#d9a27a"; c.fillRect(hx + 40, hy + 30, 44, 84); c.fillStyle = "#b8835e"; c.fillRect(hx + 40, hy + 96, 44, 18); }   // an empty hand
+        }
         var all = state.hotbar(), start = state.windowStart(), bar = all.slice(start, start + 9), slot = 38, x0 = g.width / 2 - 9 * slot / 2, y0 = g.height - slot - 8;
         if (state.mining && state.mining.need > 0 && state.mining.progress > 0) {   // the block being dug
           c.fillStyle = "rgba(0,0,0,0.6)"; c.fillRect(g.width / 2 - 30, g.height / 2 + 18, 60, 6);
@@ -1102,15 +1114,17 @@
         if (state.showCraft) {
           c.fillStyle = "rgba(0,0,0,0.82)"; c.fillRect(g.width / 2 - 200, 40, 400, 270);
           c.fillStyle = "#fff"; c.font = "15px sans-serif"; c.fillText("TARİFLER  (yukarı/aşağı seç, Enter yap, X kapat)", g.width / 2 - 188, 64);
-          var page = state.craftPage();
-          state.recipes.slice(page, page + 8).forEach(function (r, n) {
+          var list = state.craftList(), st = state.stations(), page = state.craftPage();
+          state.craftCursor = Math.min(state.craftCursor, Math.max(0, list.length - 1)); page = state.craftPage();
+          c.fillStyle = "#cfd8dc"; c.font = "12px sans-serif"; c.fillText("El" + (st.table ? " + üretim masası" : "") + (st.furnace ? " + fırın" : "") + (st.table && st.furnace ? "" : "   (masa ya da fırın yanında olunca tarifleri açılır)"), g.width / 2 - 188, 80);
+          list.slice(page, page + 8).forEach(function (r, n) {
             var ok = state.canCraft(r), at = page + n === state.craftCursor, where = r.where === "table" ? "masa" : r.where === "furnace" ? "fırın" : "";
             if (at) { c.fillStyle = "rgba(255,255,255,0.12)"; c.fillRect(g.width / 2 - 192, 74 + n * 28, 384, 26); }
             drawIcon(c, r.give[0], g.width / 2 - 190, 76 + n * 28, 22);
             c.fillStyle = ok ? "#a5d6a7" : "#8a8a8a"; c.font = "13px sans-serif";
             c.fillText((n + 1) + ". " + r.name + "  [" + r.need.map(function (q) { return q[1] + " " + NAMES[q[0]]; }).join(" + ") + "] " + (where ? "(" + where + ")" : ""), g.width / 2 - 160, 92 + n * 28);
           });
-          c.fillStyle = "#cfd8dc"; c.font = "12px sans-serif"; c.fillText("sayfa " + (page / 8 + 1) + "/" + Math.ceil(state.recipes.length / 8) + "   kömür yakıt: " + (state.fuel || 0) + " eritme hakkı", g.width / 2 - 186, 300);
+          c.fillStyle = "#cfd8dc"; c.font = "12px sans-serif"; c.fillText("sayfa " + (page / 8 + 1) + "/" + Math.ceil(list.length / 8) + "   kömür yakıt: " + (state.fuel || 0) + " eritme hakkı", g.width / 2 - 186, 300);
         }
         if (state.showAch) {
           var done = D.ACH.filter(function (a) { return state.ach[a.id]; }).length;
@@ -1170,8 +1184,8 @@
           once("x", function () { state.showCraft = !state.showCraft; });
           once("b", function () { state.showAch = !state.showAch; });
           once("ArrowUp", function () { if (state.showCraft) state.menuMove(-1); }); once("ArrowDown", function () { if (state.showCraft) state.menuMove(1); });
-          once("Enter", function () { if (state.showCraft) state.craft(state.craftCursor); });
-          for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(state.craftPage() + num - 1); else state.select(state.windowStart() + num - 1); }); })(n);
+          once("Enter", function () { if (state.showCraft) state.craft(state.craftList()[state.craftCursor]); });
+          for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(state.craftList()[state.craftPage() + num - 1]); else state.select(state.windowStart() + num - 1); }); })(n);
           var cur = state.selectedBlock(); if (cur !== state.lastSel) { state.lastSel = cur; state.nameT = 2; } state.nameT -= dt;
           state.mineStep(dt, K.key("f") || mouseLeft);   // holding F or the left button digs
           var ch = state.chunk || { x: 0, z: 0 };
