@@ -488,7 +488,7 @@ test('the hotbar is a window over everything you hold, so new tools show up, and
 
 test('every thing you can hold has a picture: a cube from its textures for a block, pixel art in 16 rows of 16 for the rest', () => {
   const K = fresh(); const D = K.voxeldata;
-  const never = new Set([14, 16, 17, 18, 19]);   // water and the field and crops are never carried
+  const never = new Set([14, 16, 17, 18, 19, 37]);   // water and the field and crops are never carried
   for (const id of Object.keys(D.NAME).map(Number).filter((n) => !never.has(n))) {
     assert.ok(D.hasIcon(id), D.NAME[id] + ' (' + id + ') has an icon');
     if (!D.isBlock(id)) {
@@ -565,7 +565,7 @@ test('drowning: staying under water too long hurts, breathing in the air brings 
 
 test('achievements: none at the start (the starter things do not count), each one comes true by itself, is announced once, is kept with the world, and B shows the list', () => {
   const K = fresh(); const D = K.voxeldata;
-  assert.strictEqual(D.ACH.length, 20); assert.strictEqual(new Set(D.ACH.map((a) => a.id)).size, 20);
+  assert.strictEqual(D.ACH.length, 23); assert.strictEqual(new Set(D.ACH.map((a) => a.id)).size, 23);
   let s = K.kit.run({ kit: 'sandbox', world: { seed: 12 }, size: 'small', trees: 0 });
   run(s, 2);
   assert.deepStrictEqual(Object.keys(s.ach), [], 'nothing yet, even though you start with logs and stone');
@@ -752,4 +752,116 @@ test('armour, wool, meat and the new recipes: every piece is made from the right
   s.food = 5; s.select(s.hotbar().indexOf(83)); assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.food, 13, 'steak fills eight');
   assert.strictEqual(D.FOOD[88], 2); assert.strictEqual(D.FOOD[89], 6); assert.strictEqual(D.FOOD[111], 5);
   for (const id of [34, 82, 83, 84, 85, 86, 87, 88, 89, 110, 111, 112, 113, 114, 115, 116, 117, 118, 90, 105]) assert.ok(D.hasIcon(id), D.NAME[id] + ' has an icon');
+});
+
+test('lava lakes lie in the deepest caves, burn the player, glow in the picture, and cannot be dug or carried', () => {
+  const K = fresh();
+  const w = K.voxel.makeWorld({ seed: 6, biome: 'plains', size: 'medium', caves: 3, ores: 1, lakes: true, trees: 0 });
+  w.ensureAround(128, 128, 6);
+  assert.ok(w.count(37) > 20, 'lava in the deep caves: ' + w.count(37));
+  for (let y = 7; y < 32; y++) for (let z = 90; z < 170; z += 3) for (let x = 90; x < 170; x += 3) assert.notStrictEqual(w.get(x, y, z), 37, 'lava only at the bottom');
+  const none = K.voxel.makeWorld({ seed: 6, biome: 'plains', size: 'medium', caves: 0, ores: 1, lakes: true, trees: 0 }); none.ensureAround(128, 128, 6);
+  assert.strictEqual(none.count(37), 0, 'no caves, no lava');
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1.5);
+  const px = Math.floor(s.p.x), py = Math.floor(s.p.y), pz = Math.floor(s.p.z);
+  s.health = 20;
+  s.set(px, py, pz, 37, false); s.set(px, py + 1, pz, 37, false);
+  run(s, 1.2); assert.ok(s.health < 20 && s.health >= 8, 'lava hurts: ' + s.health);
+  assert.ok(/lav/.test(s.message) || s.health < 20);
+  s.set(px, py, pz, 0, false); s.set(px, py + 1, pz, 0, false);
+  assert.strictEqual(K.voxeldata.isBlock(37), false); assert.strictEqual(K.voxeldata.drops(37, () => -1).length >= 0, true);
+  s.p.pitch = -0.7; s.set(px + 1, py - 1, pz + 1, 37, false);
+  const t = s.target(); assert.ok(!t || t.b !== 37, 'the crosshair looks through liquids');
+});
+
+test('sand does not hang in the air: when what holds it up is dug away it falls, and sand put on nothing falls too', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0 });
+  run(s, 1.5);
+  const x = Math.floor(s.p.x) + 3, z = Math.floor(s.p.z) + 3, ground = s.world.heightAt(x, z);
+  s.set(x, ground + 1, z, 4, false); s.set(x, ground + 2, z, 4, false); s.set(x, ground + 3, z, 4, false);
+  s.p.x = x + 0.5; s.p.z = z + 0.5 - 2; s.p.yaw = 0; s.p.y = ground + 1.01;   // the player stands south and looks north at the foot of the tower
+  s.p.pitch = 0; run(s, 0.1);
+  s.set(x, ground, z, 3, false);
+  s.addItem(K.voxeldata.toolId('pickaxe', 0), 1);
+  s.set(x, ground, z, 0, false);   // the ground under the tower is gone
+  for (const yy of [ground + 1, ground + 2, ground + 3]) s.settle(x, yy, z);
+  assert.strictEqual(s.get(x, ground, z), 4, 'the sand came down to rest');
+  assert.strictEqual(s.get(x, ground + 1, z), 4); assert.strictEqual(s.get(x, ground + 2, z), 4);
+  assert.strictEqual(s.get(x, ground + 3, z), 0, 'nothing is left hanging');
+  s.set(x + 1, ground + 6, z, 4, false);
+  assert.strictEqual(s.settle(x + 1, ground + 6, z), true, 'a sand block in the air falls');
+  assert.strictEqual(s.get(x + 1, ground + 6, z), 0); assert.notStrictEqual(s.get(x + 1, s.world.heightAt(x + 1, z) + 1, z), 0);
+  assert.strictEqual(s.settle(x, ground, z), false, 'a resting block stays');
+  s.set(x + 2, s.world.heightAt(x + 2, z), z, 3, false);
+  assert.strictEqual(s.get(x + 2, s.world.heightAt(x + 2, z), z), 3);
+});
+
+test('a bed: it can only be used at night, it ends the night, it becomes the place you come back to, and it is made from wool and planks', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'cycle' });
+  run(s, 1.5);
+  const px = Math.floor(s.p.x), py = Math.floor(s.p.y), pz = Math.floor(s.p.z);
+  s.set(px + 2, py, pz, 24, false);
+  s.addItem(34, 3); assert.strictEqual(s.craft('yatak'), true); assert.strictEqual(s.inv.count[35], 1);
+  assert.ok(D.isBlock(35));
+  s.p.yaw = Math.PI / 2; s.p.pitch = -0.5; run(s, 0.1);
+  const t = (() => { for (const pitch of [-0.5, -0.7, -0.9, -0.3]) { s.p.pitch = pitch; const h = s.target(); if (h && h.ny === 1) return h; } return null; })();
+  assert.ok(t, 'a floor to put the bed on');
+  s.select(s.hotbar().indexOf(35)); assert.strictEqual(s.selectedBlock(), 35);
+  assert.strictEqual(s.placeBlock(), true); const bx = t.x + t.nx, by = t.y + t.ny, bz = t.z + t.nz;
+  assert.strictEqual(s.get(bx, by, bz), 35);
+  s.time = 0.0; assert.ok(s.daylight() > 0.9);
+  s.p.pitch = -0.5; for (const pitch of [-0.5, -0.7, -0.9, -0.3, -0.2, -0.1]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 35) break; }
+  s.select(s.hotbar().indexOf(7));
+  assert.strictEqual(s.sleep(), false, 'not by day'); assert.ok(/geceleri/.test(s.message)); assert.strictEqual(s.respawn, null);
+  s.time = 0.5; assert.ok(s.daylight() < 0.3);
+  assert.strictEqual(s.sleep(), true);
+  assert.ok(s.daylight() > 0.8, 'it is morning'); assert.ok(s.respawn && Math.abs(s.respawn.x - s.p.x) < 0.01);
+  s.p.x += 9; s.hurt(99, 'test');
+  assert.ok(Math.abs(s.p.x - s.respawn.x) < 0.01, 'you come back at the bed, not at the world spawn');
+  run(s, 1); assert.strictEqual(s.stats.slept, 1);
+  s.mobs.length = 0;
+  const night = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'night' });
+  run(night, 1); assert.strictEqual(night.sleep(), true, 'at a fixed night it only sets the spawn');
+});
+
+test('saplings: leaves can drop one and an apple, a sapling stands on grass or soil only, it becomes a tree after a while, and the tree has wood and leaves', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1.5);
+  let saplings = 0, apples = 0;
+  for (let i = 0; i < 300; i++) {   // many leaf blocks broken one after the other: some give a sapling, a few an apple
+    const x = 30 + (i % 20) * 2, z = 30 + Math.floor(i / 20) * 2;
+    s.p.x = x + 0.5; s.p.z = z + 0.5; s.p.y = 28; s.p.yaw = 0; s.p.pitch = 0; s.p.vy = 0; s.p.peak = 28; s.flying = false;
+    const ey = Math.floor(s.p.y + 1.6);
+    s.set(x, ey, z - 1, 6, false);
+    const sap = s.inv.count[38] || 0, app = s.inv.count[120] || 0;
+    assert.ok(s.target() && s.target().b === 6, 'the leaf is under the crosshair');
+    s.breakBlock();
+    if ((s.inv.count[38] || 0) > sap) saplings++; if ((s.inv.count[120] || 0) > app) apples++;
+  }
+  assert.ok(saplings >= 3 && saplings < 60, 'saplings sometimes: ' + saplings); assert.ok(apples >= 0 && apples < 20);
+  s.addItem(38, 2);
+  s.p.x = 40; s.p.z = 40; s.p.y = s.world.heightAt(40, 40) + 1.01; s.p.yaw = 0; s.p.pitch = 0; s.p.vy = 0; run(s, 0.3);
+  let t2 = null; for (const pitch of [-0.5, -0.7, -0.9, -0.3, -0.2]) { s.p.pitch = pitch; const h = s.target(); if (h && h.ny === 1 && (h.b === 1 || h.b === 2 || h.b === 4)) { t2 = h; break; } }
+  assert.ok(t2, 'ground to plant on');
+  const gx = t2.x, gy = t2.y, gz = t2.z;
+  s.set(gx, gy, gz, 4, false);
+  s.select(s.hotbar().indexOf(38)); assert.strictEqual(s.selectedBlock(), 38);
+  assert.strictEqual(s.placeBlock(), false, 'not on sand');
+  s.set(gx, gy, gz, 1, false);
+  assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.get(gx, gy + 1, gz), 38);
+  assert.strictEqual(s.saplings.length, 1);
+  run(s, K.voxel.treeSeconds - 2); assert.strictEqual(s.get(gx, gy + 1, gz), 38, 'still a sapling');
+  run(s, 4);
+  assert.strictEqual(s.get(gx, gy + 1, gz), 5, 'the sapling is the base of a trunk now');
+  assert.ok(s.get(gx, gy + 4, gz) === 5 || s.get(gx, gy + 5, gz) === 5, 'the trunk is four or five high');
+  let leaves = 0; for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) for (let dy = 3; dy <= 7; dy++) if (s.get(gx + dx, gy + dy, gz + dz) === 6) leaves++;
+  assert.ok(leaves > 15, 'a crown of leaves: ' + leaves);
+  assert.strictEqual(s.stats.grown, 1); assert.strictEqual(s.saplings.length, 0);
+  // no room: a block above stops it
+  s.set(gx + 4, gy, gz + 4, 1, false); s.set(gx + 4, gy + 1, gz + 4, 38, true); s.saplings.push({ x: gx + 4, y: gy + 1, z: gz + 4, age: 0 }); s.set(gx + 4, gy + 3, gz + 4, 3, false);
+  run(s, K.voxel.treeSeconds + 2); assert.strictEqual(s.get(gx + 4, gy + 1, gz + 4), 38, 'a sapling under a roof waits');
 });

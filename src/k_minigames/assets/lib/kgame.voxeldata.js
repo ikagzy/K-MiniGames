@@ -73,6 +73,8 @@
   P.chestplate = pad16(["", "..hhh......hhh..", ".hhhhh....hhhhh.", ".hhhhhhhhhhhhhh.", ".hhhhhhhhhhhhhh.", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "...hhhhhhhhhh..."]);
   P.leggings = pad16(["", "...hhhhhhhhhh...", "...hhhhhhhhhh...", "...hhhhhhhhhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh..."]);
   P.boots = pad16(["", "", "", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "..hhhh....hhhh..", ".hhhhh....hhhhh.", ".hhhhh....hhhhh."]);
+  P.sapling = pad16(["", "", "......aa........", ".....aaaa.......", "..aa.aaaa.aa....", ".aaaaaaaaaaaa...", "..aaaabbaaaa....", ".....abba.......", "......bb........", "......bb........", "......dd........", "......dd........", "......dd........", ".....dddd......."]);
+  P.apple = pad16(["", "", ".......d........", "......d.........", "....aaddaa......", "...aaaaaaaaa....", "..aacaaaaaaaa...", "..aacaaaaaaaa...", "..aaaaaaaaaaa...", "..aaaaaaaaaaa...", "...aaaaaaaaa....", "....aaa.aaa....."]);
   P.arrow = pad16(["...............w", "..............ww", ".............ww.", "............dd..", "...........dd...", "..........dd....", ".........dd.....", "........dd......", ".......dd.......", "...cc.dd........", "..ccc.d.........", ".ccc............"]);
   var TIER_RGB = [[176, 140, 84], [128, 128, 128], [220, 220, 226], [250, 220, 70], [90, 230, 230]];
   // rows and a palette for an item: { rows: [...], pal: { h: [r,g,b], ... } } or null for blocks (those are drawn as cubes from their textures)
@@ -84,7 +86,7 @@
     var ar = D.armorOf(id);
     if (ar) { pal.h = ARMOR_RGB[ar.tier]; pal.b = shade(pal.h, 0.7); return { rows: P[["helmet", "chestplate", "leggings", "boots"][ar.slot]], pal: pal }; }
     var kind = { 33: "torch", 40: "stick", 41: "coal", 42: "ingot", 43: "ingot", 44: "diamond", 20: "seeds", 21: "wheat", 23: "bread", 80: "meat", 81: "meat", 82: "meat", 83: "meat", 84: "meat", 85: "meat", 86: "meat", 87: "meat", 88: "meat", 89: "meat", 110: "meat", 111: "meat",
-                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 118: "arrow" }[id];
+                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 118: "arrow", 38: "sapling", 120: "apple" }[id];
     if (id === 116) pal.a = [100, 100, 106]; if (id === 117) pal.a = [100, 130, 70]; if (id === 115) { pal.d = [228, 224, 205]; }
     if (id === 41) pal.a = [34, 34, 38];
     if (id === 80) pal.a = [215, 110, 110];
@@ -108,6 +110,8 @@
   NAME[112] = "tüy"; COLOR[112] = [[240, 240, 240]]; NAME[113] = "deri"; COLOR[113] = [[150, 96, 56]]; NAME[114] = "ip"; COLOR[114] = [[235, 235, 235]]; NAME[115] = "kemik"; COLOR[115] = [[228, 224, 205]];
   NAME[116] = "barut"; COLOR[116] = [[96, 96, 100]]; NAME[117] = "çürük et"; COLOR[117] = [[110, 140, 80]]; NAME[118] = "ok"; COLOR[118] = [[200, 200, 200]];
   D.FOOD[117] = 4;
+  NAME[35] = "yatak"; COLOR[35] = [[190, 50, 50], [176, 70, 70], [176, 140, 84]]; NAME[37] = "lav"; COLOR[37] = [[244, 120, 30], [230, 100, 20], [230, 100, 20]];
+  NAME[38] = "fidan"; COLOR[38] = [[70, 160, 60]]; NAME[120] = "elma"; COLOR[120] = [[210, 50, 50]]; D.FOOD[120] = 4;
   NAME[34] = "yün"; COLOR[34] = [[236, 236, 236], [226, 226, 230], [226, 226, 230]];
   D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
 
@@ -134,10 +138,13 @@
     { id: "digger", name: "Kazıcı", desc: "200 blok kır", test: function (s) { return s.hud.broken >= 200; } },
     { id: "builder", name: "İnşaatçı", desc: "100 blok koy", test: function (s) { return s.hud.placed >= 100; } },
     { id: "torch", name: "Işığı Yak", desc: "meşale yap", test: function (s) { return crafted(s, "meşale"); } },
-    { id: "died", name: "Pes Etmek Yok", desc: "bir kez öl ve geri dön", test: function (s) { return s.deaths >= 1; } }
+    { id: "died", name: "Pes Etmek Yok", desc: "bir kez öl ve geri dön", test: function (s) { return s.deaths >= 1; } },
+    { id: "sleep", name: "Tatlı Rüyalar", desc: "yatakta bir gece geçir", test: function (s) { return s.stats.slept >= 1; } },
+    { id: "hunter", name: "Avcı", desc: "10 canlı avla", test: function (s) { return s.kills >= 10; } },
+    { id: "forester", name: "Ormancı", desc: "diktiğin fidandan ağaç yetiştir", test: function (s) { return s.stats.grown >= 1; } }
   ];
   // a block can be put down: the ground and plant blocks, and the new building blocks (not tools, food or materials)
-  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 34); };
+  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 35) || id === 38; };
 
   // ---- mining: how long a block takes by hand (seconds), which tool is the right one, and the lowest tier that gets something out of it ----
   var HARD = { 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
@@ -200,6 +207,7 @@
   D.smelts = [[ID.COBBLE, ID.STONE, "taş"], [ID.SAND, ID.GLASS, "cam"], [ID.IRON_ORE, ID.IRON_INGOT, "demir külçe"], [ID.GOLD_ORE, ID.GOLD_INGOT, "altın külçe"], [80, 81, "pişmiş et"]];
   D.smelts.forEach(function (s) { add("eritme: " + s[2], "furnace", [[s[0], 1]], [s[1], 1]); });
   add("yün (4 ip)", "hand", [[114, 4]], [34, 1]);
+  add("yatak", "table", [[34, 3], [ID.PLANKS, 3]], [35, 1]);
   for (var ar = 0; ar < 4; ar++) {
     var armMat = [113, ID.IRON_INGOT, ID.GOLD_INGOT, ID.DIAMOND][ar], armCost = [5, 8, 7, 4];
     for (var part = 0; part < 4; part++) add(ARMOR_TIERS[ar] + " " + ARMOR_PARTS[part][1], "table", [[armMat, armCost[part]]], [D.armorId(ar, part), 1]);

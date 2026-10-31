@@ -10,7 +10,7 @@
   var K = root.K;
   var D = K.voxeldata, NAMES = D.NAME;
   var AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6, PLANKS = 7, GLASS = 8, COAL = 9, IRON = 10, GOLD = 11, DIAMOND = 12, SNOW = 13, WATER = 14, CACTUS = 15;
-  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25;
+  var FARMLAND = 16, CROP1 = 17, CROP3 = 19, SEEDS = 20, WHEAT = 21, BREAD = 23, CROP_SECONDS = 25, BED = 35, LAVA = 37, SAPLING = 38, APPLE = 120, TREE_SECONDS = 40;
   var TABLE = 24, FURNACE = 25, TORCH = 33, COAL = 41;   // crops are blocks 17-19 (young to ripe), 20 and up are things you carry
   var BIOMES = { forest: { top: GRASS, trees: 1, amp: 5 }, plains: { top: GRASS, trees: 0.2, amp: 3 }, desert: { top: SAND, trees: 0.6, amp: 4 }, snow: { top: SNOW, trees: 0.5, amp: 6 } };
   var SIZES = { small: 8, medium: 16, large: 32 };   // chunks on a side
@@ -65,7 +65,7 @@
         }
         for (var wy = h + 1; wy <= SEA; wy++) blocks[at(lx, wy, lz)] = WATER;
         for (y = 3; y < h - 2; y++) {
-          if (caves > 0 && noise3(seed + 3, x, y, z, 7) > 0.78 - caves * 0.045) { blocks[at(lx, y, lz)] = AIR; continue; }
+          if (caves > 0 && noise3(seed + 3, x, y, z, 7) > 0.78 - caves * 0.045) { blocks[at(lx, y, lz)] = y <= 5 ? LAVA : AIR; continue; }   // the lowest caves are lava lakes
           if (ores > 0 && blocks[at(lx, y, lz)] === STONE) {
             var r = hash(seed + 11, x, y, z), rich = 0.5 + ores * 0.5;
             if (y < 6 && r < 0.004 * rich) blocks[at(lx, y, lz)] = DIAMOND;
@@ -163,7 +163,7 @@
     return textures[key] = px;
   }
 
-  K.voxel = { cropSeconds: CROP_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
+  K.voxel = { cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
 
   K.kit.define("sandbox", {
     defaults: {
@@ -191,13 +191,13 @@
       var state = { g: g, spec: spec, world: w, edits: [], hits: [], heroHooks: [], canFly: false, flying: false, sprintMul: 1, time: spec.time === "night" ? 0.5 : 0.1,
                     creative: false, inv: { order: [], count: {} }, slot: 0, showInv: false, showHelp: false, visited: {}, lockHint: true, breakDelay: 0,
                     p: { x: w.spawn.x, y: w.spawn.y, z: w.spawn.z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: false, peak: w.spawn.y },
-                    ever: {}, stats: { crafted: {}, eaten: 0, smelted: 0 }, ach: {}, showAch: false, achT: 0, mobs: [], arrows: [], attackCd: 0, wear: {}, spawnT: 0, kills: 0,
+                    ever: {}, stats: { crafted: {}, eaten: 0, smelted: 0, slept: 0, grown: 0 }, ach: {}, showAch: false, achT: 0, saplings: [], lavaT: 0, respawn: null, mobs: [], arrows: [], attackCd: 0, wear: {}, spawnT: 0, kills: 0,
                     health: 20, food: 20, air: 10, hungerT: 0, regenT: 0, starveT: 0, drownT: 0, hurtFlash: 0, deaths: 0, message: "", messageT: 0 };
       var tune = spec.music;
       if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
       state.hud = { placed: 0, broken: 0, depth: 0, explored: 0, harvested: 0 };
       state.crops = [];
-      var get = w.get, solid = function (b) { return b !== AIR && b !== WATER && !(b >= CROP1 && b <= CROP3) && b !== TORCH; };   // plants and torches are walked through
+      var get = w.get, solid = function (b) { return b !== AIR && b !== WATER && !(b >= CROP1 && b <= CROP3) && b !== TORCH && b !== LAVA && b !== SAPLING; };   // plants and torches are walked through, and lava is a liquid
       state.get = get;
       var set = function (x, y, z, b, remember) {
         if (!w.set(x, y, z, b)) return false;
@@ -245,7 +245,7 @@
         var t = 0, nx = 0, ny = 0, nz = 0, steps = 0, first = get(x, y, z);
         while (t <= maxT && steps++ < 200) {
           var b = get(x, y, z);
-          if (b !== AIR && !(skipWater && b === WATER) && !(thin && b === first && b === WATER)) {
+          if (b !== AIR && !(skipWater && (b === WATER || b === LAVA)) && !(thin && b === first && b === WATER)) {
             hit.b = b; hit.x = x; hit.y = y; hit.z = z; hit.nx = nx; hit.ny = ny; hit.nz = nz; hit.t = t;
             hit.face = ny !== 0 ? (ny > 0 ? 0 : 2) : 1; hit.hx = ox + dx * t; hit.hy = oy + dy * t; hit.hz = oz + dz * t;
             return true;
@@ -277,6 +277,32 @@
         return best;
       };
       state.mining = { key: "", progress: 0, need: 0 };
+      state.settle = function (x, y, z) {   // sand does not hang in the air: it falls until it rests on something
+        if (get(x, y, z) !== SAND) return false;
+        var ny = y; while (ny > 1 && (get(x, ny - 1, z) === AIR || get(x, ny - 1, z) === WATER || get(x, ny - 1, z) === LAVA)) ny--;
+        if (ny === y) return false;
+        set(x, y, z, AIR, true); set(x, ny, z, SAND, true); return true;
+      };
+      state.sleep = function () {   // a bed: the night is over, and it is where you come back to
+        var p = state.p;
+        if (state.daylight() >= 0.45 && spec.time !== "night") { state.say("Sadece geceleri uyuyabilirsin."); return false; }
+        if (spec.time === "cycle") state.time = 0.85;
+        state.respawn = { x: p.x, y: p.y, z: p.z }; state.stats.slept++;
+        state.mobs = state.mobs.filter(function (m) { return K.voxelmobs.TYPES[m.type].kind === "passive"; });
+        state.say(spec.time === "cycle" ? "İyi uyudun, sabah oldu. Yatağın artık doğma noktan." : "Yatağın artık doğma noktan.");
+        return true;
+      };
+      state.growTree = function (x, y, z) {   // a sapling at (x,y,z) becomes a tree if there is room
+        var th = 4 + (hash(11, x, y, z) > 0.5 ? 1 : 0);
+        for (var t = 0; t <= th + 1; t++) { var b0 = get(x, y + t, z); if (t > 0 && b0 !== AIR) return false; }
+        set(x, y, z, LOG, true);
+        for (var t2 = 1; t2 <= th; t2++) set(x, y + t2, z, LOG, true);
+        for (var ax = -2; ax <= 2; ax++) for (var az = -2; az <= 2; az++) for (var ay = th - 1; ay <= th + 1; ay++) {
+          if (Math.abs(ax) + Math.abs(az) + (ay - th + 1) * 0.5 > 3.2 || (ax === 0 && az === 0 && ay < th)) continue;
+          if (get(x + ax, y + ay, z + az) === AIR) set(x + ax, y + ay, z + az, LEAVES, true);
+        }
+        return true;
+      };
       state.breakBlock = function () {
         var t = target();
         if (!t || t.y < 1) return false;
@@ -284,6 +310,8 @@
         K.sfx(b === DIRT || b === GRASS || b === SAND ? "click" : "hit");
         set(tx, ty, tz, AIR, true); state.hud.broken++;
         var kindUsed = D.rightTool(b); if (kindUsed) state.useTool(kindUsed);
+        for (var sy2 = ty + 1; sy2 <= ty + 8; sy2++) if (get(tx, sy2, tz) === SAND) state.settle(tx, sy2, tz);   // the sand above falls into the hole
+        if (b === LEAVES) { if (hash(9, tx, ty, tz) < 0.1) state.addItem(SAPLING, 1); if (hash(10, tx, ty, tz) < 0.03) state.addItem(APPLE, 1); }
         if (b === CROP3) { state.addItem(WHEAT, 1); state.addItem(SEEDS, 1 + (hash(8, tx, ty, tz) < 0.5 ? 1 : 0)); state.hud.harvested++; }
         else if (b >= CROP1 && b < CROP3) state.addItem(SEEDS, 1);
         else {
@@ -410,6 +438,7 @@
         K.sfx("coin"); state.stats.eaten++; return true;
       };
       state.placeBlock = function () {
+        var bedT = target(); if (bedT && bedT.b === BED) return state.sleep();
         if (D.FOOD[state.selectedBlock()]) return state.eat(state.selectedBlock());
         var t = target(), id = state.selectedBlock();
         if (!t || !id || (!state.creative && !(inv.count[id] > 0))) return false;
@@ -423,17 +452,33 @@
           if (!state.creative) { inv.count[SEEDS]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
           return true;
         }
+        if (id === SAPLING) {   // a sapling stands on grass or soil and becomes a tree by itself
+          if (t.ny !== 1 || (t.b !== GRASS && t.b !== DIRT) || get(t.x, t.y + 1, t.z) !== AIR) return false;
+          set(t.x, t.y + 1, t.z, SAPLING, true); state.saplings.push({ x: t.x, y: t.y + 1, z: t.z, age: 0 }); K.sfx("click");
+          if (!state.creative) { inv.count[SAPLING]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
+          return true;
+        }
         if (!D.isBlock(id)) return false;   // food, tools and materials are not placed
         var x = t.x + t.nx, y = t.y + t.ny, z = t.z + t.nz, p = state.p;
         if (get(x, y, z) !== AIR && get(x, y, z) !== WATER) return false;
         if (x + 1 > p.x - 0.3 && x < p.x + 0.3 && z + 1 > p.z - 0.3 && z < p.z + 0.3 && y + 1 > p.y && y < p.y + 1.8) return false;   // not inside the player
-        set(x, y, z, id, true); state.hud.placed++; K.sfx("click");
+        set(x, y, z, id, true); state.hud.placed++; K.sfx("click"); if (id === SAND) state.settle(x, y, z);
         if (!state.creative) { inv.count[id]--; if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1); }
         return true;
       };
 
       // ---- growing and crafting ----
+      state.growSaplings = function (dt) {
+        state.saplings = state.saplings.filter(function (sp) {
+          if (get(sp.x, sp.y, sp.z) !== SAPLING) return false;
+          sp.age += dt;
+          if (sp.age < TREE_SECONDS) return true;
+          if (state.growTree(sp.x, sp.y, sp.z)) { state.stats.grown++; return false; }
+          sp.age = TREE_SECONDS - 5; return true;   // no room yet: it tries again later
+        });
+      };
       state.grow = function (dt) {
+        state.growSaplings(dt);
         state.crops = state.crops.filter(function (c) {
           var b = get(c.x, c.y, c.z);
           if (b < CROP1 || b > CROP3) return false;   // it was harvested or built over
@@ -467,6 +512,7 @@
       state.craftPage = function () { return Math.floor(state.craftCursor / 8) * 8; };
       state.menuMove = function (d) { state.craftCursor = Math.max(0, Math.min(state.recipes.length - 1, state.craftCursor + d)); };
       (saved instanceof Array ? saved : []).forEach(function (e) {   // crops that were growing when the world was saved go on growing
+        if (e instanceof Array && e[3] === SAPLING && get(e[0], e[1], e[2]) === SAPLING) state.saplings.push({ x: e[0], y: e[1], z: e[2], age: 0 });
         if (e instanceof Array && e[3] >= CROP1 && e[3] < CROP3 && get(e[0], e[1], e[2]) === e[3]) state.crops.push({ x: e[0], y: e[1], z: e[2], age: (e[3] - CROP1) * CROP_SECONDS });
       });
 
@@ -486,7 +532,7 @@
       state.die = function (why) {   // you come back at the spawn with everything you carry
         var p = state.p;
         state.deaths++; state.health = 20; state.food = 20; state.air = 10; state.hungerT = state.regenT = state.starveT = state.drownT = 0;
-        p.x = w.spawn.x; p.y = w.spawn.y; p.z = w.spawn.z; p.vx = p.vy = p.vz = 0; p.peak = p.y;
+        var rs = state.respawn || w.spawn; p.x = rs.x; p.y = rs.y; p.z = rs.z; p.vx = p.vy = p.vz = 0; p.peak = p.y;
         state.mobs = state.mobs.filter(function (m) { return K.voxelmobs.TYPES[m.type].kind === "passive"; });   // the night things are gone when you come back
         state.say("Öldün" + (why ? " (" + why + ")" : "") + ". Doğma noktasında yeniden doğdun.");
       };
@@ -510,6 +556,8 @@
       state.vitals = function (dt) {
         var p = state.p;
         state.achT += dt; if (state.achT >= 0.5) { state.achT = 0; state.checkAch(); }
+        var inLava = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA || get(Math.floor(p.x), Math.floor(p.y + 1), Math.floor(p.z)) === LAVA;
+        if (inLava) { state.lavaT = (state.lavaT || 0) + dt; if (state.lavaT >= 0.5) { state.lavaT = 0; state.hurt(4, "lav"); } } else state.lavaT = 0;
         state.hungerT += dt * (K.key("Shift") ? 1.8 : 1);
         if (state.hungerT >= 45) { state.hungerT = 0; if (!state.creative) state.food = Math.max(0, state.food - 1); }
         if (state.food >= 18 && state.health < 20) { state.regenT += dt; if (state.regenT >= 4) { state.regenT = 0; state.health++; } } else state.regenT = 0;
@@ -532,7 +580,8 @@
         var sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
         var wx = (sin * f + cos * r) / len * speed, wz = (-cos * f + sin * r) / len * speed;
         var inWater = get(Math.floor(p.x), Math.floor(p.y + 0.5), Math.floor(p.z)) === WATER;
-        if (inWater) { wx *= 0.5; wz *= 0.5; }
+        var inLavaStep = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA;
+        if (inWater || inLavaStep) { wx *= 0.5; wz *= 0.5; }
         p.vx = wx; p.vz = wz;
         var space = K.key(" ");
         if (space && !spaceHeld) { if (state.canFly && state.time0 - lastSpace < 0.3) state.flying = !state.flying; lastSpace = state.time0; }   // twice quickly: fly on / off
@@ -596,6 +645,7 @@
             fog = fog * fog * 0.85;
             r = tex[o] * sh * (1 - fog) + skyR * fog; gg = tex[o + 1] * sh * (1 - fog) + skyG * fog; bb = tex[o + 2] * sh * (1 - fog) + skyB * fog;
             if (hit.b === WATER) { r = r * 0.7; gg = gg * 0.8; }
+            if (hit.b === LAVA) { r = tex[o]; gg = tex[o + 1]; bb = tex[o + 2]; }   // lava glows, night does not darken it
           } else if (dy < -0.05) { r = 20; gg = 20; bb = 30; }
           if (inWater) { r *= 0.55; gg *= 0.75; bb = bb * 0.9 + 30; }
           out[k] = r; out[k + 1] = gg; out[k + 2] = bb; out[k + 3] = 255;
@@ -648,7 +698,7 @@
         var cx = cv.getContext("2d");
         if (!cx) return icons[id] = null;
         cx.imageSmoothingEnabled = false;
-        if (D.isBlock(id) && id !== TORCH) {   // a torch is drawn as a torch, not as a cube
+        if (D.isBlock(id) && id !== TORCH && id !== SAPLING) {   // a torch is drawn as a torch, not as a cube
           var top = tile(id, 0), side = tile(id, 1);
           cx.setTransform(1, 0.5, -1, 0.5, 16, 0); cx.drawImage(top, 0, 0);
           cx.setTransform(1, 0.5, 0, 1, 0, 8); cx.drawImage(side, 0, 0); cx.fillStyle = "rgba(0,0,0,0.22)"; cx.fillRect(0, 0, 16, 16);
