@@ -64,6 +64,16 @@
     bread: ["................", "................", "................", "................", "....cccccccc....", "..ccaaaaaaaacc..", ".caaaaacaaaaaac.", ".caacaaaaacaaac.", ".caaaaaaaaaaaac.", "..bbaaaaaaaabb..", "...bbbbbbbbbb...", "................", "................", "................", "................", "................"],
     meat: ["................", "................", "......aaaa......", "....aaaaaaaa....", "...aaccaaaaaa...", "..aaaccaaaaaaa..", "..aaaaaaaaaabb..", "..aaaaaaaaabbk..", "...aaaaaabbbb...", ".....bbbbbk.....", "........kk......", ".......kkw......", "........w.......", "................", "................", "................"]
   };
+
+  function pad16(rows) { var out = rows.map(function (r) { while (r.length < 16) r += "."; return r.slice(0, 16); }); while (out.length < 16) out.push("................"); return out; }
+  P.feather = pad16(["..............aa", ".............aaa", "............aaaa", "...........aaaa.", "..........aaaa..", ".........aaaa...", "........aaab....", ".......aaab.....", "......aab.......", ".....dd.........", "....dd..........", "...dd..........."]);
+  P.leather = pad16(["", "", "...aaaaaaaaaa...", "..abbbbbbbbbba..", "..abaaaaaaaaba..", "..abaaaaaaaaba..", "..abaaaaaaaaba..", "..abaaaaaaaaba..", "..abbbbbbbbbba..", "...aaaaaaaaaa..."]);
+  P.string = pad16(["", "......wwww......", "....ww....ww....", "...w........w...", "...w........w...", "....ww....ww....", "......wwww......", ".........w......", "........w.......", ".......w........"]);
+  P.helmet = pad16(["", ".....hhhhhh.....", "....hhhhhhhh....", "...hhhhhhhhhh...", "...hhhhhhhhhh...", "...hhh....hhh...", "...hh......hh..."]);
+  P.chestplate = pad16(["", "..hhh......hhh..", ".hhhhh....hhhhh.", ".hhhhhhhhhhhhhh.", ".hhhhhhhhhhhhhh.", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "..hhhhhhhhhhhh..", "...hhhhhhhhhh..."]);
+  P.leggings = pad16(["", "...hhhhhhhhhh...", "...hhhhhhhhhh...", "...hhhhhhhhhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh..."]);
+  P.boots = pad16(["", "", "", "...hhh....hhh...", "...hhh....hhh...", "...hhh....hhh...", "..hhhh....hhhh..", ".hhhhh....hhhhh.", ".hhhhh....hhhhh."]);
+  P.arrow = pad16(["...............w", "..............ww", ".............ww.", "............dd..", "...........dd...", "..........dd....", ".........dd.....", "........dd......", ".......dd.......", "...cc.dd........", "..ccc.d.........", ".ccc............"]);
   var TIER_RGB = [[176, 140, 84], [128, 128, 128], [220, 220, 226], [250, 220, 70], [90, 230, 230]];
   // rows and a palette for an item: { rows: [...], pal: { h: [r,g,b], ... } } or null for blocks (those are drawn as cubes from their textures)
   D.icon = function (id) {
@@ -71,15 +81,63 @@
     var shade = function (rgb, f) { return [Math.min(255, rgb[0] * f), Math.min(255, rgb[1] * f), Math.min(255, rgb[2] * f)]; };
     var pal = { a: c, b: shade(c, 0.7), c: shade(c, 1.25), d: [120, 84, 46], k: [34, 34, 38], w: [235, 235, 235] };
     if (t) { pal.h = TIER_RGB[t.tier]; pal.b = shade(pal.h, 0.7); return { rows: P[t.kind], pal: pal }; }
-    var kind = { 33: "torch", 40: "stick", 41: "coal", 42: "ingot", 43: "ingot", 44: "diamond", 20: "seeds", 21: "wheat", 23: "bread", 80: "meat", 81: "meat" }[id];
+    var ar = D.armorOf(id);
+    if (ar) { pal.h = ARMOR_RGB[ar.tier]; pal.b = shade(pal.h, 0.7); return { rows: P[["helmet", "chestplate", "leggings", "boots"][ar.slot]], pal: pal }; }
+    var kind = { 33: "torch", 40: "stick", 41: "coal", 42: "ingot", 43: "ingot", 44: "diamond", 20: "seeds", 21: "wheat", 23: "bread", 80: "meat", 81: "meat", 82: "meat", 83: "meat", 84: "meat", 85: "meat", 86: "meat", 87: "meat", 88: "meat", 89: "meat", 110: "meat", 111: "meat",
+                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 118: "arrow" }[id];
+    if (id === 116) pal.a = [100, 100, 106]; if (id === 117) pal.a = [100, 130, 70]; if (id === 115) { pal.d = [228, 224, 205]; }
     if (id === 41) pal.a = [34, 34, 38];
     if (id === 80) pal.a = [215, 110, 110];
     if (id === 81) pal.a = [160, 95, 55];
     return kind ? { rows: P[kind], pal: pal } : null;
   };
+
+  // ---- creatures' drops, armour and the wearing of tools ----
+  var ARMOR_TIERS = D.ARMOR_TIERS = ["deri", "demir", "altın", "elmas"], ARMOR_PARTS = D.ARMOR_PARTS = [["helmet", "miğfer"], ["chestplate", "göğüslük"], ["leggings", "pantolon"], ["boots", "bot"]];
+  var ARMOR_RGB = [[160, 100, 60], [220, 220, 226], [250, 220, 70], [90, 230, 230]];
+  var ARMOR_POINTS = D.ARMOR_POINTS = [[1, 3, 2, 1], [2, 6, 5, 2], [2, 5, 3, 1], [3, 8, 6, 3]];   // helmet, chest, legs, boots
+  D.armorOf = function (id) { if (id < 90 || id > 105) return null; var t = Math.floor((id - 90) / 4), s = (id - 90) % 4; return { tier: t, slot: s, points: ARMOR_POINTS[t][s] }; };
+  D.armorId = function (tier, slot) { return 90 + tier * 4 + slot; };
+  for (var at = 0; at < 4; at++) for (var ap = 0; ap < 4; ap++) { NAME[90 + at * 4 + ap] = ARMOR_TIERS[at] + " " + ARMOR_PARTS[ap][1]; COLOR[90 + at * 4 + ap] = [ARMOR_RGB[at]]; }
+  D.DUR = [59, 131, 250, 32, 1561];   // uses of a wood, stone, iron, gold and diamond tool
+  var RAW = [[82, 83, "biftek", [210, 90, 90], 3, 8], [84, 85, "domuz eti", [232, 150, 160], 3, 8], [86, 87, "koyun eti", [200, 90, 100], 2, 6], [88, 89, "tavuk", [235, 190, 150], 2, 6], [110, 111, "tavşan eti", [200, 130, 110], 3, 5]];
+  RAW.forEach(function (r) {
+    NAME[r[0]] = "çiğ " + r[2]; COLOR[r[0]] = [r[3]]; NAME[r[1]] = "pişmiş " + r[2]; COLOR[r[1]] = [[150, 92, 52]];
+    D.FOOD[r[0]] = r[4]; D.FOOD[r[1]] = r[5];
+  });
+  NAME[112] = "tüy"; COLOR[112] = [[240, 240, 240]]; NAME[113] = "deri"; COLOR[113] = [[150, 96, 56]]; NAME[114] = "ip"; COLOR[114] = [[235, 235, 235]]; NAME[115] = "kemik"; COLOR[115] = [[228, 224, 205]];
+  NAME[116] = "barut"; COLOR[116] = [[96, 96, 100]]; NAME[117] = "çürük et"; COLOR[117] = [[110, 140, 80]]; NAME[118] = "ok"; COLOR[118] = [[200, 200, 200]];
+  D.FOOD[117] = 4;
+  NAME[34] = "yün"; COLOR[34] = [[236, 236, 236], [226, 226, 230], [226, 226, 230]];
   D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
+
+  // ---- achievements: each one looks at the game state (s.ever: kinds you ever held, s.stats, s.hud, s.deaths) ----
+  var crafted = function (s, name) { return (s.stats.crafted[name] || 0) >= 1; };
+  var anyPick = function (s) { for (var t = 0; t < 5; t++) if (s.ever[D.toolId("pickaxe", t)]) return true; return false; };
+  D.ACH = [
+    { id: "wood", name: "Ağaç Kes", desc: "bir kütük topla", test: function (s) { return !!s.ever[5]; } },
+    { id: "table", name: "Çalışma Masası", desc: "üretim masası yap", test: function (s) { return crafted(s, "üretim masası"); } },
+    { id: "pick", name: "Kazma Zamanı", desc: "bir kazma yap", test: anyPick },
+    { id: "stone", name: "Taş Devri", desc: "kırık taş topla", test: function (s) { return !!s.ever[27]; } },
+    { id: "furnace", name: "Sıcak Konu", desc: "bir fırın yap", test: function (s) { return crafted(s, "fırın"); } },
+    { id: "iron", name: "Demir Çağı", desc: "demir külçe elde et", test: function (s) { return !!s.ever[42]; } },
+    { id: "gold", name: "Altın Çağı", desc: "altın külçe elde et", test: function (s) { return !!s.ever[43]; } },
+    { id: "diamond", name: "Elmas!", desc: "bir elmas bul", test: function (s) { return !!s.ever[44]; } },
+    { id: "diamondpick", name: "Tam Donanım", desc: "elmas kazma yap", test: function (s) { return crafted(s, "elmas kazma"); } },
+    { id: "glass", name: "Cam Ustası", desc: "fırında cam pişir", test: function (s) { return !!s.ever[8] && s.stats.smelted > 0; } },
+    { id: "farmer", name: "Çiftçi", desc: "ektiğin ekini hasat et", test: function (s) { return s.hud.harvested >= 1; } },
+    { id: "bread", name: "Ekmek Yap", desc: "buğdaydan ekmek yap", test: function (s) { return crafted(s, "ekmek"); } },
+    { id: "eat", name: "Karnını Doyur", desc: "bir şey ye", test: function (s) { return s.stats.eaten >= 1; } },
+    { id: "explorer", name: "Gezgin", desc: "10 parça gez", test: function (s) { return s.hud.explored >= 10; } },
+    { id: "wanderer", name: "Kaşif", desc: "50 parça gez", test: function (s) { return s.hud.explored >= 50; } },
+    { id: "deep", name: "Derin Madenci", desc: "yüzeyin 15 blok altına in", test: function (s) { return s.hud.depth >= 15; } },
+    { id: "digger", name: "Kazıcı", desc: "200 blok kır", test: function (s) { return s.hud.broken >= 200; } },
+    { id: "builder", name: "İnşaatçı", desc: "100 blok koy", test: function (s) { return s.hud.placed >= 100; } },
+    { id: "torch", name: "Işığı Yak", desc: "meşale yap", test: function (s) { return crafted(s, "meşale"); } },
+    { id: "died", name: "Pes Etmek Yok", desc: "bir kez öl ve geri dön", test: function (s) { return s.deaths >= 1; } }
+  ];
   // a block can be put down: the ground and plant blocks, and the new building blocks (not tools, food or materials)
-  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 33); };
+  D.isBlock = function (id) { return (id >= 1 && id <= 13) || id === 15 || (id >= 24 && id <= 34); };
 
   // ---- mining: how long a block takes by hand (seconds), which tool is the right one, and the lowest tier that gets something out of it ----
   var HARD = { 1: 0.6, 2: 0.5, 3: 1.5, 4: 0.5, 5: 2, 6: 0.2, 7: 2, 8: 0.3, 9: 3, 10: 3, 11: 3, 12: 3, 13: 0.2, 15: 0.4, 16: 0.6, 17: 0, 18: 0, 19: 0, 24: 2.5, 25: 3.5, 26: 2.5, 27: 2, 28: 2, 29: 0.8, 30: 5, 31: 5, 32: 5, 33: 0 };
@@ -141,6 +199,12 @@
   // smelting: [from, to]; each coal does eight
   D.smelts = [[ID.COBBLE, ID.STONE, "taş"], [ID.SAND, ID.GLASS, "cam"], [ID.IRON_ORE, ID.IRON_INGOT, "demir külçe"], [ID.GOLD_ORE, ID.GOLD_INGOT, "altın külçe"], [80, 81, "pişmiş et"]];
   D.smelts.forEach(function (s) { add("eritme: " + s[2], "furnace", [[s[0], 1]], [s[1], 1]); });
+  add("yün (4 ip)", "hand", [[114, 4]], [34, 1]);
+  for (var ar = 0; ar < 4; ar++) {
+    var armMat = [113, ID.IRON_INGOT, ID.GOLD_INGOT, ID.DIAMOND][ar], armCost = [5, 8, 7, 4];
+    for (var part = 0; part < 4; part++) add(ARMOR_TIERS[ar] + " " + ARMOR_PARTS[part][1], "table", [[armMat, armCost[part]]], [D.armorId(ar, part), 1]);
+  }
+  RAW.forEach(function (r) { add("eritme: " + (r[2] === "biftek" ? "biftek" : r[2]), "furnace", [[r[0], 1]], [r[1], 1]); });
   D.recipeIndex = function (name) { for (var i = 0; i < R.length; i++) if (R[i].name === name) return i; return -1; };
 
   if (typeof module !== "undefined" && module && module.exports) module.exports = K;

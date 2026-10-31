@@ -80,7 +80,7 @@ def test_every_spec_is_accepted_by_the_real_sandbox_kit(data, tmp_path):
     path = tmp_path / "specs.json"
     path.write_text(json.dumps([e["spec"] for e in train + held]), encoding="utf-8")
     js = ("const { load } = require('./helpers'); const fs = require('fs');"
-          "const K = load('kgame.js','kgame.audio2.js','kgame.kits.js','kgame.voxeldata.js','kgame.voxel.js');"
+          "const K = load('kgame.js','kgame.audio2.js','kgame.kits.js','kgame.voxeldata.js','kgame.voxelmobs.js','kgame.voxel.js');"
           "const specs = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); let bad = [];"
           "specs.forEach((s, i) => { const e = K.kit.check(s); if (e.length) bad.push(i + ': ' + e[0]); });"
           "console.log(JSON.stringify(bad));")

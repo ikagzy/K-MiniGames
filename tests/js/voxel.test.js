@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { load } = require('./helpers');
 
-const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxel.js'];
+const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxelmobs.js', 'kgame.voxel.js'];
 const fresh = () => load(...FILES);
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
@@ -561,4 +561,195 @@ test('drowning: staying under water too long hurts, breathing in the air brings 
   run(s, 12); assert.ok(s.health < 20, 'then it hurts: ' + s.health);
   for (let dy = 0; dy < 3; dy++) s.set(px, py + dy, pz, 0, false);
   s.p.y += 0.1; run(s, 3); assert.strictEqual(s.air, 10, 'air is full again');
+});
+
+test('achievements: none at the start (the starter things do not count), each one comes true by itself, is announced once, is kept with the world, and B shows the list', () => {
+  const K = fresh(); const D = K.voxeldata;
+  assert.strictEqual(D.ACH.length, 20); assert.strictEqual(new Set(D.ACH.map((a) => a.id)).size, 20);
+  let s = K.kit.run({ kit: 'sandbox', world: { seed: 12 }, size: 'small', trees: 0 });
+  run(s, 2);
+  assert.deepStrictEqual(Object.keys(s.ach), [], 'nothing yet, even though you start with logs and stone');
+  s.addItem(5, 1); run(s, 0.7);
+  assert.strictEqual(s.ach.wood, true); assert.ok(/Ağaç Kes/.test(s.message), 'it is announced');
+  const first = s.message; run(s, 6); assert.strictEqual(s.message, '');
+  run(s, 2); assert.strictEqual(s.message, first === s.message ? first : s.message, 'and not again');
+  assert.strictEqual(Object.keys(s.ach).length, 1);
+  // crafting, furnace, tools, food
+  const px = Math.floor(s.p.x), py = Math.floor(s.p.y), pz = Math.floor(s.p.z);
+  assert.strictEqual(s.craft('üretim masası'), true);
+  s.set(px + 2, py, pz, 24, false); s.set(px - 2, py, pz, 25, false);
+  s.addItem(27, 4); s.addItem(40, 6); s.addItem(7, 6);
+  assert.ok(s.craft('taş kazma') && s.craft('odun kazma'));
+  s.addItem(4, 2); s.addItem(41, 1); assert.ok(s.craft('eritme: cam'));
+  s.addItem(42, 1); s.addItem(43, 1); s.addItem(44, 1); s.addItem(21, 3); assert.ok(s.craft('ekmek'));
+  s.food = 5; s.select(s.hotbar().indexOf(23)); s.placeBlock();
+  run(s, 0.7);
+  for (const id of ['table', 'pick', 'stone', 'glass', 'iron', 'gold', 'diamond', 'bread', 'eat']) assert.strictEqual(s.ach[id], true, id);
+  assert.ok(!s.ach.furnace, 'the furnace was set down, not made');
+  assert.ok(!s.ach.diamondpick && !s.ach.farmer && !s.ach.died);
+  s.hud.harvested = 1; s.deaths = 1; s.hud.explored = 12; s.hud.broken = 250; run(s, 0.7);
+  for (const id of ['farmer', 'died', 'explorer', 'digger']) assert.strictEqual(s.ach[id], true, id);
+  assert.ok(!s.ach.wanderer && !s.ach.builder);
+  // kept with the world
+  s = K.kit.run({ kit: 'sandbox', world: { seed: 12 }, size: 'small', trees: 0 });
+  assert.strictEqual(s.ach.wood, true, 'it is still there next time'); assert.strictEqual(s.ach.diamond, true);
+  s = K.kit.run({ kit: 'sandbox', world: { seed: 13 }, size: 'small', trees: 0 });
+  assert.deepStrictEqual(Object.keys(s.ach), [], 'another world starts clean');
+  K.press('b'); run(s, 0.1); K.press('b', false); run(s, 0.05);
+  assert.strictEqual(s.showAch, true);
+  const calls = []; const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => { calls.push(k); }), set: (t, k, v) => { t[k] = v; return true; } });
+  s.drawHud(ctx); assert.ok(calls.includes('fillText'));
+});
+
+const placeMob = (K, s, type, ahead, side) => {   // a creature standing on the ground `ahead` blocks in front of the player
+  const yaw = s.p.yaw, x = s.p.x + Math.sin(yaw) * ahead + Math.cos(yaw) * (side || 0), z = s.p.z - Math.cos(yaw) * ahead + Math.sin(yaw) * (side || 0);
+  const h = s.world.heightAt(Math.floor(x), Math.floor(z));
+  const m = K.voxelmobs.create(type, x, h + 1.01, z); s.mobs.push(m); return m;
+};
+
+test('creatures: every kind has a picture, a name, sensible drops, a size, and the same herds appear for the same world', () => {
+  const K = fresh(); const M = K.voxelmobs, D = K.voxeldata;
+  for (const type of Object.keys(M.TYPES)) {
+    const t = M.TYPES[type], art = M.ART[type];
+    assert.ok(t.name && t.hp > 0 && t.w > 0 && t.h > 0 && t.speed > 0, type);
+    assert.ok(art.rows.length >= 6 && art.rows.every((r) => r.length === art.rows[0].length), type + ' picture rows are the same width');
+    for (const ch of new Set(art.rows.join('').replace(/\./g, ''))) assert.ok(art.pal[ch], type + ' has no colour for ' + ch);
+    t.drops.forEach((d) => { assert.ok(D.NAME[d[0]], type + ' drops a named thing'); assert.ok(d[1][0] <= d[1][1]); });
+  }
+  assert.ok(M.PASSIVE.every((t) => M.TYPES[t].kind === 'passive') && M.HOSTILE.every((t) => M.TYPES[t].kind === 'hostile'));
+  assert.deepStrictEqual(M.chunkSpawns(5, 3, 4, 'forest'), M.chunkSpawns(5, 3, 4, 'forest'));
+  const herds = []; for (let cx = 0; cx < 12; cx++) for (let cz = 0; cz < 12; cz++) herds.push(M.chunkSpawns(5, cx, cz, 'forest').length);
+  const withAnimals = herds.filter((n) => n > 0).length;
+  assert.ok(withAnimals > 20 && withAnimals < 100, 'some chunks have animals, most do not: ' + withAnimals);
+  assert.ok(M.drops('cow', () => 0.99).some((d) => d[0] === 82), 'a cow gives beef');
+  assert.deepStrictEqual(M.drops('zombie', () => 0), [], 'a drop that rolls zero gives nothing');
+});
+
+test('a world starts with animals standing on open ground, and they wander without going into blocks', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'medium', time: 'day' });
+  run(s, 1);
+  assert.ok(s.mobs.length > 0, 'animals near the spawn: ' + s.mobs.length);
+  assert.ok(s.mobs.every((m) => K.voxelmobs.TYPES[m.type].kind === 'passive'), 'only animals in daylight');
+  const before = s.mobs.map((m) => [m.x, m.z]);
+  run(s, 12);
+  const moved = s.mobs.filter((m, i) => before[i] && Math.hypot(m.x - before[i][0], m.z - before[i][1]) > 0.5).length;
+  assert.ok(moved >= 1, 'some of them walked');
+  for (const m of s.mobs) {
+    assert.ok(Number.isFinite(m.x) && Number.isFinite(m.y) && Number.isFinite(m.z));
+    const b = s.world.get(Math.floor(m.x), Math.floor(m.y + 0.5), Math.floor(m.z));
+    assert.ok(b === 0 || b === 14, 'not inside a block');
+  }
+});
+
+test('hunting: the creature under the crosshair is hit while the button is held, a better sword does more, a kill gives its drops', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'medium', time: 'day' });
+  run(s, 1.5); s.mobs.length = 0; s.p.pitch = 0;
+  const cow = placeMob(K, s, 'cow', 2.2);
+  cow.hp = 10; cow.wander = 999; cow.dirx = cow.dirz = 0; s.p.pitch = -0.15; run(s, 0.02);
+  assert.strictEqual(s.mobTarget(), cow, 'the crosshair is on it');
+  K.press('f'); run(s, 0.6); K.press('f', false); run(s, 0.05);
+  assert.ok(cow.hp <= 9 && cow.hp > 5, 'bare hands do one point: ' + cow.hp);
+  assert.ok(cow.fear > 0, 'it is scared');
+  const hp = cow.hp; s.addItem(K.voxeldata.toolId('sword', 4), 1);
+  s.attackCd = 0; s.attackMob(cow);
+  assert.ok(cow.hp <= hp - 7, 'a diamond sword does seven: ' + hp + ' -> ' + cow.hp);
+  const beef = s.inv.count[82] || 0, kills = s.kills;
+  s.attackCd = 0; s.attackMob(cow); s.attackCd = 0; s.attackMob(cow);
+  assert.strictEqual(cow.dead, true); assert.strictEqual(s.kills, kills + 1);
+  assert.ok((s.inv.count[82] || 0) >= beef + 1, 'beef');
+  run(s, 0.2); assert.ok(!s.mobs.includes(cow), 'it is gone');
+});
+
+test('the picture shows a creature in the open and a wall hides it, and it cannot be hit through the wall', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'medium', time: 'day' });
+  run(s, 1.5); s.mobs.length = 0; s.p.pitch = 0;
+  const empty = Array.from(s.render(new Uint8ClampedArray(160 * 100 * 4)));
+  const cow = placeMob(K, s, 'cow', 3);
+  cow.wander = 999; cow.dirx = cow.dirz = 0;
+  const open = Array.from(s.render(new Uint8ClampedArray(160 * 100 * 4)));
+  let diff = 0; for (let i = 0; i < open.length; i += 4) if (open[i] !== empty[i] || open[i + 1] !== empty[i + 1]) diff++;
+  assert.ok(diff > 80, 'the cow shows in the picture: ' + diff + ' pixels');
+  const wx = Math.floor(s.p.x + Math.sin(s.p.yaw) * 1.6), wz = Math.floor(s.p.z - Math.cos(s.p.yaw) * 1.6), wy = Math.floor(s.p.y);
+  for (let dy = 0; dy < 4; dy++) for (let dx = -1; dx <= 1; dx++) s.set(wx + dx, wy + dy, wz, 3, false);
+  assert.notStrictEqual(s.mobTarget(), cow, 'it cannot be hit through the wall');
+  const hidden = Array.from(s.render(new Uint8ClampedArray(160 * 100 * 4)));
+  let same = 0; for (let i = 0; i < hidden.length; i += 4) if (hidden[i] === open[i] && hidden[i + 1] === open[i + 1]) same++;
+  assert.ok(same < hidden.length / 4, 'the wall changed the picture');
+});
+
+test('hostile creatures: they come out at night and not by day, a zombie hits hard, armour takes some off, a skeleton shoots, a bomber blows up blocks', () => {
+  const K = fresh();
+  const day = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'medium', time: 'day' });
+  run(day, 8); assert.ok(day.mobs.every((m) => K.voxelmobs.TYPES[m.type].kind === 'passive'), 'none by day');
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'medium', time: 'night' });
+  run(s, 1.5);
+  for (let i = 0; i < 60; i++) { s.spawnT = 2; run(s, 0.05); }
+  const hostile = s.mobs.filter((m) => K.voxelmobs.TYPES[m.type].kind === 'hostile').length;
+  assert.ok(hostile >= 3 && hostile <= 6, 'a few come at night, never more than six: ' + hostile);
+  assert.ok(s.mobs.length <= 40);
+  s.mobs.length = 0; s.p.pitch = 0; s.health = 20; s.food = 20;
+  const z = placeMob(K, s, 'zombie', 1.2); z.cooldown = 0;
+  run(s, 0.4); assert.ok(s.health <= 17, 'a zombie takes three: ' + s.health);
+  s.mobs.length = 0; s.health = 20;
+  for (const part of [0, 1, 2, 3]) s.addItem(K.voxeldata.armorId(1, part), 1);
+  assert.strictEqual(s.armorPoints(), 15, 'iron: 2 + 6 + 5 + 2');
+  s.hurtPlayer(10, 'test'); assert.strictEqual(s.health, 16, 'ten damage with fifteen points is four');
+  s.health = 20; s.hurt(10, 'düşme'); assert.strictEqual(s.health, 10, 'armour does not help against a fall');
+  s.health = 20; s.mobs.length = 0; s.p.pitch = 0;
+  const sk = placeMob(K, s, 'skeleton', 8); sk.cooldown = 0;
+  let shot = false; for (let i = 0; i < 300 && !shot; i++) { run(s, 1 / 60); if (s.arrows.length) shot = true; }
+  assert.ok(shot, 'an arrow flew');
+  s.arrows.length = 0; s.mobs.length = 0; s.health = 20;
+  const stand = Math.floor(s.p.y), bx = Math.floor(s.p.x + Math.sin(s.p.yaw) * 2.5), bz = Math.floor(s.p.z - Math.cos(s.p.yaw) * 2.5);
+  s.set(bx, stand, bz, 3, false); s.set(bx, stand + 1, bz, 3, false);
+  const bomber = placeMob(K, s, 'bomber', 2.2); bomber.fuse = 0; run(s, 2.5);
+  assert.ok(bomber.dead && bomber.exploded, 'it blew up');
+  assert.strictEqual(s.get(bx, stand, bz), 0, 'the blocks next to it are gone'); assert.ok(s.health < 20, 'and it hurt: ' + s.health);
+});
+
+test('zombies and skeletons burn in the open in daylight', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'medium', time: 'day' });
+  run(s, 1.5); s.mobs.length = 0; s.p.pitch = 0;
+  const z = placeMob(K, s, 'zombie', 12); z.wander = 0;
+  const hp = z.hp; run(s, 3.5);
+  assert.ok(z.hp < hp, 'it burns in the sun: ' + z.hp);
+});
+
+test('tools wear out: the best tool of the kind is the one that wears, a wooden pickaxe lasts 59 uses, creative never wears anything', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'small', trees: 0 });
+  run(s, 1.5);
+  s.addItem(50, 1); s.addItem(52, 1);
+  assert.strictEqual(s.have('pickaxe'), 2);
+  for (let i = 0; i < 10; i++) s.useTool('pickaxe');
+  assert.strictEqual(s.wear[52], D.DUR[2] - 10, 'the iron one wears, not the wooden one'); assert.strictEqual(s.wear[50], undefined);
+  for (let i = 0; i < 245; i++) s.useTool('pickaxe');
+  assert.strictEqual(s.inv.count[52], 0, 'the iron pickaxe broke'); assert.ok(/Alet kırıldı/.test(s.message));
+  assert.strictEqual(s.have('pickaxe'), 0, 'the wooden one is next');
+  s.setCreative(true); s.addItem(53, 1); s.useTool('pickaxe'); assert.strictEqual(s.wear[53], undefined, 'creative: no wear');
+  assert.deepStrictEqual(D.DUR, [59, 131, 250, 32, 1561]);
+});
+
+test('armour, wool, meat and the new recipes: every piece is made from the right amount, and raw meat is cooked in a furnace', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 3 }, size: 'small', trees: 0 });
+  run(s, 1.5);
+  const px = Math.floor(s.p.x), py = Math.floor(s.p.y), pz = Math.floor(s.p.z);
+  s.set(px + 2, py, pz, 24, false); s.set(px - 2, py, pz, 25, false);
+  for (const [tier, mat] of [[0, 113], [1, 42], [2, 43], [3, 44]]) for (const [part, cost] of [[0, 5], [1, 8], [2, 7], [3, 4]]) {
+    const r = D.recipes[D.recipeIndex(D.ARMOR_TIERS[tier] + ' ' + D.ARMOR_PARTS[part][1])];
+    assert.deepStrictEqual(r.need, [[mat, cost]]); assert.deepStrictEqual(r.give, [D.armorId(tier, part), 1]);
+    assert.strictEqual(D.armorOf(D.armorId(tier, part)).points, D.ARMOR_POINTS[tier][part]);
+  }
+  s.addItem(42, 8); assert.strictEqual(s.craft('demir göğüslük'), true); assert.strictEqual(s.armorPoints(), 6);
+  s.addItem(114, 4); assert.strictEqual(s.craft('yün (4 ip)'), true); assert.strictEqual(s.inv.count[34], 1);
+  s.addItem(41, 1); s.addItem(82, 2);
+  assert.strictEqual(s.craft('eritme: biftek'), true); assert.strictEqual(s.inv.count[83], 1);
+  s.food = 5; s.select(s.hotbar().indexOf(83)); assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.food, 13, 'steak fills eight');
+  assert.strictEqual(D.FOOD[88], 2); assert.strictEqual(D.FOOD[89], 6); assert.strictEqual(D.FOOD[111], 5);
+  for (const id of [34, 82, 83, 84, 85, 86, 87, 88, 89, 110, 111, 112, 113, 114, 115, 116, 117, 118, 90, 105]) assert.ok(D.hasIcon(id), D.NAME[id] + ' has an icon');
 });

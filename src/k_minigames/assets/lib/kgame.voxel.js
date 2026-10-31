@@ -91,6 +91,7 @@
       }
       chunks[idx] = blocks; heights[idx] = hm; w.made++;
       (pending[idx] || []).forEach(function (e) { blocks[at(e[0] - cx * CH, e[1], e[2] - cz * CH)] = e[3]; });   // what the player changed here before
+      if (w.onChunk) w.onChunk(cx, cz);
       return blocks;
     }
     w.get = function (x, y, z) {
@@ -190,6 +191,7 @@
       var state = { g: g, spec: spec, world: w, edits: [], hits: [], heroHooks: [], canFly: false, flying: false, sprintMul: 1, time: spec.time === "night" ? 0.5 : 0.1,
                     creative: false, inv: { order: [], count: {} }, slot: 0, showInv: false, showHelp: false, visited: {}, lockHint: true, breakDelay: 0,
                     p: { x: w.spawn.x, y: w.spawn.y, z: w.spawn.z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: false, peak: w.spawn.y },
+                    ever: {}, stats: { crafted: {}, eaten: 0, smelted: 0 }, ach: {}, showAch: false, achT: 0, mobs: [], arrows: [], attackCd: 0, wear: {}, spawnT: 0, kills: 0,
                     health: 20, food: 20, air: 10, hungerT: 0, regenT: 0, starveT: 0, drownT: 0, hurtFlash: 0, deaths: 0, message: "", messageT: 0 };
       var tune = spec.music;
       if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
@@ -218,6 +220,7 @@
       var inv = state.inv;
       state.addItem = function (id, n) {
         if (!id || id === AIR || id === WATER) return;
+        state.ever[id] = true;   // (achievements look at what you ever held)
         if (!inv.count[id]) { inv.count[id] = 0; if (inv.order.indexOf(id) < 0) inv.order.push(id); }
         inv.count[id] += n || 1;
       };
@@ -230,6 +233,7 @@
         if (on) [GRASS, DIRT, STONE, SAND, LOG, LEAVES, PLANKS, GLASS, SNOW, COAL, IRON, GOLD, DIAMOND, CACTUS].forEach(function (id) { if (inv.order.indexOf(id) < 0) inv.order.push(id); if (!inv.count[id]) inv.count[id] = 1; });
       };
       [[STONE, 20], [DIRT, 20], [PLANKS, 20], [GLASS, 8], [LOG, 10], [D.hoeId(0), 1], [SEEDS, 6]].forEach(function (s) { state.addItem(s[0], s[1]); });
+      state.ever = {};   // the starter things do not count
 
       // ---- looking: a ray through the cubes (shared by the picture and by breaking / placing) ----
       var hit = { b: 0, x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, t: 0, face: 1, hx: 0, hy: 0, hz: 0 };
@@ -279,6 +283,7 @@
         var tx = t.x, ty = t.y, tz = t.z, b = t.b;
         K.sfx(b === DIRT || b === GRASS || b === SAND ? "click" : "hit");
         set(tx, ty, tz, AIR, true); state.hud.broken++;
+        var kindUsed = D.rightTool(b); if (kindUsed) state.useTool(kindUsed);
         if (b === CROP3) { state.addItem(WHEAT, 1); state.addItem(SEEDS, 1 + (hash(8, tx, ty, tz) < 0.5 ? 1 : 0)); state.hud.harvested++; }
         else if (b >= CROP1 && b < CROP3) state.addItem(SEEDS, 1);
         else {
@@ -287,8 +292,107 @@
         }
         return true;
       };
-      state.mineStep = function (dt, holding) {   // holding the button on a block digs it, as fast as your best tool allows
-        var m = state.mining, t = holding ? target() : null;
+      // ---- creatures: animals that wander and can be hunted, and hostile ones that come out at night ----
+      var M = K.voxelmobs;
+      var mr = (function () { var q = (seed * 7919 + 13) >>> 0; return function () { q = (q * 1664525 + 1013904223) >>> 0; return q / 4294967296; }; })();
+      var MW = {   // what a creature may ask of the world
+        get: get, solid: solid, rnd: mr,
+        get player() { return state.p; },
+        get daylight() { return state.daylight(); },
+        skyOpen: function (x, y, z) { for (var yy = Math.floor(y); yy < SY; yy++) { var b = get(Math.floor(x), yy, Math.floor(z)); if (b !== AIR && b !== TORCH) return false; } return true; },
+        hurtPlayer: function (n, why) { state.hurtPlayer(n, why); },
+        shoot: function (from, to) {
+          var dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+          state.arrows.push({ x: from.x, y: from.y, z: from.z, vx: dx / L * 16, vy: dy / L * 16 + 1.5, vz: dz / L * 16, age: 0 }); K.sfx("click");
+        },
+        explode: function (x, y, z) { state.explode(x, y, z); }
+      };
+      state.armorPoints = function () {   // the best piece you own for each of the four places counts, no need to put anything on
+        var best = [0, 0, 0, 0];
+        Object.keys(inv.count).forEach(function (k) { var a = D.armorOf(+k); if (a && inv.count[k] > 0 && a.points > best[a.slot]) best[a.slot] = a.points; });
+        return best[0] + best[1] + best[2] + best[3];
+      };
+      state.hurtPlayer = function (n, why) { return state.hurt(Math.max(1, Math.round(n * (1 - Math.min(20, state.armorPoints()) * 0.04))), why); };   // each armour point takes off 4 percent
+      state.explode = function (x, y, z) {
+        var p = state.p, dist = Math.sqrt((p.x - x) * (p.x - x) + (p.y + 0.9 - y) * (p.y + 0.9 - y) + (p.z - z) * (p.z - z));
+        for (var bx = -3; bx <= 3; bx++) for (var by = -3; by <= 3; by++) for (var bz = -3; bz <= 3; bz++) {
+          if (bx * bx + by * by + bz * bz <= 7 && Math.floor(y) + by >= 1) set(Math.floor(x) + bx, Math.floor(y) + by, Math.floor(z) + bz, AIR, false);
+        }
+        if (dist < 5) state.hurtPlayer(Math.round((1 - dist / 5) * 18) + 2, "patlama");
+        K.sfx("boom"); g.shake(8, 300);
+      };
+      state.useTool = function (kind) {   // a tool wears out: a wooden one after 59 uses, a diamond one after 1561
+        if (state.creative) return;
+        var tier = state.have(kind); if (tier < 0) return;
+        var id = kind === "hoe" ? D.hoeId(tier) : D.toolId(kind, tier);
+        state.wear[id] = (state.wear[id] === undefined ? D.DUR[tier] : state.wear[id]) - 1;
+        if (state.wear[id] <= 0) { inv.count[id]--; delete state.wear[id]; state.say("Alet kırıldı: " + NAMES[id]); }
+      };
+      state.mobTarget = function () {   // the creature under the crosshair, nearer than any block (the mob is a ball for the ray)
+        var e = eye(), d = look(), bt = cast(e.x, e.y, e.z, d.x, d.y, d.z, REACH, true) ? hit.t : 99, best = null, bestT = 3.6;
+        state.mobs.forEach(function (m) {
+          var t = M.TYPES[m.type], r = Math.max(t.w, t.h * 0.6) / 2 + 0.25, ox = m.x - e.x, oy = m.y + t.h / 2 - e.y, oz = m.z - e.z, tc = ox * d.x + oy * d.y + oz * d.z;
+          if (tc < 0 || tc > bestT) return;
+          var d2 = ox * ox + oy * oy + oz * oz - tc * tc; if (d2 > r * r) return;
+          var th = tc - Math.sqrt(r * r - d2); if (th < 0) th = tc;
+          if (th < bestT && th < bt) { bestT = th; best = m; }
+        });
+        return best;
+      };
+      var SWORD = [4, 5, 6, 4, 7];   // damage with a wood, stone, iron, gold, diamond sword (bare hands 1)
+      state.killMob = function (m) {
+        m.dead = true; state.kills++;
+        M.drops(m.type, mr).forEach(function (d) { state.addItem(d[0], d[1]); });
+      };
+      state.attackMob = function (m) {
+        if (m.dead || state.attackCd > 0) return false;   // a dead one is not hit again
+        state.attackCd = 0.5;
+        var tier = state.have("sword"), dmg = tier >= 0 ? SWORD[tier] : 1, p = state.p, dx = m.x - p.x, dz = m.z - p.z, L = Math.sqrt(dx * dx + dz * dz) || 1;
+        m.hp -= dmg; m.flash = 0.25; m.kx = dx / L * 5; m.kz = dz / L * 5; m.vy = 4; if (M.TYPES[m.type].kind === "passive") m.fear = 4;
+        K.sfx("hit"); if (tier >= 0) state.useTool("sword");
+        if (m.hp <= 0) state.killMob(m);
+        return true;
+      };
+      state.spawnHostile = function () {   // at night, on open ground a little way off, never more than six near you
+        var hostiles = state.mobs.filter(function (m) { return M.TYPES[m.type].kind === "hostile"; }).length;
+        if (state.daylight() >= 0.45 || hostiles >= 6 || state.mobs.length >= 40) return null;
+        var p = state.p, a = mr() * 6.283, d = 14 + mr() * 10, x = Math.floor(p.x + Math.cos(a) * d), z = Math.floor(p.z + Math.sin(a) * d);
+        if (x < 2 || z < 2 || x >= S - 2 || z >= S - 2) return null;
+        var h = w.heightAt(x, z);
+        if (h <= SEA || get(x, h, z) === WATER || get(x, h + 1, z) !== AIR || get(x, h + 2, z) !== AIR) return null;
+        var roll = mr(), type = roll < 0.4 ? "zombie" : roll < 0.65 ? "skeleton" : roll < 0.85 ? "bomber" : "spider";
+        var m = M.create(type, x + 0.5, h + 1.01, z + 0.5); state.mobs.push(m); return m;
+      };
+      state.updateMobs = function (dt) {
+        var p = state.p;
+        state.attackCd -= dt;
+        state.mobs.forEach(function (m) { M.step(m, dt, MW); });
+        state.mobs = state.mobs.filter(function (m) {
+          if (m.dead) return false;
+          var dx = m.x - p.x, dz = m.z - p.z;
+          return dx * dx + dz * dz < (M.TYPES[m.type].kind === "hostile" ? 48 * 48 : 90 * 90);
+        });
+        state.arrows = state.arrows.filter(function (a) {
+          a.age += dt; a.vy -= 12 * dt; a.x += a.vx * dt; a.y += a.vy * dt; a.z += a.vz * dt;
+          if (a.age > 6 || solid(get(Math.floor(a.x), Math.floor(a.y), Math.floor(a.z)))) return false;
+          var dx = a.x - p.x, dy = a.y - (p.y + 0.9), dz = a.z - p.z;
+          if (dx * dx + dz * dz < 0.35 && Math.abs(dy) < 1) { state.hurtPlayer(3, "ok"); return false; }
+          return true;
+        });
+        state.spawnT += dt; if (state.spawnT >= 2) { state.spawnT = 0; state.spawnHostile(); }
+      };
+      w.onChunk = function (cx, cz) {   // a chunk made for the first time gets its herd, when the ground is open
+        M.chunkSpawns(seed, cx, cz, spec.biome).forEach(function (sp) {
+          var x = Math.floor(sp.x), z = Math.floor(sp.z), h = w.heightAt(x, z), top = get(x, h, z);
+          if (h > SEA + 1 && (top === GRASS || top === SNOW || top === SAND) && get(x, h + 1, z) === AIR) state.mobs.push(M.create(sp.type, sp.x, h + 1.01, sp.z));
+        });
+      };
+      w.chunks.forEach(function (c, i) { if (c) w.onChunk(i % N, Math.floor(i / N)); });
+
+      state.mineStep = function (dt, holding) {   // holding the button hits a creature in front, or digs the block, as fast as your best tool allows
+        var m = state.mining, mob = holding ? state.mobTarget() : null;
+        if (mob) { m.key = ""; m.progress = 0; m.need = 0; state.attackMob(mob); return true; }
+        var t = holding ? target() : null;
         if (!t) { m.key = ""; m.progress = 0; m.need = 0; return false; }
         var key = t.x + "," + t.y + "," + t.z;
         if (m.key !== key) { m.key = key; m.progress = 0; }
@@ -303,7 +407,7 @@
         state.food = Math.min(20, state.food + gain);
         if (!state.creative) inv.count[id]--;
         if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1);
-        K.sfx("coin"); return true;
+        K.sfx("coin"); state.stats.eaten++; return true;
       };
       state.placeBlock = function () {
         if (D.FOOD[state.selectedBlock()]) return state.eat(state.selectedBlock());
@@ -311,7 +415,7 @@
         if (!t || !id || (!state.creative && !(inv.count[id] > 0))) return false;
         if (D.toolOf(id) && D.toolOf(id).kind === "hoe") {   // the hoe turns the top of grass or soil into a field
           if (t.ny !== 1 || (t.b !== GRASS && t.b !== DIRT) || get(t.x, t.y + 1, t.z) !== AIR) return false;
-          set(t.x, t.y, t.z, FARMLAND, true); K.sfx("click"); return true;
+          set(t.x, t.y, t.z, FARMLAND, true); K.sfx("click"); state.useTool("hoe"); return true;
         }
         if (id === SEEDS) {   // seeds go on a field, and the crop grows by itself
           if (t.ny !== 1 || t.b !== FARMLAND || get(t.x, t.y + 1, t.z) !== AIR) return false;
@@ -357,6 +461,7 @@
         if (r.where === "furnace") { if (state.fuel <= 0) { inv.count[COAL]--; state.fuel = 8; } state.fuel--; }   // a coal smelts eight
         r.need.forEach(function (n) { inv.count[n[0]] -= n[1]; });
         state.addItem(r.give[0], r.give[1]); K.sfx("coin");
+        state.stats.crafted[r.name] = (state.stats.crafted[r.name] || 0) + 1; if (r.where === "furnace") state.stats.smelted++;
         return true;
       };
       state.craftPage = function () { return Math.floor(state.craftCursor / 8) * 8; };
@@ -382,6 +487,7 @@
         var p = state.p;
         state.deaths++; state.health = 20; state.food = 20; state.air = 10; state.hungerT = state.regenT = state.starveT = state.drownT = 0;
         p.x = w.spawn.x; p.y = w.spawn.y; p.z = w.spawn.z; p.vx = p.vy = p.vz = 0; p.peak = p.y;
+        state.mobs = state.mobs.filter(function (m) { return K.voxelmobs.TYPES[m.type].kind === "passive"; });   // the night things are gone when you come back
         state.say("Öldün" + (why ? " (" + why + ")" : "") + ". Doğma noktasında yeniden doğdun.");
       };
       state.landed = function (p) {   // falling more than three blocks hurts, a block of height per point
@@ -390,8 +496,20 @@
         else if (drop > 3.3 && !state.flying) state.hurt(Math.floor(drop - 3), "düşme");
         p.peak = p.y;
       };
+      var savedAch; try { savedAch = K.save.get(saveKey + ".ach", {}); } catch (e) { savedAch = {}; }
+      if (savedAch && typeof savedAch === "object") Object.keys(savedAch).forEach(function (k) { state.ach[k] = true; });
+      state.checkAch = function () {   // an achievement that comes true is announced once and kept with the world
+        var gained = [];
+        D.ACH.forEach(function (a) { if (!state.ach[a.id] && a.test(state)) { state.ach[a.id] = true; gained.push(a); } });
+        if (gained.length) {
+          state.say("Başarım: " + gained[0].name + " (" + gained[0].desc + ")"); K.sfx("powerup");
+          try { K.save.set(saveKey + ".ach", state.ach); } catch (e) { /* not kept */ }
+        }
+        return gained;
+      };
       state.vitals = function (dt) {
         var p = state.p;
+        state.achT += dt; if (state.achT >= 0.5) { state.achT = 0; state.checkAch(); }
         state.hungerT += dt * (K.key("Shift") ? 1.8 : 1);
         if (state.hungerT >= 45) { state.hungerT = 0; if (!state.creative) state.food = Math.max(0, state.food - 1); }
         if (state.food >= 18 && state.health < 20) { state.regenT += dt; if (state.regenT >= 4) { state.regenT = 0; state.health++; } } else state.regenT = 0;
@@ -444,6 +562,7 @@
         state.time0 += dt;
         state.grow(dt);
         state.vitals(dt);
+        state.updateMobs(dt);
         state.heroHooks.forEach(function (h) { h(p, dt); });
       };
       state.time0 = 0;
@@ -468,9 +587,9 @@
           var sx = ((i + 0.5) / RW * 2 - 1) * scale * aspect, sy = (1 - (j + 0.5) / RH * 2) * scale;
           var dx = d.x + rx * sx + ux * sy, dy = d.y + uy * sy, dz = d.z + rz * sx + uz * sy;
           var inv2 = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz); dx *= inv2; dy *= inv2; dz *= inv2;
-          var r = skyR, gg = skyG, bb = skyB, k = (j * RW + i) * 4;
+          var r = skyR, gg = skyG, bb = skyB, k = (j * RW + i) * 4; state.depth[j * RW + i] = 1e9;
           if (cast(e.x, e.y, e.z, dx, dy, dz, FAR, false, inWater)) {
-            var tex = texture(hit.b, hit.face), u, v;
+            state.depth[j * RW + i] = hit.t; var tex = texture(hit.b, hit.face), u, v;
             if (hit.face === 1) { u = hit.nx !== 0 ? hit.hz : hit.hx; v = 1 - hit.hy; } else { u = hit.hx; v = hit.hz; }
             u = Math.floor((u - Math.floor(u)) * 16); v = Math.floor((v - Math.floor(v)) * 16);
             var o = (v * 16 + u) * 3, sh = shade[hit.face] * (0.25 + 0.75 * light) * (hit.nx !== 0 ? 0.92 : 1), fog = Math.min(1, hit.t / FAR);
@@ -481,8 +600,36 @@
           if (inWater) { r *= 0.55; gg *= 0.75; bb = bb * 0.9 + 30; }
           out[k] = r; out[k + 1] = gg; out[k + 2] = bb; out[k + 3] = 255;
         }
+        state.drawMobs(out, e, d, rx, rz, ux, uy, uz, scale, aspect, light);
         return out;
       }
+      // creatures and arrows are flat pictures that always face you, hidden behind blocks by the depth of the picture
+      state.depth = new Float32Array(RW * RH);
+      state.drawMobs = function (out, e, d, rx, rz, ux, uy, uz, scale, aspect, light) {
+        var list = state.mobs.map(function (m) { var t = M.TYPES[m.type], vx = m.x - e.x, vy = m.y + t.h / 2 - e.y, vz = m.z - e.z; return { m: m, t: t, vx: vx, vy: vy, vz: vz, dist: Math.sqrt(vx * vx + vy * vy + vz * vz) }; });
+        list.sort(function (a, b) { return b.dist - a.dist; });
+        var shadeM = 0.35 + 0.65 * light;
+        list.forEach(function (it) {
+          var cz = it.vx * d.x + it.vy * d.y + it.vz * d.z; if (cz < 0.4 || cz > FAR) return;
+          var cx = it.vx * rx + it.vz * rz, cy = it.vx * ux + it.vy * uy + it.vz * uz, sxN = cx / (cz * scale * aspect), syN = cy / (cz * scale);
+          if (Math.abs(sxN) > 1.6 || Math.abs(syN) > 1.6) return;
+          var art = M.ART[it.m.type], cols = art.rows[0].length, nrows = art.rows.length, hPx = it.t.h / (cz * scale) * 0.5 * RH, wPx = hPx * cols / nrows;
+          var pxC = (sxN * 0.5 + 0.5) * RW, pyC = (0.5 - syN * 0.5) * RH, x0 = Math.floor(pxC - wPx / 2), x1 = Math.ceil(pxC + wPx / 2), y0 = Math.floor(pyC - hPx / 2), y1 = Math.ceil(pyC + hPx / 2);
+          for (var sy = Math.max(0, y0); sy < Math.min(RH, y1); sy++) for (var sx = Math.max(0, x0); sx < Math.min(RW, x1); sx++) {
+            if (it.dist >= state.depth[sy * RW + sx]) continue;
+            var col = art.pal[art.rows[Math.min(nrows - 1, Math.floor((sy - y0) / (y1 - y0) * nrows))].charAt(Math.min(cols - 1, Math.floor((sx - x0) / (x1 - x0) * cols)))];
+            if (!col) continue;
+            var k = (sy * RW + sx) * 4, rr = col[0] * shadeM, gg2 = col[1] * shadeM, bb2 = col[2] * shadeM;
+            if (it.m.flash > 0 || (it.m.fuse > 0 && Math.floor(it.m.fuse * 8) % 2)) { rr = 255; gg2 = gg2 * 0.4 + 40; bb2 = bb2 * 0.4 + 40; }   // hit: red; about to blow: flashing
+            out[k] = rr; out[k + 1] = gg2; out[k + 2] = bb2; out[k + 3] = 255;
+          }
+        });
+        state.arrows.forEach(function (a) {
+          var vx = a.x - e.x, vy = a.y - e.y, vz = a.z - e.z, cz = vx * d.x + vy * d.y + vz * d.z; if (cz < 0.4) return;
+          var px = Math.floor(((vx * rx + vz * rz) / (cz * scale * aspect) * 0.5 + 0.5) * RW), py = Math.floor((0.5 - (vx * ux + vy * uy + vz * uz) / (cz * scale) * 0.5) * RH);
+          for (var ax = 0; ax < 2; ax++) for (var ay = 0; ay < 2; ay++) { var qx = px + ax, qy = py + ay; if (qx >= 0 && qy >= 0 && qx < RW && qy < RH) { var kk = (qy * RW + qx) * 4; out[kk] = 240; out[kk + 1] = 230; out[kk + 2] = 190; out[kk + 3] = 255; } }
+        });
+      };
       state.render = render;
 
       // ---- drawing the screen: the picture, the crosshair, the hotbar, the inventory, the map ----
@@ -541,6 +688,9 @@
           c.fillStyle = "rgba(255,255,255,0.7)"; c.font = "10px sans-serif"; c.fillText(String(i + 1), x0 + i * slot + 3, y0 + 11);
         }
         if (state.nameT > 0 && state.selectedBlock()) { c.fillStyle = "rgba(0,0,0,0.55)"; c.fillRect(g.width / 2 - 90, y0 - 52, 180, 24); c.fillStyle = "#fff"; c.font = "bold 16px sans-serif"; c.textAlign = "center"; c.fillText(NAMES[state.selectedBlock()], g.width / 2, y0 - 34); c.textAlign = "left"; }
+        var armor = state.armorPoints(), mobLook = state.mobTarget();
+        for (var ai2 = 0; ai2 < Math.ceil(armor / 2); ai2++) { c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(g.width / 2 - 9 * slot / 2 + ai2 * 15, y0 - 31, 13, 12); c.fillStyle = armor - ai2 * 2 >= 2 ? "#cfd8dc" : "#78909c"; c.fillRect(g.width / 2 - 9 * slot / 2 + ai2 * 15 + 2, y0 - 29, 9, 8); }
+        if (mobLook) { c.fillStyle = "rgba(0,0,0,0.55)"; c.fillRect(g.width / 2 - 60, g.height / 2 - 46, 120, 20); c.fillStyle = "#fff"; c.font = "13px sans-serif"; c.textAlign = "center"; c.fillText(K.voxelmobs.TYPES[mobLook.type].name + "  " + Math.max(0, Math.ceil(mobLook.hp)) + "/" + K.voxelmobs.TYPES[mobLook.type].hp, g.width / 2, g.height / 2 - 32); c.textAlign = "left"; }
         var hx = g.width / 2 - 9 * slot / 2, hy = y0 - 16;   // hearts on the left, hunger on the right, air bubbles above it when swimming
         for (var hi = 0; hi < 10; hi++) {
           var pts = Math.max(0, Math.min(2, state.health - hi * 2));
@@ -580,11 +730,21 @@
           });
           c.fillStyle = "#cfd8dc"; c.font = "12px sans-serif"; c.fillText("sayfa " + (page / 8 + 1) + "/" + Math.ceil(state.recipes.length / 8) + "   kömür yakıt: " + (state.fuel || 0) + " eritme hakkı", g.width / 2 - 186, 300);
         }
+        if (state.showAch) {
+          var done = D.ACH.filter(function (a) { return state.ach[a.id]; }).length;
+          c.fillStyle = "rgba(0,0,0,0.85)"; c.fillRect(g.width / 2 - 230, 36, 460, 320);
+          c.fillStyle = "#fff"; c.font = "16px sans-serif"; c.fillText("BAŞARIMLAR  " + done + "/" + D.ACH.length + "   (B kapatır)", g.width / 2 - 215, 62);
+          D.ACH.forEach(function (a, n) {
+            var col = n % 2, row = Math.floor(n / 2), ok = !!state.ach[a.id];
+            c.fillStyle = ok ? "#ffd54f" : "#6f6f6f"; c.font = "bold 13px sans-serif"; c.fillText((ok ? "★ " : "☆ ") + a.name, g.width / 2 - 215 + col * 225, 88 + row * 26);
+            c.fillStyle = ok ? "#cfd8dc" : "#555"; c.font = "11px sans-serif"; c.fillText(a.desc, g.width / 2 - 197 + col * 225, 101 + row * 26);
+          });
+        }
         if (state.showHelp) {
           c.fillStyle = "rgba(0,0,0,0.8)"; c.fillRect(g.width / 2 - 190, 50, 380, 250);
           c.fillStyle = "#fff"; c.font = "14px sans-serif";
           ["KONTROLLER", "W A S D  yürü       Boşluk  zıpla       Shift  koş", "Fare ya da oklar  bak (önce sayfaya tıkla)", "Sol tık / F  blok kır        Sağ tık / E  blok koy",
-           "Tekerlek / Q / 1-9  blok seç", "I  envanter   X  tarifler (yukarı/aşağı, Enter)   C  yaratıcı mod", "Kazarken en iyi aletin kullanılır; masa ve fırın yakında olmalı", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
+           "Tekerlek / Q / 1-9  blok seç", "I  envanter   X  tarifler (yukarı/aşağı, Enter)   B  başarımlar   C  yaratıcı mod", "Kazarken en iyi aletin kullanılır; masa ve fırın yakında olmalı", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
             c.fillText(line, g.width / 2 - 175, 80 + n * 26);
           });
         }
@@ -623,6 +783,7 @@
           once("c", function () { state.setCreative(!state.creative); }); once("h", function () { state.showHelp = !state.showHelp; });
           once("g", function () { if (state.canFly) state.flying = !state.flying; });
           once("x", function () { state.showCraft = !state.showCraft; });
+          once("b", function () { state.showAch = !state.showAch; });
           once("ArrowUp", function () { if (state.showCraft) state.menuMove(-1); }); once("ArrowDown", function () { if (state.showCraft) state.menuMove(1); });
           once("Enter", function () { if (state.showCraft) state.craft(state.craftCursor); });
           for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(state.craftPage() + num - 1); else state.select(state.windowStart() + num - 1); }); })(n);
@@ -631,7 +792,7 @@
           var ch = state.chunk || { x: 0, z: 0 };
           g.ui.text("hud.info", "parça " + ch.x + "," + ch.z + "   gezdin " + state.hud.explored + "/" + N * N + "   derinlik " + state.hud.depth + (state.flying ? "   UÇUYOR" : ""), 10, 22, { size: 14 });
           g.ui.text("hud.block", "BLOK: " + (state.selectedBlock() ? NAMES[state.selectedBlock()] : "yok") + "   kırdın " + state.hud.broken + "  koydun " + state.hud.placed, 10, 42, { size: 13, color: "#cfd8dc" });
-          g.ui.text("hud.keys", "H yardım  I envanter  X tarifler", g.width - 220, 22, { size: 12, color: "#cfd8dc" });
+          g.ui.text("hud.keys", "H yardım  I envanter  X tarifler  B başarım", g.width - 220, 22, { size: 12, color: "#cfd8dc" });
           var locked = typeof document !== "undefined" && g.canvas && document.pointerLockElement === g.canvas;
           if (typeof document !== "undefined" && g.canvas && !locked && !state.showCraft && !state.showInv && !state.showHelp) g.ui.text("hud.lock", "Fareyle bakmak için ekrana tıkla", g.width / 2 - 110, 70, { size: 14, color: "#ffe082" });
           else delete g.ui.items["hud.lock"];
