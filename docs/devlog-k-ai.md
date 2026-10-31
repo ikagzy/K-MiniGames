@@ -70,3 +70,14 @@ Not: llama.cpp ikilisi `<train env>/llamabin` altında (CPU, b6000). Türkçe ka
 
 ## 14B ile karşılaştırma (eğitimsiz qwen2.5-coder:14b, şema açık)
 32 elle yazılmış tarif: hepsi doğru 0,44, alan 0,72 (v2: 0,69 / 0,84; v1 yeni sette 0,44 / 0,70). Üretilmiş tarifler yalnızca 5 örnekle ölçüldü (güvenilmez). 14B karta sığmıyor (%43 işlemcide), istek başına ~17 sn; tam ölçüm ~35 dk daha sürerdi. Rapor: `report_base14b.json`.
+
+## Sorunun asıl sebebi: seed rakamları (bulundu)
+Aynı komutu HF'de (birleştirilmiş float32 model) ve llama.cpp'de jeton jeton karşılaştırdım (`first divergence`): iki yoldaki olasılıklar
+0,03 farkla aynı, yani **dönüştürme bozuk değil**. Ayrışma, `"seed": ` sonrasındaki rakamda başlıyor: seed eğitimde rastgele (0-9999),
+öğrenilemez, rakamlar arasında olasılık düz (hepsi ~%12). Üstelik "seed rakamı yaz" ile "`}` yazıp bitir" arasında da yazı-tura
+durumu var (HF: `},` -2,28 / `9` -2,30). Böyle bir yerde minik sayı farkı (HF bf16/f32 ile llama.cpp q8) hangisinin seçileceğini
+değiştiriyor; model bir kez yoldan çıkınca fazladan `}` yazıyor, `generate` alanını unutuyor. HF'de "şansa" doğru çıkıyordu.
+
+Çözüm: **modelden seed istememek.** `specdata.py` artık seed yazdırmıyor (seviye, kampanya, müzik; seed alanı kitte zaten isteğe bağlı),
+uygulama eksik seed'leri kendisi rastgele dolduruyor (`kits.fill_seeds`, `Generator._spec` içinde). Bu sürümü (v3) eğitmek gerekiyor;
+v2 (seed'li) olduğu gibi kullanılırsa seed bölgesinde yine sapabilir.

@@ -283,7 +283,6 @@ def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=Non
         style = {"mood": rng.choice(MOODS)}
         if rng.random() < 0.4:
             style["tempo"] = rng.choice(("slow", "fast"))
-        style["seed"] = rng.randint(0, 9999)
         spec["musicStyle"] = style
     if "time" in fields:
         spec["time"] = rng.choice(TIMES)
@@ -324,7 +323,7 @@ def _build_spec(rng: random.Random, fields: set, held_pairs=None, force_pair=Non
                 base[d] = value   # no flyers or spikes is the default: left out
     levels = []
     for _ in range(count):
-        level = {"seed": rng.randint(0, 9999)}
+        level = {}   # no seed: random digits cannot be learned, and the app picks them (kits.fill_seeds)
         level.update(base)
         levels.append(level)
     spec["generate"] = levels
@@ -484,7 +483,7 @@ def _edit_example(rng: random.Random, spec: dict):
             return rng.choice(_EDIT_FEATURE[name]), new, "features"
     if kind == "music":
         mood = rng.choice(MOODS)
-        new["musicStyle"] = {"mood": mood, "seed": rng.randint(0, 9999)}
+        new["musicStyle"] = {"mood": mood}
         return rng.choice(_EDIT_MUSIC[mood]), new, "musicStyle"
     if kind == "harder":
         for lv in level:
@@ -504,7 +503,7 @@ def _edit_example(rng: random.Random, spec: dict):
         return rng.choice(["düşmanları kaldır", "hiç düşman olmasın"]), new, "enemies"
     if kind == "level" and len(level) < 4:
         extra = dict(level[-1])
-        extra["seed"] = rng.randint(0, 9999)
+        extra.pop("seed", None)
         level.append(extra)
         return rng.choice(["bir seviye daha ekle", "yeni bir bölüm ekle"]), new, "levels"
     if kind == "lives":

@@ -2,6 +2,7 @@
 game's code. A kit is a library module with a schema (`<kit>.schema.json`); what the kit needs lives in the library
 (`kgame.<kit>.js`), and its checks below are tests written by hand, so they do not depend on what a model can write."""
 import json
+import random
 import re
 
 from k_minigames import kgamelib
@@ -72,6 +73,19 @@ def parse_spec(text: str, kit: str) -> dict:
             data["kit"] = kit
             return data
     raise SpecError("Modelin cevabında geçerli bir oyun özeti (JSON) yok")
+
+
+def fill_seeds(spec: dict) -> dict:
+    """Gives the levels, the campaign and the music a random seed when the spec has none. The k-ai models do not write seeds (random
+    digits cannot be learned, and a model that tries is thrown off by them), and without one every level would be the same."""
+    def seeded(part):
+        if isinstance(part, dict) and "seed" not in part:
+            part["seed"] = random.randint(0, 9999)
+    for level in spec.get("generate") if isinstance(spec.get("generate"), list) else []:
+        seeded(level)
+    seeded(spec.get("campaign"))
+    seeded(spec.get("musicStyle"))
+    return spec
 
 
 def compile_page(spec: dict) -> str:

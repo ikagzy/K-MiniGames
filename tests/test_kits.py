@@ -83,3 +83,11 @@ def test_the_schema_bounds_every_list_and_string_so_a_model_cannot_ramble_foreve
     for name in ("qblocks", "features"):
         assert props[name]["maxItems"] <= 10
     assert props["title"]["maxLength"] <= 60 and props["world"]["maxLength"] <= 10
+
+
+def test_fill_seeds_gives_every_level_the_campaign_and_the_music_a_seed_without_touching_the_ones_there():
+    spec = {"kit": "platformer", "generate": [{"width": 60}, {"seed": 5}], "campaign": {"count": 6}, "musicStyle": {"mood": "calm", "seed": 0}}
+    out = kits.fill_seeds(spec)
+    assert 0 <= out["generate"][0]["seed"] <= 9999 and out["generate"][1]["seed"] == 5
+    assert 0 <= out["campaign"]["seed"] <= 9999 and out["musicStyle"]["seed"] == 0
+    assert kits.fill_seeds({"kit": "platformer"}) == {"kit": "platformer"}

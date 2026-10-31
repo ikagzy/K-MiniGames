@@ -49,7 +49,7 @@ def test_every_target_spec_is_inside_the_schema(data):
             assert 5 <= c["count"] <= 20 and 1 <= c["from"] <= c["to"] <= 5 and len(spec["generate"]) == 1
         if "musicStyle" in spec:
             style = spec["musicStyle"]
-            assert style["mood"] in specdata.MOODS and style.get("tempo", "slow") in ("slow", "fast") and 0 <= style["seed"] <= 9999
+            assert style["mood"] in specdata.MOODS and style.get("tempo", "slow") in ("slow", "fast") and "seed" not in style
         json.dumps(spec)   # it must be plain JSON
 
 
@@ -83,7 +83,7 @@ def test_a_prompt_that_asks_for_little_gets_a_small_answer_with_defaults_left_ou
     smallest = min((e for e in train if e["kind"] == "create"), key=lambda e: len(e["mentioned"]))
     assert len(smallest["mentioned"]) <= 2
     level = smallest["spec"]["generate"][0]
-    assert set(level) <= {"seed", "width", "difficulty", "enemies", "coins", "pits", "pipes", "blocks", "flyers", "spikes"}
+    assert "seed" not in level and set(level) <= {"width", "difficulty", "enemies", "coins", "pits", "pipes", "blocks", "flyers", "spikes"}
     assert "hero" not in smallest["spec"] or "hero" in smallest["mentioned"]
 
 

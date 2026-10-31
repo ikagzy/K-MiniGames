@@ -318,9 +318,10 @@ class Generator:
         schema = None if self.model.startswith(TUNED_PREFIX) else kits.schema(kit)
         answer = self._chat_schema(messages, schema, cancel)
         try:
-            return kits.parse_spec(answer, kit)
+            spec = kits.parse_spec(answer, kit)
         except kits.SpecError as exc:
             raise GenerationError(str(exc)) from exc
+        return kits.fill_seeds(spec)
 
     def _chat_schema(self, messages: list[dict], schema, cancel) -> str:
         extra = {"keep_alive": self.keep_alive} if self.keep_alive else {}
