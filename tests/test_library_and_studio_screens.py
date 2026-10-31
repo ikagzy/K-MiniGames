@@ -345,3 +345,18 @@ def test_what_the_user_adds_goes_after_dons_notes(env):
     answer(services, pump, "ama arabalar kırmızı olsun")
     assert pump(lambda: flows.calls != [])
     assert flows.calls[0][2] == "Amaç: yarış oyunu\nama arabalar kırmızı olsun"
+
+
+def test_playing_a_library_game_refreshes_its_copy_of_the_library_files(env):
+    from k_minigames import kgamelib
+    services, games, log, pump, texts = env
+    game = make_game(games, "Küp")
+    library.set_modules(game, ["sandbox"])
+    stale = game.folder / "kgame.voxel.js"
+    stale.write_text("old copy", encoding="utf-8")
+    screen = LibraryScreen(services)
+    screen.show()
+    screen.listbox.selection_set(0)
+    screen.play()
+    assert stale.read_text(encoding="utf-8") == (kgamelib.LIB_DIR / "kgame.voxel.js").read_text(encoding="utf-8")
+    assert log["opened"] == [game.launcher_path]

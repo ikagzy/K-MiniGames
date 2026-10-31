@@ -23,14 +23,14 @@
   K.pick = function (list) { return list[Math.floor(next() * list.length)]; };
 
   // ---------- girdi ----------
-  var keys = {};
+  var keys = {}, tapped = {};   // tapped: a key pressed and let go between two frames is still seen once
   var KEY_NAMES = { space: " ", left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp", down: "ArrowDown" };
   function norm(name) {
     var low = String(name).toLowerCase();
     if (KEY_NAMES[low]) return KEY_NAMES[low];
     return name.length === 1 ? low : name;
   }
-  K.key = function (name) { return !!keys[norm(name)]; };
+  K.key = function (name) { var n = norm(name); return !!(keys[n] || tapped[n]); };
   K.press = function (name, down) { keys[norm(name)] = down !== false; };
   K.mouse = { x: 0, y: 0, down: false, clicks: 0 };   // clicks counts presses, so one that is over within a frame is not lost
   K.setMouse = function (x, y, down) {
@@ -40,7 +40,7 @@
   };
   if (hasDom) {
     document.addEventListener("keydown", function (e) {
-      keys[norm(e.key)] = true;
+      keys[norm(e.key)] = true; tapped[norm(e.key)] = true;
       if (e.key === " " || e.key.indexOf("Arrow") === 0) e.preventDefault();
     });
     document.addEventListener("keyup", function (e) { keys[norm(e.key)] = false; });
@@ -389,6 +389,7 @@
     }
     if (g.current === "play" || (sc && sc.timers)) K.timer.tick(dt);   // timers rest on other screens (game over) unless asked
     if (sc && sc.update) sc.update(g, dt);
+    tapped = {};
     if (g._follow) {
       var f = g._follow, z = g.camera.zoom;
       g.camera.x += (f.e.cx - g.width / z / 2 - g.camera.x) * f.lerp;

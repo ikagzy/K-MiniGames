@@ -1,7 +1,7 @@
 """The library: the games made so far, in the lobby. Play, edit, open the folder or start a new game."""
 import tkinter as tk
 
-from k_minigames import i18n, library, settings
+from k_minigames import i18n, kgamelib, library, settings
 from k_minigames.library import Game
 from k_minigames.ui import fonts
 from k_minigames.ui.services import Services
@@ -68,6 +68,10 @@ class LibraryScreen:
     def play(self) -> None:
         game = self.selected()
         if game is not None:
+            try:   # a game keeps its own copy of the library files: playing it uses the newest ones
+                kgamelib.install(game, library.modules(game))
+            except OSError:
+                pass   # a locked or missing file: the game still opens with what it has
             self.s.open_path(game.launcher_path)
 
     def open_folder(self) -> None:
