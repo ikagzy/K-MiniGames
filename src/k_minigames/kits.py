@@ -43,7 +43,7 @@ _CHECKS["sandbox"] = [
     ("Oyuncu bir blok kırabilir.",
      "game.state.p.pitch = -0.7; K.press('f'); await new Promise(r => setTimeout(r, 300)); K.press('f', false); return game.hud.broken > 0;"),
     ("Dünyada toprak ve taş vardır.",
-     "let dirt = 0, stone = 0; for (const b of game.world.blocks) { if (b === 2) dirt++; if (b === 3) stone++; } return dirt > 100 && stone > 100;"),
+     "return game.world.count(2) > 100 && game.world.count(3) > 100;"),
 ]
 
 _SYSTEM = (
