@@ -285,6 +285,8 @@ class StudioScreen:
 
     def _done(self, outcome, retry) -> None:
         self._busy = False
+        if self._mode == "create" and getattr(outcome, "saved", False):
+            memory_notes.clear(memory_notes.advisor_path())   # Bob has done what Don's notes were for: the next game starts with a clean memory
         if self._hidden:
             return
         lines = summary_lines(outcome.report, outcome.attempts, outcome.rejected)

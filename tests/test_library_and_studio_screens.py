@@ -360,3 +360,29 @@ def test_playing_a_library_game_refreshes_its_copy_of_the_library_files(env):
     screen.play()
     assert stale.read_text(encoding="utf-8") == (kgamelib.LIB_DIR / "kgame.voxel.js").read_text(encoding="utf-8")
     assert log["opened"] == [game.launcher_path]
+
+
+def test_when_bob_has_made_the_game_dons_memory_is_cleared_but_an_edit_does_not_touch_it(env):
+    from k_minigames import memory
+    services, games, log, pump, texts = env
+    memory.save(memory.advisor_path(), "Amaç: orman oyunu\n- ormanda geçsin")
+    services.session = {"mode": "create"}
+    flows = FakeFlows()
+    screen = studio(services, flows)
+    screen.show()
+    answer(services, pump, "Orman")
+    answer(services, pump, "ormanda geçen bir oyun")
+    assert pump(lambda: flows.calls != [] and "2 madde geçti" in texts())
+    assert pump(lambda: not memory.advisor_path().exists()), "the notes are forgotten once the game is built"
+    assert memory.load(memory.advisor_path()) == ""
+    # a game that was not saved (rejected) keeps the notes: the user may try again
+    memory.save(memory.advisor_path(), "Amaç: yarış oyunu")
+    services.session = {"mode": "create"}
+    flows2 = FakeFlows()
+    flows2.outcome = clean_outcome(saved=False, rejected=True)
+    screen2 = studio(services, flows2)
+    screen2.show()
+    answer(services, pump, "Yarış")
+    answer(services, pump, "arabalı yarış oyunu")
+    assert pump(lambda: flows2.calls != [])
+    assert memory.load(memory.advisor_path()).startswith("Amaç: yarış")

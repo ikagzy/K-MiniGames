@@ -55,6 +55,15 @@ def save(path: Path, text: str) -> bool:
         return False
 
 
+def clear(path: Path) -> bool:
+    """Forget everything in this memory file (a missing file is already forgotten)."""
+    try:
+        path.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
 def _fit(text: str) -> str:
     """At most MAX_CHARS: the first line (the aim) stays, the oldest lines after it go first."""
     if len(text) <= MAX_CHARS:
