@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 import specdata
+import specdata_shooter
 
 DATA = Path(__file__).resolve().parent / "data"
 
@@ -21,9 +22,9 @@ def ollama_answer(model: str):
     from k_minigames.ollama_client import OllamaClient
     gen = Generator(OllamaClient(), model, keep_alive="2m")
 
-    def ask(example_or_text):
+    def ask(example_or_text, kit="platformer"):
         try:
-            return gen.create_spec(example_or_text, "platformer")
+            return gen.create_spec(example_or_text, kit)
         except GenerationError:
             return None
     return ask
@@ -40,14 +41,14 @@ def hf_answer(model: str, adapter: str | None):
         net = PeftModel.from_pretrained(net, adapter)
     net.eval()
 
-    def ask(text):
-        messages = specdata._messages("create", text, {"kit": "platformer"}, None)[:-1]
+    def ask(text, kit="platformer"):
+        messages = (specdata_shooter.messages if kit == "shooter" else specdata._messages)("create", text, {"kit": kit}, None)[:-1]
         ids = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt", return_dict=True)["input_ids"].to("cuda")
         with torch.no_grad():
             out = net.generate(ids, max_new_tokens=900, do_sample=False)
         answer = tokenizer.decode(out[0][ids.shape[1]:], skip_special_tokens=True)
         try:
-            return kits.parse_spec(answer, "platformer")
+            return kits.parse_spec(answer, kit)
         except kits.SpecError:
             return None
     return ask
@@ -69,13 +70,16 @@ def main(argv=None) -> int:
         held = held[:args.limit]
     started, results = time.time(), []
     for example in held:
-        pred = ask(example["description"])
-        results.append(specdata.score(pred, example["spec"], example["mentioned"]) | {"id": example["id"]})
+        kit = example.get("kit", "platformer")
+        pred = ask(example["description"], kit)
+        scorer = specdata_shooter.score_shooter if kit == "shooter" else specdata.score
+        results.append(scorer(pred, example["spec"], example["mentioned"]) | {"id": example["id"], "kit": kit})
     hand = json.loads((DATA / "hand_eval.json").read_text(encoding="utf-8"))
     hand_results = []
     for item in hand:
-        pred = ask(item["prompt"])
-        met = specdata.expect_ok(pred, item["expect"])
+        kit = item.get("kit", "platformer")
+        pred = ask(item["prompt"], kit)
+        met = (specdata_shooter.expect_ok_shooter if kit == "shooter" else specdata.expect_ok)(pred, item["expect"])
         hand_results.append({"prompt": item["prompt"], "met": met, "all": all(met.values()) if met else pred is not None})
     valid = sum(r["valid"] for r in results) / max(1, len(results))
     report = {
