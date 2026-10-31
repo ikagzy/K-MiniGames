@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "required": ["kit"],
+  "properties": {
+    "kit": { "type": "string", "enum": ["sandbox"] },
+    "title": { "type": "string", "maxLength": 60 },
+    "biome": { "type": "string", "enum": ["forest", "plains", "desert", "snow"] },
+    "size": { "type": "string", "enum": ["small", "medium", "large"] },
+    "caves": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "ores": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "trees": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "lakes": { "type": "boolean" },
+    "time": { "type": "string", "enum": ["cycle", "day", "night"] },
+    "music": { "type": "string", "enum": ["overworld", "underground", "castle", "boss"] },
+    "musicStyle": {
+      "type": "object",
+      "properties": {
+        "mood": { "type": "string", "enum": ["happy", "calm", "tense", "epic", "mystery", "spooky"] },
+        "tempo": { "type": "string", "enum": ["slow", "medium", "fast"] },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 9999 }
+      }
+    },
+    "world": {
+      "type": "object",
+      "properties": { "seed": { "type": "integer", "minimum": 0, "maximum": 9999 } }
+    },
+    "features": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["fly", "sprint"] },
+      "maxItems": 2
+    }
+  }
+}

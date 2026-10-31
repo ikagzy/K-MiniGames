@@ -141,3 +141,21 @@ def test_the_shooter_is_a_kit_with_a_schema_a_guide_checks_and_its_own_variety()
     assert len(seen) > 6
     kept = kits.keep_seeds({"waves": {"count": 8, "seed": 77}}, kits.repair_spec({"kit": "shooter", "waves": {"count": 8}}, "shooter"))
     assert kept["waves"]["seed"] == 77
+
+
+def test_the_sandbox_is_a_kit_with_a_schema_a_guide_checks_and_its_own_variety():
+    assert kgamelib.kit_of(["core", "sandbox"]) == "sandbox"
+    assert kits.schema("sandbox")["properties"]["biome"]["enum"] == ["forest", "plains", "desert", "snow"]
+    assert len(kits.checks("sandbox")) == 5
+    assert "küp dünya" in kits.system_prompt("sandbox") and "Seviyeyi (levels)" not in kits.system_prompt("sandbox")
+    page = kits.compile_page({"kit": "sandbox", "biome": "desert"})
+    assert page.index("kgame.js") < page.index("kgame.voxel.js") < page.index("K.kit.run(")
+    seen = set()
+    for _ in range(40):
+        out = kits.repair_spec({"kit": "sandbox", "caves": 9, "size": "dev"}, "sandbox")
+        assert "generate" not in out and out["caves"] == 3 and out["size"] in ("small", "medium", "large")
+        assert 0 <= out["world"]["seed"] <= 9999 and out["biome"] in ("forest", "plains", "desert", "snow")
+        seen.add((out["biome"], out["size"], out["ores"]))
+    assert len(seen) > 6
+    kept = kits.keep_seeds({"world": {"seed": 77}}, kits.repair_spec({"kit": "sandbox", "title": "Yeni"}, "sandbox"))
+    assert kept["world"]["seed"] == 77

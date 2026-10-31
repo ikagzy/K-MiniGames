@@ -65,3 +65,21 @@ def test_a_title_in_quotes_is_not_a_wish_and_a_ship_that_fires_is_not_a_shooting
     out = specrules.apply_shooter({"kit": "shooter"}, "tek ateş eden bir gemi, süzülen düşmanlar")
     assert out["enemies"] == ["drifter"]
     assert specrules.apply_shooter({"kit": "shooter"}, "ateş eden düşmanlar")["enemies"] == ["shooter"]
+
+
+def test_sandbox_rules_read_biome_size_amounts_lakes_time_and_features():
+    out = specrules.apply_sandbox({"kit": "sandbox"}, "Karlı, büyük bir dünya, bol mağara, madensiz, ağaçsız, göllü, gece gündüz döngüsü olsun, uçabileyim")
+    assert out["biome"] == "snow" and out["size"] == "large" and out["caves"] == 3 and out["ores"] == 0 and out["trees"] == 0
+    assert out["lakes"] is True and out["time"] == "cycle" and out["features"] == ["fly"]
+    assert specrules.apply_sandbox({"kit": "sandbox"}, "gölsüz bir çöl, hep gece")["lakes"] is False
+    assert specrules.apply_sandbox({"kit": "sandbox"}, "gölsüz bir çöl, hep gece")["biome"] == "desert"
+    assert specrules.apply_sandbox({"kit": "sandbox"}, "az maden, kuru bir dünya")["ores"] == 1
+    plain = specrules.apply_sandbox({"kit": "sandbox"}, 'adı "Kar Dünyası" olsun')
+    assert "biome" not in plain, "a title is not a wish"
+    assert "features" not in specrules.apply_sandbox({"kit": "sandbox"}, "uçmak olmasın")
+
+
+def test_the_siz_suz_ending_is_read_in_both_vowel_forms():
+    level = specrules.apply({"kit": "platformer", "generate": [{"coins": 3, "spikes": 2}]}, "altınsız ve dikensiz olsun")["generate"][0]
+    assert level["coins"] == 0 and level["spikes"] == 0
+    assert specrules.apply({"kit": "platformer", "generate": [{"blocks": 3}]}, "bloksuz")["generate"][0]["blocks"] == 0

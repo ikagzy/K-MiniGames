@@ -35,6 +35,17 @@ _CHECKS["shooter"] = [
     ("Gemi ekrandan çıkmaz.", "return game.me.x >= 0 && game.me.x + game.me.w <= game.g.width;"),
 ]
 
+_CHECKS["sandbox"] = [
+    ("Oyun açılır ve oyuncu dünyadadır.", "return !!game.p && Number.isFinite(game.p.x) && game.g.current === 'play';"),
+    ("Oyuncu yere basar.", "await new Promise(r => setTimeout(r, 1500)); return game.p.onGround === true;"),
+    ("Oyuncu ileri yürüyebilir.",
+     "const x = game.p.x, z = game.p.z; K.press('w'); await new Promise(r => setTimeout(r, 600)); K.press('w', false); return Math.hypot(game.p.x - x, game.p.z - z) > 0.5;"),
+    ("Oyuncu bir blok kırabilir.",
+     "game.state.p.pitch = -0.7; K.press('f'); await new Promise(r => setTimeout(r, 300)); K.press('f', false); return game.hud.broken > 0;"),
+    ("Dünyada toprak ve taş vardır.",
+     "let dirt = 0, stone = 0; for (const b of game.world.blocks) { if (b === 2) dirt++; if (b === 3) stone++; } return dirt > 100 && stone > 100;"),
+]
+
 _SYSTEM = (
     "Sen bir oyun tasarımcısısın. Kullanıcının tarif ettiği oyun için KOD YAZMA; yalnızca oyunun ÖZETİNİ (tek bir JSON "
     "nesnesi) ver. Uygulama bu özeti hazır kit ile oyuna çevirir. Özetteki seçenekleri aşağıdaki kılavuzdan seç; olmayan "
@@ -144,15 +155,19 @@ def repair_spec(spec: dict, kit: str) -> dict:
         spec["generate"] = [{}]
     for level in spec.get("generate") or []:
         level["seed"] = random.randint(0, 9999)
-    for part in ("campaign", "musicStyle", "waves"):
+    for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
+    if kit == "sandbox" and not isinstance(spec.get("world"), dict):
+        spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
     if kit == "platformer":
         _platformer_variety(spec)
     elif kit == "shooter":
         _shooter_variety(spec)
+    elif kit == "sandbox":
+        _sandbox_variety(spec)
     return spec
 
 
@@ -193,13 +208,25 @@ def _shooter_variety(spec: dict) -> None:
     spec.setdefault("boss", random.random() < 0.3)
 
 
+def _sandbox_variety(spec: dict) -> None:
+    """The same for the sandbox: the open parts of the world are drawn."""
+    spec.setdefault("biome", random.choice(("forest", "forest", "plains", "desert", "snow")))
+    spec.setdefault("size", random.choice(("small", "medium", "medium", "large")))
+    for field in ("caves", "ores", "trees"):
+        spec.setdefault(field, random.choice((1, 2, 2, 3)))
+    spec.setdefault("lakes", random.random() < 0.8)
+    spec.setdefault("time", random.choice(("cycle", "cycle", "day")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["musicStyle"] = {"mood": random.choice(("calm", "calm", "mystery", "happy")), "tempo": "slow", "seed": random.randint(0, 9999)}
+
+
 def keep_seeds(before: dict, after: dict) -> dict:
     """After an edit the levels, the campaign and the music keep the seeds they had, so a change of the title does not rebuild the levels."""
     old_levels = before.get("generate") if isinstance(before.get("generate"), list) else []
     for old, new in zip(old_levels, after.get("generate") or []):
         if isinstance(old, dict) and isinstance(new, dict) and "seed" in old:
             new["seed"] = old["seed"]
-    for part in ("campaign", "musicStyle", "waves"):
+    for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(before.get(part), dict) and isinstance(after.get(part), dict) and "seed" in before[part]:
             after[part]["seed"] = before[part]["seed"]
     return after

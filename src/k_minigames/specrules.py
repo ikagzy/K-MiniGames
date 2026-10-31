@@ -39,7 +39,7 @@ def _negated(text: str, end: int) -> bool:
 
 def _amount(text: str, noun: str):
     """0-5 for how much of a thing the text asks for, or None when it says nothing about it."""
-    if re.search(rf"(?:{noun})\w*\s+(?:olmasin|yok\b|istemiyorum)|\bhic\s+(?:\w+\s+)?(?:{noun})|(?:{noun})suz", text):
+    if re.search(rf"(?:{noun})\w*\s+(?:olmasin|yok\b|istemiyorum)|\bhic\s+(?:\w+\s+)?(?:{noun})|(?:{noun})s[iu]z", text):
         return 0
     if re.search(rf"{FEW}\s+(?:\w+\s+)?(?:{noun})", text):
         return 1
@@ -145,4 +145,56 @@ def apply_shooter(spec: dict, description: str) -> dict:
     difficulty = _difficulty(text)
     if difficulty:
         spec["difficulty"] = difficulty
+    return spec
+
+
+SANDBOX_BIOMES = {"forest": r"\borman", "desert": r"\bcol\b|\bcol dunya|kumluk", "snow": r"\bkar\b|\bkarli|\bkis\b|buzul", "plains": r"\bova\b|duzluk|cayir"}
+SANDBOX_SIZES = {"small": r"\bkucuk|\bminik|\bufak", "large": r"\bbuyuk|\bdevasa|\bgenis"}
+
+
+def _level03(text: str, noun: str):
+    """0-3 for how much of a thing a world has: 0 none, 1 a little, 3 a lot; None when the text says nothing."""
+    if re.search(rf"(?:{noun})\w*\s+(?:olmasin|yok\b)|\bhic\s+(?:{noun})|(?:{noun})s[iu]z", text):
+        return 0
+    if re.search(rf"{FEW}\s+(?:\w+\s+)?(?:{noun})", text):
+        return 1
+    if re.search(rf"{MANY}\s+(?:\w+\s+)?(?:{noun})|(?:{noun})\w*\s+dolu|(?:{noun})\w*\s+{MANY}\b", text):
+        return 3
+    return None
+
+
+def apply_sandbox(spec: dict, description: str) -> dict:
+    """The same kind of rules for the sandbox world: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    found = [name for name, rx in SANDBOX_BIOMES.items() if re.search(rx, text)]
+    if len(found) == 1:
+        spec["biome"] = found[0]
+    sizes = [name for name, rx in SANDBOX_SIZES.items() if re.search(rx, text)]
+    if len(sizes) == 1:
+        spec["size"] = sizes[0]
+    for field, noun in (("caves", r"magara"), ("ores", r"maden|cevher"), ("trees", r"agac")):
+        value = _level03(text, noun)
+        if value is not None:
+            spec[field] = value
+    if re.search(r"gol\w*\s+(?:olmasin|yok)|golsuz|su olmasin|kuru bir dunya", text):
+        spec["lakes"] = False
+    elif re.search(r"\bgol|\bnehir|\bdeniz", text):
+        spec["lakes"] = True
+    if re.search(r"gece\s*(?:ve|-)?\s*gunduz|gunduz\s*(?:ve|-)?\s*gece|\bdongu", text):
+        spec["time"] = "cycle"
+    elif re.search(r"hep gece|surekli gece|\bkaranlik", text):
+        spec["time"] = "night"
+    elif re.search(r"hep gunduz|surekli gunduz", text):
+        spec["time"] = "day"
+    features = list(spec.get("features") or [])
+    for name, rx in (("fly", r"\bucabil|\bucma\b|\bucmak|ucus modu"), ("sprint", r"\bkosabil|\bhizli yuru|\bkosma")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
     return spec
