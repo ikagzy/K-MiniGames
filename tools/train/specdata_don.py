@@ -24,17 +24,19 @@ from k_minigames import advisor, catalog  # noqa: E402
 CHAT_SYSTEM = advisor.system_prompt()
 MODULE_SYSTEM = advisor.module_prompt()
 MODEL_IDS = [m.id for m in catalog.coders()]
+DECIDE_TR = ["sen karar ver", "fark etmez", "bilmiyorum, sen seç", "hepsi olabilir", "sen nasıl istersen", "önemli değil, sen yap"]
+DECIDE_EN = ["you decide", "I don't mind", "surprise me", "whatever you think is best"]
 SMALL, MEDIUM, LARGE = "qwen2.5-coder:3b", "qwen2.5-coder:7b", "qwen2.5-coder:14b"
 assert {SMALL, MEDIUM, LARGE} <= set(MODEL_IDS)
 
 VAGUE = {
     "platformer": ["Bir platform oyunu yapmak istiyorum.", "Zıplayarak ilerlediğim bir oyun olsun.", "Mario gibi bir şey yapar mısın?", "Koşup zıpladığım bir oyun yap.",
-                   "Basit bir platform oyunu istiyorum.", "Düşmanların üstüne zıpladığım bir oyun olsun."],
+                   "Basit bir platform oyunu istiyorum.", "Düşmanların üstüne zıpladığım bir oyun olsun.", "mario tarzı bi oyun yap", "bi platform oyunu olsun", "zıplamalı bi şey yapsana"],
     "shooter": ["Bir uzay oyunu istiyorum.", "Düşmanları vurduğum bir oyun yap.", "Nişancı oyunu olsun.", "Uzay gemisiyle ateş ettiğim bir oyun yapmak istiyorum.",
-                "Basit bir shoot'em up yapar mısın?"],
+                "Basit bir shoot'em up yapar mısın?", "uzay oyunu yap", "bi uzay gemisi oyunu olsun", "nişancı tarzı bi şey istiyorum"],
     "sandbox": ["Minecraft gibi bir oyun istiyorum.", "Blok kırıp bir şeyler yaptığım bir oyun olsun.", "Madencilik ve inşaat yaptığım bir oyun yap.",
-                "Küp dünya gibi bir şey yapmak istiyorum.", "Bloklarla bir dünya kurduğum bir oyun olsun."],
-    "none": ["Bir oyun yapmak istiyorum.", "Eğlenceli bir şey yapalım.", "Merhaba, oyun yaptırmak istiyorum.", "Bana bir oyun yap.", "Canım sıkılıyor, bir oyun yapalım."],
+                "Küp dünya gibi bir şey yapmak istiyorum.", "Bloklarla bir dünya kurduğum bir oyun olsun.", "minecraft tarzı bi oyun", "minecraft tarzı bi oyun yap", "bi minecraft yapsana", "minecraft gibi bir şey olsun", "blok oyunu yap"],
+    "none": ["Bir oyun yapmak istiyorum.", "Eğlenceli bir şey yapalım.", "Merhaba, oyun yaptırmak istiyorum.", "Bana bir oyun yap.", "Canım sıkılıyor, bir oyun yapalım.", "bi şeyler yapalım", "oyun yap", "bana bi oyun lazım"],
 }
 VAGUE_EN = {
     "platformer": ["I want a platformer.", "Make me a game where I run and jump.", "Something like a classic platform game, please."],
@@ -136,15 +138,20 @@ def build_don_examples(n_per_kit: int = 300, n_eval: int = 40, seed: int = 0):
     def scenario(bucket, kit, text, lang, n_fields):
         english = lang == "en"
         model = pick_model(n_fields)
-        flow = rng.random()
-        if flow < 0.45:   # a clear description at once
+        clear = n_fields >= 3 and rng.random() < 0.4   # only a description with several details is answered at once
+        if clear:
             history = []
-        else:             # a vague wish, Don asks, the description comes as the answer
+        else:                                           # a short wish gets questions first, the description comes as the answer
             vague = _vague(rng, kit, english)
             question = _question(rng, kit, english)
             history = [{"role": "user", "content": vague}, {"role": "assistant", "content": question}]
-            if flow < 0.7:
-                add(bucket, "chat", "ask", kit, _chat([], vague, question), {"questions_max": 2, "english": english})
+            add(bucket, "chat", "ask", kit, _chat([], vague, question), {"questions_max": 2, "english": english})
+            if n_fields < 3 and rng.random() < 0.5:     # a short description as the first message is still a wish
+                add(bucket, "chat", "ask", kit, _chat([], text, _question(rng, kit, english)), {"questions_max": 2, "english": english})
+            if rng.random() < 0.3:                      # "you decide": Don chooses and goes on
+                answer = rng.choice(DECIDE_EN if english else DECIDE_TR)
+                add(bucket, "chat", "propose", kit, _chat(history, answer, _proposal(rng, MEDIUM, english)), {"model": MEDIUM, "english": english})
+                add(bucket, "modules", "modules", kit, _modules([*history, {"role": "user", "content": answer}], KIT_MODULES[kit]), {"modules": KIT_MODULES[kit]})
         add(bucket, "chat", "propose", kit, _chat(history, text, _proposal(rng, model, english)), {"model": model, "english": english})
         add(bucket, "modules", "modules", kit, _modules([*history, {"role": "user", "content": text}], KIT_MODULES[kit]), {"modules": KIT_MODULES[kit]})
 

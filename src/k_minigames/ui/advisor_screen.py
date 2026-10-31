@@ -26,7 +26,7 @@ DOWNLOAD_CANCELLED = "İndirme iptal edildi."
 
 class AdvisorScreen:
     def __init__(self, services: Services, flow: AdvisorFlow | None = None, typing_ms: int = 30,
-                 finish_ms: int = 1800):
+                 finish_ms: int = 3500):
         self.s = services
         self._flow = flow
         self._typing_ms, self._finish_ms = typing_ms, finish_ms
@@ -105,7 +105,7 @@ class AdvisorScreen:
         elif flow.state == "installing":
             self._install()
         elif flow.state == "done":
-            self._finish()
+            self._later(self._finish_ms, self._finish)   # the advisor's last words stay on screen long enough to read
         elif flow.state == "cancelled":
             self._say_then(t(flow.cancel_message), "unsure", self._ask)
         else:

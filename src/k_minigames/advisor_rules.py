@@ -1,0 +1,36 @@
+"""Rules around the advisor's answer, for a small advisor model that rushes: a proposal made after a short wish ("minecraft tarzı bi oyun")
+is replaced by questions, because the game is not understood yet. Rules only hold a proposal back; they never make one up."""
+import re
+
+DECIDED = re.compile(r"sen (karar|se[cç]|nas[iı]l istersen|yap)|fark etmez|bilmiyorum|[oö]nemli de[gğ]il|you decide|surprise me|don'?t mind|whatever", re.I)
+KITS = (("sandbox", re.compile(r"minecraft|k[uü]p d[uü]nya|blok|maden|in[sş]aat|cube world|mining|voxel", re.I)),
+        ("shooter", re.compile(r"uzay|ni[sş]anc[iı]|gemi|shoot|space|shooter", re.I)),
+        ("platformer", re.compile(r"platform|z[iı]pla|mario|jump|run", re.I)))
+QUESTIONS = {
+    "sandbox": "Güzel fikir! Hangi bölgede geçsin (orman, çöl ya da ova) ve dünya ne kadar büyük olsun? Mağara, maden ve göller olsun mu?",
+    "shooter": "Süper! Hangi tür düşmanlar çıksın, sonunda patron olsun mu? Gemi tek mi çift mi ateş etsin?",
+    "platformer": "Tamam! Karakter nasıl biri olsun, bölümler hangi dünyada geçsin? Kaç canla başlasın?",
+    None: "Olur! Nasıl bir oyun düşünüyorsun: koşup zıplamalı bir platform oyunu, uzay nişancısı ya da madencilik ve inşaat olan bir küp dünya?",
+}
+QUESTIONS_EN = {
+    "sandbox": "Nice! Which region (forest, desert or plains), and how big should the world be? Do you want caves, ores and lakes?",
+    "shooter": "Great! Which enemies should show up, and should there be a boss at the end? Single or double fire?",
+    "platformer": "Okay! What should the hero be like, and what world should the levels be in? How many lives?",
+    None: "Sounds fun! What kind of game: a run-and-jump platformer, a space shooter or a cube world for mining and building?",
+}
+_ENGLISH = re.compile(r"\b(the|want|make|game|please|with|and|a)\b", re.I)
+
+
+def understood(history: list[dict], user_text: str) -> bool:
+    """Is there enough to go on: several details, an answer to a question, or the user leaving the choice to the advisor."""
+    users = [m["content"] for m in history if m.get("role") == "user"] + [user_text]
+    if DECIDED.search(user_text):
+        return True
+    return len(users) >= 2 or len(" ".join(users).split()) >= 10
+
+
+def question_for(history: list[dict], user_text: str) -> str:
+    said = " ".join([m["content"] for m in history if m.get("role") == "user"] + [user_text])
+    kit = next((name for name, pattern in KITS if pattern.search(said)), None)
+    english = bool(_ENGLISH.search(said)) and not re.search(r"[ığşöçüİĞŞÖÇÜ]", said)
+    return (QUESTIONS_EN if english else QUESTIONS)[kit]

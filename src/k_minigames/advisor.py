@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from k_minigames import catalog, kgamelib
+from k_minigames import advisor_rules, catalog, kgamelib
 from k_minigames import memory as memory_notes
 from k_minigames.ollama_client import OllamaError
 
@@ -95,4 +95,7 @@ class Advisor:
             history = history[-HISTORY_WITH_MEMORY:]
         messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": user_text}]
         answer = self.client.chat(self.model, messages, on_token=on_token, cancel=cancel)
-        return AdvisorReply(_without_proposals(answer), extract_proposal(answer))
+        reply = AdvisorReply(_without_proposals(answer), extract_proposal(answer))
+        if reply.proposal and not advisor_rules.understood(history, user_text):   # a short wish gets questions first
+            return AdvisorReply(advisor_rules.question_for(history, user_text), None)
+        return reply
