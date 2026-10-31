@@ -87,3 +87,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-78 | 2026-10-28 | küp dünya: 44 tarif (1.8.9 çekirdek), 5 kademe alet, kazma süresi ve alet kademeleri, fırın/eritme/yakıt, tarif menüsü; v5 eğitimi sürüyor | bf67988 |
 | CP-79 | 2026-10-28 | küp dünya: net eşya simgeleri, can/açlık/düşme/boğulma/yemek; v5 eğitimi bitmek üzere | 406d8bc |
 | CP-80 | 2026-10-28 | küp dünya: canlılar (hayvan/gece düşmanı), dövüş, zırh, alet dayanıklılığı, başarımlar, et/yün; v5 Ollama'ya kuruldu, ölçüm sürüyor | ecbfaf5 |
+| CP-81 | 2026-10-28 | k-ai v5 (3 kit: platform+nişancı+küp dünya, elle yazılmış 0,97/1,0/0,9) kuruldu; küp dünya lav/yatak/kum/fidan/taşlar; kömür cevheri hatası düzeltildi | 5f73a5e |
