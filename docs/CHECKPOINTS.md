@@ -90,3 +90,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-81 | 2026-10-28 | k-ai v5 (3 kit: platform+nişancı+küp dünya, elle yazılmış 0,97/1,0/0,9) kuruldu; küp dünya lav/yatak/kum/fidan/taşlar; kömür cevheri hatası düzeltildi | 5f73a5e |
 | CP-82 | 2026-10-31 | küp dünya: yarım blok, basamak, çit, kapı, merdiven (şekilli bloklar), ana menü ve Esc menüsü; 203 JS testi | 9bcf740 |
 | CP-83 | 2026-10-31 | küp dünya boyutları (Kor Diyarı, Gök Adaları), geçit/çakmak/kara kaya, kapı kaydı düzeltmesi; v5.5 sürümü; 207 JS testi | 1d36a7e |
+| CP-84 | 2026-10-31 | Kor Diyarı canlıları (közcü, kor bekçisi), köz tozu ve ışık taşı tarifi, saydam geçit; 209 JS testi | ba04203 |
