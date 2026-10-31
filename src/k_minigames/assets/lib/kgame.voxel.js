@@ -215,7 +215,7 @@
     return textures[key] = px;
   }
 
-  K.voxel = { starter: false, menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
+  K.voxel = { keyActions: false, starter: false, menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
 
   K.kit.define("sandbox", {
     defaults: {
@@ -376,7 +376,7 @@
         return false;
       }
       state.cast = cast;
-      function eye() { return { x: state.p.x, y: state.p.y + 1.6, z: state.p.z }; }
+      function eye() { return { x: state.p.x, y: state.p.y + 1.6 - (state.sneaking ? 0.28 : 0), z: state.p.z }; }
       function look() {
         var p = state.p, cp = Math.cos(p.pitch);
         return { x: Math.sin(p.yaw) * cp, y: Math.sin(p.pitch), z: -Math.cos(p.yaw) * cp };
@@ -460,8 +460,8 @@
           { label: m.confirm ? "Emin misin? Tekrar seç: dünya sıfırlanır" : "Dünyayı sıfırla (kaydı sil)", act: function () { if (m.confirm) state.resetWorld(); else m.confirm = true; } }];
         return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
       };
-      var CONTROL_LINES = ["W A S D  yürü       Boşluk  zıpla       Shift  koş", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
-                           "Tekerlek, Q ya da 1-9  eşya seç       I  envanter       X  tarifler", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)", "Geçit: 4x5 kara kaya çerçeve (köşesiz), çakmakla içine bak ve sağ tık. Cam çerçeve = Gök Adaları"];
+      var CONTROL_LINES = ["W A S D  yürü     Boşluk  zıpla     Ctrl  koş     Shift  eğil (kenardan düşmez)", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
+                           "Tekerlek, Q ya da 1-9  eşya seç       E  envanter       X  tarifler", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)", "Geçit: 4x5 kara kaya çerçeve (köşesiz), çakmakla içine bak ve sağ tık. Cam çerçeve = Gök Adaları"];
       state.menuUpdate = function (dt) {
         var m = state.menu;
         g.ui.items = {};
@@ -830,6 +830,35 @@
         if (state.portalT >= 1.2) { var code = metaOf(fx, cellY, fz) >> 2; state.travel(DIM_BY_CODE[code] || "over"); }
       };
 
+      // ---- the inventory screen: where the cells are, which one the mouse is over, moving an item to the chosen slot ----
+      state.invScroll = 0; state.lastClicks = K.mouse ? K.mouse.clicks : 0;
+      function invLayout() { var x0 = Math.floor(g.width / 2 - 190), y0 = 40, cell = 40, rows = 4; return { x0: x0, y0: y0, cell: cell, rows: rows, w: 380, h: 34 + rows * cell + 18 + cell + 24, gridY: y0 + 34, barY: y0 + 34 + rows * cell + 18 }; }
+      state.invHit = function (mx, my) {
+        var L = invLayout(), all = state.hotbar(), col = Math.floor((mx - (L.x0 + 10)) / L.cell);
+        if (col < 0 || col > 8) return null;
+        var row = Math.floor((my - L.gridY) / L.cell);
+        if (row >= 0 && row < L.rows) { var id = all[state.invScroll * 9 + row * 9 + col]; return id ? { kind: "grid", id: id } : null; }
+        if (my >= L.barY && my < L.barY + L.cell) { var at = state.windowStart() + col; return at < all.length ? { kind: "hotbar", index: at } : null; }
+        return null;
+      };
+      state.moveItem = function (id) {   // the item goes to the chosen slot and the one that was there takes its place
+        var all = state.hotbar(), from = all.indexOf(id);
+        if (from < 0) return false;
+        var to = Math.min(state.slot, all.length - 1), other = all[to];
+        all[to] = id; all[from] = other;
+        inv.order = all.concat(inv.order.filter(function (i) { return all.indexOf(i) < 0; }));
+        state.select(to); return true;
+      };
+      state.invUpdate = function () {   // a click while the inventory is open (the counter keeps clicks that were over within a frame)
+        var clicks = K.mouse ? K.mouse.clicks : 0, fresh = clicks !== state.lastClicks;
+        state.lastClicks = clicks;
+        if (!state.showInv || !fresh) return;
+        var hit = state.invHit(K.mouse.x, K.mouse.y);
+        if (!hit) return;
+        if (hit.kind === "hotbar") state.select(hit.index); else state.moveItem(hit.id);
+      };
+      state.uiOpen = function () { return !!(state.showInv || state.showCraft || state.showAch || state.showHelp || state.trade || state.enchanting); };
+      state.closeUi = function () { state.showInv = state.showCraft = state.showAch = state.showHelp = false; state.trade = null; state.enchanting = false; };
       // ---- the player ----
       function collides(x, y, z) {
         for (var bx = Math.floor(x - 0.3); bx <= Math.floor(x + 0.3); bx++) for (var bz = Math.floor(z - 0.3); bz <= Math.floor(z + 0.3); bz++)
@@ -882,7 +911,7 @@
         state.achT += dt; if (state.achT >= 0.5) { state.achT = 0; state.checkAch(); }
         var inLava = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA || get(Math.floor(p.x), Math.floor(p.y + 1), Math.floor(p.z)) === LAVA;
         if (inLava) { state.lavaT = (state.lavaT || 0) + dt; if (state.lavaT >= 0.5) { state.lavaT = 0; state.hurt(4, "lav"); } } else state.lavaT = 0;
-        state.hungerT += dt * (K.key("Shift") ? 1.8 : 1);
+        state.hungerT += dt * (K.key("Control") ? 1.8 : 1);
         if (state.hungerT >= 45) { state.hungerT = 0; if (!state.creative) state.food = Math.max(0, state.food - 1); }
         if (state.food >= 18 && state.health < 20) { state.regenT += dt; if (state.regenT >= 4) { state.regenT = 0; state.health++; } } else state.regenT = 0;
         if (state.food <= 0) { state.starveT += dt; if (state.starveT >= 4) { state.starveT = 0; if (state.health > 1) state.hurt(1, "açlık"); } } else state.starveT = 0;
@@ -899,7 +928,9 @@
         if (state.showCraft) { turn = 0; tilt = 0; }   // the arrows move in the recipe list instead
         p.yaw += turn * 2.2 * dt; p.pitch = Math.max(-1.5, Math.min(1.5, p.pitch + tilt * 1.6 * dt));
         var f = (K.key("w") ? 1 : 0) - (K.key("s") ? 1 : 0), r = (K.key("d") ? 1 : 0) - (K.key("a") ? 1 : 0);
-        var speed = 4.3 * state.sprintMul * (K.key("Shift") && !flying ? 1.5 : flying ? 1.6 : 1);
+        var sneak = K.key("Shift") && !flying, run = K.key("Control") && !flying && !sneak;   // Ctrl runs, Shift sneaks (slower, and you do not walk off an edge)
+        state.sneaking = sneak;
+        var speed = 4.3 * state.sprintMul * (run ? 1.5 : sneak ? 0.35 : flying ? 1.6 : 1);
         var len = Math.sqrt(f * f + r * r) || 1;
         var sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
         var wx = (sin * f + cos * r) / len * speed, wz = (-cos * f + sin * r) / len * speed;
@@ -921,9 +952,10 @@
         }
         p.peak = (p.onGround || inWater || flying) ? p.y : Math.max(p.peak, p.y);
         var nx = p.x + p.vx * dt;   // a step of up to half a block is climbed without jumping (half blocks, stairs)
-        if (!collides(nx, p.y, p.z)) p.x = nx; else if (p.onGround && !flying && !collides(nx, p.y + 0.55, p.z) && !collides(p.x, p.y + 0.55, p.z)) { p.x = nx; p.y += 0.55; } else if (inWater && !flying && !collides(nx, p.y + 1.6, p.z)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);   // swimming into a bank: climb out
+        var edge = function (x, z) { return sneak && p.onGround && !collides(x, p.y - 0.3, z); };
+        if (!collides(nx, p.y, p.z)) { if (!edge(nx, p.z)) p.x = nx; } else if (p.onGround && !flying && !collides(nx, p.y + 0.55, p.z) && !collides(p.x, p.y + 0.55, p.z)) { p.x = nx; p.y += 0.55; } else if (inWater && !flying && !collides(nx, p.y + 1.6, p.z)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);   // swimming into a bank: climb out
         var nz = p.z + p.vz * dt;
-        if (!collides(p.x, p.y, nz)) p.z = nz; else if (p.onGround && !flying && !collides(p.x, p.y + 0.55, nz) && !collides(p.x, p.y + 0.55, p.z)) { p.z = nz; p.y += 0.55; } else if (inWater && !flying && !collides(p.x, p.y + 1.6, nz)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);
+        if (!collides(p.x, p.y, nz)) { if (!edge(p.x, nz)) p.z = nz; } else if (p.onGround && !flying && !collides(p.x, p.y + 0.55, nz) && !collides(p.x, p.y + 0.55, p.z)) { p.z = nz; p.y += 0.55; } else if (inWater && !flying && !collides(p.x, p.y + 1.6, nz)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);
         var ny = p.y + p.vy * dt;
         if (!collides(p.x, ny, p.z)) { p.y = ny; p.onGround = false; }
         else { if (p.vy < 0) { p.onGround = true; if (flying && !space) state.flying = false; state.landed(p); } p.vy = 0; }
@@ -1102,14 +1134,29 @@
         c.fillStyle = "rgba(0,0,0,0.45)"; c.fillRect(mx - 2, my - 2, N * cell + 4, N * cell + 4);
         for (var kk in state.visited) { var vz = Math.floor(kk / N), vx = kk % N; c.fillStyle = "#6fbf73"; c.fillRect(mx + vx * cell, my + vz * cell, cell - 1, cell - 1); }
         if (state.chunk) { c.fillStyle = "#fff"; c.fillRect(mx + state.chunk.x * cell, my + state.chunk.z * cell, cell - 1, cell - 1); }
-        if (state.showInv) {
-          c.fillStyle = "rgba(0,0,0,0.78)"; c.fillRect(g.width / 2 - 170, 60, 340, 230);
-          c.fillStyle = "#fff"; c.font = "16px sans-serif"; c.fillText("ENVANTER " + (state.creative ? "(yaratıcı mod: sınırsız)" : ""), g.width / 2 - 155, 86);
-          var all = inv.order.filter(function (id) { return inv.count[id] > 0; });
-          all.forEach(function (id, n) {
-            var cx = g.width / 2 - 155 + (n % 2) * 160, cy = 104 + Math.floor(n / 2) * 24;
-            drawIcon(c, id, cx, cy - 2, 22); c.fillStyle = "#fff"; c.font = "14px sans-serif"; c.fillText(NAMES[id] + "  x" + (state.creative ? "∞" : inv.count[id]), cx + 28, cy + 14);
-          });
+        if (state.showInv) {   // the inventory: a grid of everything you hold, and the nine slots of the bar; a click on an item puts it in the chosen slot
+          var L = invLayout(), allInv = state.hotbar(), startInv = state.windowStart(), maxScroll = Math.max(0, Math.ceil(allInv.length / 9) - L.rows);
+          state.invScroll = Math.max(0, Math.min(maxScroll, state.invScroll));
+          c.fillStyle = "rgba(20,20,24,0.94)"; c.fillRect(L.x0, L.y0, L.w, L.h); c.strokeStyle = "#8a8a92"; c.lineWidth = 2; c.strokeRect(L.x0, L.y0, L.w, L.h);
+          c.fillStyle = "#fff"; c.font = "bold 15px sans-serif"; c.fillText("Envanter" + (state.creative ? "  (yaratıcı mod)" : ""), L.x0 + 12, L.y0 + 22);
+          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(allInv.length > L.rows * 9 ? "tekerlek: kaydır" : "bir eşyaya tıkla: seçili yuvaya koy", L.x0 + L.w - 190, L.y0 + 22);
+          var drawCell = function (x, y, id, on) {
+            c.fillStyle = on ? "rgba(255,224,130,0.35)" : "rgba(90,90,98,0.55)"; c.fillRect(x, y, L.cell - 4, L.cell - 4); c.strokeStyle = on ? "#ffe082" : "#2c2c32"; c.lineWidth = on ? 2 : 1; c.strokeRect(x, y, L.cell - 4, L.cell - 4);
+            if (!id) return;
+            drawIcon(c, id, x + 4, y + 4, L.cell - 12);
+            if (!state.creative && inv.count[id] > 1) { c.fillStyle = "#fff"; c.font = "bold 11px sans-serif"; c.textAlign = "right"; c.fillText(String(inv.count[id]), x + L.cell - 7, y + L.cell - 8); c.textAlign = "left"; }
+          };
+          for (var gi = 0; gi < L.rows * 9; gi++) { var gid = allInv[state.invScroll * 9 + gi]; drawCell(L.x0 + 10 + (gi % 9) * L.cell, L.gridY + Math.floor(gi / 9) * L.cell, gid, gid && gid === state.selectedBlock()); }
+          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText("Çubuk (1-9)", L.x0 + 12, L.barY - 5);
+          for (var bi = 0; bi < 9; bi++) drawCell(L.x0 + 10 + bi * L.cell, L.barY, allInv[startInv + bi], startInv + bi === state.slot);
+          var over = state.invHit(K.mouse.x, K.mouse.y);
+          if (over && (over.id || over.index !== undefined)) {
+            var oid = over.id || allInv[over.index];
+            if (oid) {
+              var tip = NAMES[oid] + (state.creative ? "" : "  x" + inv.count[oid]) + (state.enchantNote ? state.enchantNote(oid) : ""), tw = c.measureText ? c.measureText(tip).width + 14 : 120;
+              c.fillStyle = "rgba(10,10,14,0.95)"; c.fillRect(K.mouse.x + 12, K.mouse.y - 4, tw, 22); c.fillStyle = "#fff"; c.font = "12px sans-serif"; c.fillText(tip, K.mouse.x + 19, K.mouse.y + 11);
+            }
+          }
         }
         if (state.showCraft) {
           c.fillStyle = "rgba(0,0,0,0.82)"; c.fillRect(g.width / 2 - 200, 40, 400, 270);
@@ -1139,8 +1186,8 @@
         if (state.showHelp) {
           c.fillStyle = "rgba(0,0,0,0.8)"; c.fillRect(g.width / 2 - 190, 50, 380, 250);
           c.fillStyle = "#fff"; c.font = "14px sans-serif";
-          ["KONTROLLER", "W A S D  yürü       Boşluk  zıpla       Shift  koş", "Fare ya da oklar  bak (önce sayfaya tıkla)", "Sol tık / F  blok kır        Sağ tık / E  blok koy",
-           "Tekerlek / Q / 1-9  blok seç", "I  envanter   X  tarifler (yukarı/aşağı, Enter)   B  başarımlar   C  yaratıcı mod", "Kazarken en iyi aletin kullanılır; masa ve fırın yakında olmalı", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
+          ["KONTROLLER", "W A S D  yürü     Boşluk  zıpla     Ctrl  koş     Shift  eğil", "Fare ya da oklar  bak (önce sayfaya tıkla)", "Sol tık  blok kır / vur        Sağ tık  blok koy / ye / aç",
+           "Tekerlek / Q / 1-9  eşya seç", "E  envanter   X  tarifler (yukarı/aşağı, Enter)   B  başarımlar   C  yaratıcı mod", "Kazarken en iyi aletin kullanılır; masa ve fırın yakında olmalı", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
             c.fillText(line, g.width / 2 - 175, 80 + n * 26);
           });
         }
@@ -1159,15 +1206,16 @@
       var mouseLeft = false;
       if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) {
         var canvas = g.canvas;
-        canvas.addEventListener("click", function () { if (!state.menu.open && canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (e) { /* no lock: keys still work */ } } });
-        document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && !state.menu.open && g.current === "play" && state.menuStarted) state.openMenu("pause"); });   // Esc gives the mouse back: the pause menu opens
+        canvas.addEventListener("click", function () { if (!state.menu.open && !state.uiOpen() && canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (e) { /* no lock: keys still work */ } } });
+        document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && !state.menu.open && !state.uiOpen() && g.current === "play" && state.menuStarted) state.openMenu("pause"); });   // Esc gives the mouse back: the pause menu opens
         document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.menu.open) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });
         canvas.addEventListener("mousedown", function (e) {
+          if (state.menu.open || state.uiOpen()) return;
           if (e.button === 0) mouseLeft = true; else if (e.button === 2) state.placeBlock();
         });
         document.addEventListener("mouseup", function (e) { if (e.button === 0) mouseLeft = false; });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
-        canvas.addEventListener("wheel", function (e) { e.preventDefault(); if (state.showCraft) state.menuMove(e.deltaY > 0 ? 1 : -1); else state.select(state.slot + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+        canvas.addEventListener("wheel", function (e) { e.preventDefault(); if (state.showCraft) state.menuMove(e.deltaY > 0 ? 1 : -1); else if (state.showInv) state.invScroll = Math.max(0, state.invScroll + (e.deltaY > 0 ? 1 : -1)); else state.select(state.slot + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
       }
 
       var held = {};
@@ -1175,9 +1223,12 @@
       g.scene("play", {
         update: function (game, dt) {
           if (state.menu.open) { state.menuUpdate(dt); return; }
-          once("Escape", function () { state.openMenu("pause"); });
+          state.invUpdate();
+          if (state.uiOpen() && typeof document !== "undefined" && document.pointerLockElement && document.exitPointerLock) { try { document.exitPointerLock(); } catch (e) { /* not locked */ } }   // a screen with items needs the mouse
+          once("Escape", function () { if (state.uiOpen()) state.closeUi(); else state.openMenu("pause"); });
           state.step(dt);
-          once("e", state.placeBlock); once("q", function () { state.select(state.slot + 1); });
+          if (K.voxel.keyActions) once("e", state.placeBlock); else once("e", function () { state.showInv = !state.showInv; });   // E opens the inventory (F and E as keys for digging and placing are only for the tests)
+          once("q", function () { state.select(state.slot + 1); });
           once("i", function () { state.showInv = !state.showInv; }); once("Tab", function () { state.showInv = !state.showInv; });
           once("c", function () { state.setCreative(!state.creative); }); once("h", function () { state.showHelp = !state.showHelp; });
           once("g", function () { if (state.canFly) state.flying = !state.flying; });
@@ -1187,7 +1238,7 @@
           once("Enter", function () { if (state.showCraft) state.craft(state.craftList()[state.craftCursor]); });
           for (var n = 1; n <= 9; n++) (function (num) { once(String(num), function () { if (state.showCraft) state.craft(state.craftList()[state.craftPage() + num - 1]); else state.select(state.windowStart() + num - 1); }); })(n);
           var cur = state.selectedBlock(); if (cur !== state.lastSel) { state.lastSel = cur; state.nameT = 2; } state.nameT -= dt;
-          state.mineStep(dt, K.key("f") || mouseLeft);   // holding F or the left button digs
+          state.mineStep(dt, ((K.voxel.keyActions && K.key("f")) || mouseLeft) && !state.uiOpen());   // holding the left button digs
           var ch = state.chunk || { x: 0, z: 0 };
           g.ui.text("hud.info", "parça " + ch.x + "," + ch.z + "   gezdin " + state.hud.explored + "/" + N * N + "   derinlik " + state.hud.depth + (state.flying ? "   UÇUYOR" : ""), 10, 22, { size: 14 });
           g.ui.text("hud.block", "BLOK: " + (state.selectedBlock() ? NAMES[state.selectedBlock()] : "yok") + "   kırdın " + state.hud.broken + "  koydun " + state.hud.placed, 10, 42, { size: 13, color: "#cfd8dc" });

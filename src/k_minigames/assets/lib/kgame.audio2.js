@@ -117,7 +117,8 @@
 
   var timer = null;
   var contextOf = function () { try { return new (root.AudioContext || root.webkitAudioContext)(); } catch (e) { return null; } };
-  var ctx;
+  var ctx, master = null;   // every note of the music goes through one gain, so that stopping can silence what is already written into the audio clock
+  var masterGain = function () { if (!master) { master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination); } return master; };
 
   function schedule(track, name) {
     if (!ctx) return;
@@ -132,7 +133,7 @@
             osc.type = wave; osc.frequency.value = n.freq;
             gain.gain.setValueAtTime(volume, t);
             gain.gain.exponentialRampToValueAtTime(0.0008, t + length * 0.95);
-            osc.connect(gain); gain.connect(ctx.destination);
+            osc.connect(gain); gain.connect(masterGain());
             osc.start(t); osc.stop(t + length);
           } catch (e) { /* silent */ }
         }
@@ -158,7 +159,10 @@
     schedule(track, name);
     return true;
   };
-  M.stop = function () { M.current = null; if (timer) { clearTimeout(timer); timer = null; } };
+  M.stop = function () {
+    M.current = null; if (timer) { clearTimeout(timer); timer = null; }
+    if (master) { try { master.gain.setValueAtTime(0, ctx.currentTime); master.disconnect(); } catch (e) { /* already gone */ } master = null; }   // the notes that were already scheduled go quiet at once
+  };
 
   var T = K.sfxTable;
   T.stomp = [300, 80, 0.1, "square"]; T.powerup = [330, 990, 0.35, "square"]; T.death = [500, 60, 0.7, "sawtooth"];

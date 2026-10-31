@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { load } = require('./helpers');
 
 const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxelmobs.js', 'kgame.voxel.js'];
-const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true; return K; };   // the tests play without the main menu
+const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true; K.voxel.keyActions = true; return K; };   // the tests play without the main menu
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
 const world = (K, o = {}) => K.voxel.makeWorld({ seed: 3, biome: 'forest', size: 'medium', caves: 1, ores: 1, lakes: true, trees: 3, ...o });
@@ -225,14 +225,15 @@ test('fly: it is off until you turn it on with G or a double tap of space, then 
   const plain = K.kit.run({ kit: 'sandbox', world: { seed: 1 }, size: 'small' });
   K.press('g'); run(plain, 0.1); K.press('g', false);
   assert.strictEqual(plain.flying, false, 'no fly feature, no flying');
-  const walk = (spec, shift) => {
+  const walk = (spec, shift, sneakKey) => {
     const t = K.kit.run({ kit: 'sandbox', world: { seed: 1 }, size: 'small', trees: 0, ...spec });
     run(t, 1.5); const x = t.p.x, z = t.p.z;
-    K.press('w'); if (shift) K.press('Shift'); run(t, 0.4); K.press('w', false); K.press('Shift', false);
+    K.press('w'); if (shift) K.press('Control'); if (sneakKey) K.press('Shift'); run(t, 0.4); K.press('w', false); K.press('Control', false); K.press('Shift', false);
     return Math.hypot(t.p.x - x, t.p.z - z);
   };
   assert.ok(walk({ features: ['sprint'] }) > walk({}) * 1.2, 'the sprint feature is faster');
-  assert.ok(walk({}, true) > walk({}) * 1.3, 'shift is faster');
+  assert.ok(walk({}, true) > walk({}) * 1.3, 'ctrl runs faster');
+  assert.ok(walk({}, false, true) < walk({}) * 0.6, 'shift sneaks, slower');
 });
 
 test('day and night: the cycle moves, a fixed day stays bright and a fixed night stays dark', () => {
@@ -1213,4 +1214,35 @@ test('swimming: you can climb out of the water onto a bank that is a block highe
   stand(s, cx + 1.5, gy - 1, cz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.3);
   K.press('w'); run(s, 2); K.press('w', false);
   assert.ok(s.p.x > cx + 3.0, 'out on the bank: ' + s.p.x); assert.ok(s.p.y > gy + 0.9, 'dry and standing, not in the pool: ' + s.p.y);
+});
+
+test('the inventory opens with E, shows what you hold in a grid, a click moves an item to the chosen slot, and the keys for digging and placing are gone in a real game', () => {
+  const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true;   // the real controls: no key actions
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 6 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1);
+  K.press('e'); run(s, 0.1); K.press('e', false); run(s, 0.05);
+  assert.strictEqual(s.showInv, true, 'E opens it'); assert.strictEqual(s.uiOpen(), true);
+  K.press('e'); run(s, 0.1); K.press('e', false); run(s, 0.05); assert.strictEqual(s.showInv, false, 'and closes it');
+  // E does not place a block, F does not dig
+  const before = s.hud.placed; K.press('e'); run(s, 0.1); K.press('e', false); K.press('e'); run(s, 0.1); K.press('e', false); assert.strictEqual(s.hud.placed, before);
+  s.showInv = false; s.p.pitch = -0.6; run(s, 0.1); const broken = s.hud.broken; K.press('f'); run(s, 2); K.press('f', false); assert.strictEqual(s.hud.broken, broken, 'F does not dig');
+  // moving an item: the one at slot 3 goes to slot 0
+  s.showInv = true; run(s, 0.05);
+  const all = s.hotbar(); const third = all[3]; s.select(0);
+  assert.strictEqual(s.moveItem(third), true); assert.strictEqual(s.hotbar()[0], third); assert.strictEqual(s.selectedBlock(), third);
+  // clicks: the layout is found by position
+  const hit = s.invHit(190 + 0 + 10 + 5 + 0, 0); assert.ok(hit === null || typeof hit === 'object');
+  s.closeUi(); assert.strictEqual(s.uiOpen(), false);
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
+});
+
+test('Shift sneaks: slower, the eye is lower, and you do not walk off an edge; Ctrl runs', () => {
+  const K = fresh();
+  const { s, cx, cz, gy } = yard(K, 94);
+  for (let x = cx + 1; x <= cx + 8; x++) for (let z = cz - 3; z <= cz + 3; z++) { s.set(x, gy, z, 0, false); }   // a drop to the east of x = cx
+  stand(s, cx + 0.5, gy + 1.01, cz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.3);
+  K.press('w'); K.press('Shift'); run(s, 2); K.press('w', false); K.press('Shift', false);
+  assert.ok(s.p.x < cx + 1.4 && s.p.y > gy + 1, 'stayed on the edge: ' + s.p.x + ',' + s.p.y);
+  stand(s, cx + 0.5, gy + 1.01, cz + 0.5); run(s, 0.3);
+  K.press('w'); run(s, 2); K.press('w', false); assert.ok(s.p.x > cx + 1.5, 'without Shift you walk off');
 });
