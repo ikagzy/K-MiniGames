@@ -24,6 +24,11 @@ def _fold(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower().translate(_ASCII))
 
 
+def _without_titles(text: str) -> str:
+    """A title in quotes is a name, not a wish: "Orman Macerası" is no forest theme."""
+    return re.sub(r'"[^"]*"|“[^”]*”', " ", text)
+
+
 def _number(word: str) -> int:
     return int(word) if word.isdigit() else _NUMBERS[word]
 
@@ -56,7 +61,7 @@ def _difficulty(text: str):
 
 def apply(spec: dict, description: str) -> dict:
     """The spec with what the description clearly says set in it (changed in place and returned)."""
-    text = _fold(description or "")
+    text = _fold(_without_titles(description or ""))
     levels = [lv for lv in spec.get("generate") or [] if isinstance(lv, dict)]
     found = [name for name, rx in THEMES.items() if re.search(rx, text)]
     if len(found) == 1:
@@ -96,14 +101,14 @@ def apply(spec: dict, description: str) -> dict:
     return spec
 
 
-SHOOTER_FEATURES = {"shield": r"\bkalkan|\bshield", "bomb": r"\bbomba", "spread": r"uc yone|yayilan|\bspread|dagilan ates", "rapid": r"hizli ates|seri ates|\brapid"}
-SHOOTER_ENEMIES = {"drifter": r"suzulen|\bdrifter", "zigzag": r"zigzag|kivrilan|ziczac", "shooter": r"ates eden|\bshooter|ates acan",
+SHOOTER_FEATURES = {"shield": r"\bkalkan|\bshield", "bomb": r"\bbomba", "rapid": r"hizli ates|seri ates|\brapid"}   # three-way fire is ship.fire, not a feature
+SHOOTER_ENEMIES = {"drifter": r"suzulen|\bdrifter", "zigzag": r"zigzag|kivrilan|ziczac", "shooter": r"ates (?:eden|acan)(?:\s+(?!gemi)\w+){0,2}\s+dusman|mermi atan dusman|\bshooter",
                    "kamikaze": r"kamikaze|ustune atilan|intihar", "tank": r"\btank|dayanikli dusman"}
 
 
 def apply_shooter(spec: dict, description: str) -> dict:
     """The same kind of rules for the shooter: what the description clearly says is set in the spec, the rest stays as the model wrote it."""
-    text = _fold(description or "")
+    text = _fold(_without_titles(description or ""))
     found = [name for name, rx in THEMES.items() if re.search(rx, text)]
     if len(found) == 1:
         spec["theme"] = found[0]
@@ -115,11 +120,12 @@ def apply_shooter(spec: dict, description: str) -> dict:
     if features:
         spec["features"] = features
     kinds = [name for name, rx in SHOOTER_ENEMIES.items() if re.search(rx, text) and not _negated(text, re.search(rx, text).end())]
-    if kinds:
-        spec["enemies"] = kinds
-    boss = re.search(r"\bpatron|\bboss", text)
-    if boss:
-        spec["boss"] = not _negated(text, boss.end())
+    if kinds:   # only ever adds: a keyword list is never the whole story, the model's list stays
+        spec["enemies"] = list(dict.fromkeys(list(spec.get("enemies") or []) + kinds))
+    if re.search(r"patronsuz|patron olmasin|patron yok|patron istemiyorum|bosssuz", text):
+        spec["boss"] = False
+    elif re.search(r"\bpatron|\bboss", text):
+        spec["boss"] = True
     if re.search(r"muzik|melodi", text):
         moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
         if len(moods) == 1:

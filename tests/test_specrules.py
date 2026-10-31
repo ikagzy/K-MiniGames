@@ -49,3 +49,19 @@ def test_shooter_rules_read_features_enemies_boss_waves_lives_and_fire():
     assert specrules.apply_shooter({"kit": "shooter", "boss": True}, "patron olmasın")["boss"] is False
     assert "features" not in specrules.apply_shooter({"kit": "shooter"}, "kalkan olmasın")
     assert "enemies" not in specrules.apply_shooter({"kit": "shooter"}, "sade bir nişancı oyunu")
+
+
+def test_the_shooter_rules_never_remove_what_the_model_wrote_and_read_patronsuz_as_no_boss():
+    out = specrules.apply_shooter({"kit": "shooter", "enemies": ["drifter", "tank"]}, "zırhlı tanklar ve mermi atan düşmanlar")
+    assert out["enemies"] == ["drifter", "tank", "shooter"], "the model's list stays and the kind the words name is added"
+    assert specrules.apply_shooter({"kit": "shooter"}, "4 dalga, patronsuz olsun")["boss"] is False
+    assert specrules.apply_shooter({"kit": "shooter"}, "sonunda patron çıksın")["boss"] is True
+    assert "features" not in specrules.apply_shooter({"kit": "shooter"}, "üç yöne ateş eden gemi")
+
+
+def test_a_title_in_quotes_is_not_a_wish_and_a_ship_that_fires_is_not_a_shooting_enemy():
+    assert "theme" not in specrules.apply(spec(), 'oyunun adı "Orman Macerası" olsun')
+    assert specrules.apply(spec(), 'adı "Gece Koşusu", karanlık bir mağara')["theme"] == "cave"
+    out = specrules.apply_shooter({"kit": "shooter"}, "tek ateş eden bir gemi, süzülen düşmanlar")
+    assert out["enemies"] == ["drifter"]
+    assert specrules.apply_shooter({"kit": "shooter"}, "ateş eden düşmanlar")["enemies"] == ["shooter"]

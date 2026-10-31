@@ -125,3 +125,16 @@ Not: v3'ün elle yazılmış tarif artışının bir kısmı "bol" ve yazılı s
 ### Kural düzeltmesi (yıldız ≠ gece)
 `specrules`: "bloklardan yıldız çıksın" cümlesindeki "yıldız" gece temasını tetikliyordu (üretilmiş sette tema 76/78 → 71/78). Kural artık "yıldızlı gece" arıyor. Sonuç (v3, Ollama):
 ham 0,972 / elle yazılmış 0,875-0,932 → uygulama (onarım + kurallar) **0,976** / **0,938-0,973**. Tema hâlâ 1 alanda geride (75/78 / 76/78). Exe ve arkadaş paketi yenilendi.
+
+## v4: nişancı kiti (2026-10-31)
+v3'ün üstüne 2 tur ek eğitim (1350 örnek: 700 platform tekrarı + 650 nişancı; 338 adım, ~52 dk). Yeni kit: `kgame.shooter.js` (dikey kayan uzay nişancısı),
+veri üretici `tools/train/specdata_shooter.py`, kurallar `specrules.apply_shooter`, çeşitlilik `kits._shooter_variety`.
+| | HF ham | Ollama ham | Ollama uygulama (onarım + kurallar) |
+|---|---|---|---|
+| platform, üretilmiş (doğruluk) | 0,982 | 0,986 | 0,984 |
+| nişancı, üretilmiş | 0,996 | 1,000 | 1,000 |
+| platform, elle yazılmış 32 (tamamı doğru) | 0,844 | 0,844 | 0,906 |
+| nişancı, elle yazılmış 10 | 0,800 | 0,800 | 0,900 |
+Platformda gerileme yok (v3: üretilmiş 0,970 / elle yazılmış 0,875; 1 tarif farkı gürültü). Tek model iki kiti de yazıyor, kit başına ayrı model gerekmedi.
+Ders: ilk nişancı kuralları doğru model cevabını bozuyordu (nişancı 1,00 → 0,88): düşman listesini eksik anahtar kelimelerle eziyor, "patronsuz"u patron sayıyor,
+"üç yöne ateş"i `spread` özelliği sanıyor, tırnak içindeki başlıktaki "Orman"ı tema sayıyordu. Düzeltildi (kurallar yalnızca ekler, başlıklar yok sayılır); her kural değişikliğinden sonra ham/uygulama ölçümü karşılaştırılmalı.
