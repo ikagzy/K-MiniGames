@@ -92,9 +92,10 @@
     var ar = D.armorOf(id);
     if (ar) { pal.h = ARMOR_RGB[ar.tier]; pal.b = shade(pal.h, 0.7); return { rows: P[["helmet", "chestplate", "leggings", "boots"][ar.slot]], pal: pal }; }
     var kind = { 33: "torch", 40: "stick", 41: "coal", 42: "ingot", 43: "ingot", 44: "diamond", 20: "seeds", 21: "wheat", 23: "bread", 80: "meat", 81: "meat", 82: "meat", 83: "meat", 84: "meat", 85: "meat", 86: "meat", 87: "meat", 88: "meat", 89: "meat", 110: "meat", 111: "meat",
-                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 118: "arrow", 38: "sapling", 120: "apple", 152: "ingot", 140: "fence", 143: "door", 149: "ladder", 130: "slab", 131: "slab", 132: "slab", 133: "slab", 134: "slab", 144: "stairs", 145: "stairs", 146: "stairs", 147: "stairs", 148: "stairs" }[id];
+                 112: "feather", 113: "leather", 114: "string", 115: "stick", 116: "coal", 117: "coal", 155: "coal", 118: "arrow", 38: "sapling", 120: "apple", 152: "ingot", 140: "fence", 143: "door", 149: "ladder", 130: "slab", 131: "slab", 132: "slab", 133: "slab", 134: "slab", 144: "stairs", 145: "stairs", 146: "stairs", 147: "stairs", 148: "stairs" }[id];
     if (id === 116) pal.a = [100, 100, 106]; if (id === 117) pal.a = [100, 130, 70]; if (id === 115) { pal.d = [228, 224, 205]; }
     if (id === 41) pal.a = [34, 34, 38];
+    if (id === 155) pal.a = [240, 140, 40];
     if (id === 80) pal.a = [215, 110, 110];
     if (id === 81) pal.a = [160, 95, 55];
     return kind ? { rows: P[kind], pal: pal } : null;
@@ -144,6 +145,7 @@
   NAME[143] = "kapı"; COLOR[143] = [[150, 110, 60]]; NAME[149] = "merdiven"; COLOR[149] = [[160, 120, 70]];
   NAME[150] = "geçit"; COLOR[150] = [[140, 60, 210]]; NAME[151] = "kara kaya"; COLOR[151] = [[28, 20, 40]]; NAME[152] = "çakmak"; COLOR[152] = [[200, 200, 210]];
   NAME[153] = "kızıl taş"; COLOR[153] = [[122, 42, 42]]; NAME[154] = "ışık taşı"; COLOR[154] = [[250, 220, 120]];
+  NAME[155] = "köz tozu"; COLOR[155] = [[240, 140, 40]];
   NAME[34] = "yün"; COLOR[34] = [[236, 236, 236], [226, 226, 230], [226, 226, 230]];
   D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
 
@@ -254,6 +256,7 @@
   add("merdiven", "table", [[ID.STICK, 7]], [149, 3]);
   add("kara kaya", "table", [[ID.COBBLE, 2], [41, 1]], [151, 1]);   // the frame of a portal to the Kor Diyarı
   add("çakmak", "table", [[42, 1], [41, 1]], [152, 1]);
+  add("ışık taşı", "table", [[155, 2]], [154, 2]);   // köz tozu comes from the creatures of the Kor Diyarı
   for (var ar = 0; ar < 4; ar++) {
     var armMat = [113, ID.IRON_INGOT, ID.GOLD_INGOT, ID.DIAMOND][ar], armCost = [5, 8, 7, 4];
     for (var part = 0; part < 4; part++) add(ARMOR_TIERS[ar] + " " + ARMOR_PARTS[part][1], "table", [[armMat, armCost[part]]], [D.armorId(ar, part), 1]);

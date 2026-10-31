@@ -1141,3 +1141,37 @@ test('the open state and facing of a door are kept with the world', () => {
   run(again, 1.5); again.world.ensureAround(cx, cz, 2);
   assert.strictEqual(again.get(cx, gy + 1, cz), 141); assert.strictEqual(again.metaOf(cx, gy + 1, cz), 6, 'still open and facing the same way');
 });
+
+test('the Kor Diyarı has its own creatures (a ranged közcü and a hard-hitting kor bekçisi) that come out at once, give köz tozu, and never appear in the main world', () => {
+  const K = fresh(); const D = K.voxeldata; const M = K.voxelmobs;
+  assert.ok(M.NETHER.every((t) => M.TYPES[t].kind === 'hostile' && M.ART[t] && !M.TYPES[t].burns));
+  assert.ok(M.TYPES.warden.dmg > M.TYPES.zombie.dmg && M.TYPES.ember.ranged);
+  for (const row of [...M.ART.ember.rows, ...M.ART.warden.rows]) assert.ok(row.length === 10, 'equal rows');
+  const { s, cx, cz, gy } = yard(K, 91);
+  for (let i = 0; i < 60; i++) { s.mobs.length = 0; s.spawnHostile(); for (const m of s.mobs) assert.ok(!M.NETHER.includes(m.type) || m.type === 'never'); }
+  const frameAt = (ix, iy, iz) => { frame(s, ix, iy, iz, 151); assert.strictEqual(s.lightPortal(ix, iy - 1, iz), true); };
+  frameAt(cx, gy + 1, cz); stand(s, cx + 1.0, gy + 1.01, cz + 2.5); run(s, 0.2); stand(s, cx + 1.0, gy + 1.01, cz + 0.5); run(s, 1.6);
+  assert.strictEqual(s.dim, 'nether'); s.mobs.length = 0;
+  const seen = new Set(); for (let i = 0; i < 80; i++) { s.mobs.length = 0; const m = s.spawnHostile(); if (m) seen.add(m.type); }
+  assert.ok(seen.has('ember') && seen.has('warden'), 'both kinds appear: ' + [...seen]);
+  assert.ok([...seen].every((t) => ['ember', 'warden', 'bomber'].includes(t)), 'only the creatures of this world: ' + [...seen]);
+  assert.ok(!seen.has('zombie') && !seen.has('spider'));
+  let dust = 0; for (let i = 0; i < 30; i++) for (const [id, n] of M.drops('ember', () => 0.99)) if (id === 155) dust += n;
+  assert.ok(dust > 0); assert.ok(D.hasIcon(155) && /köz/.test(D.NAME[155]));
+  s.addItem(155, 2); s.set(Math.floor(s.p.x) + 1, Math.floor(s.p.y), Math.floor(s.p.z) + 1, 24, false);
+  assert.strictEqual(s.craft('ışık taşı'), true); assert.strictEqual(s.inv.count[154], 2);
+});
+
+test('a portal is a see-through veil: what lies behind it shows, tinted purple', () => {
+  const K = fresh();
+  const { s, cx, cz, gy } = yard(K, 92);
+  frame(s, cx, gy + 1, cz, 151); s.lightPortal(cx, gy, cz);
+  for (let x = cx - 2; x <= cx + 3; x++) for (let y = gy + 1; y <= gy + 5; y++) s.set(x, y, cz - 1, 0, false);
+  for (let y = gy + 1; y <= gy + 3; y++) s.set(cx, y, cz - 3, 10, false), s.set(cx + 1, y, cz - 3, 10, false);   // iron ore wall behind the portal
+  stand(s, cx + 1.0, gy + 1.01, cz + 3.5); s.p.yaw = 0; s.p.pitch = -0.2; run(s, 0.1);
+  const out = new Uint8ClampedArray(160 * 100 * 4); s.render(out);
+  const mid = (50 * 160 + 80) * 4;
+  const bare = new Uint8ClampedArray(160 * 100 * 4); for (let a = 0; a <= 1; a++) for (let b = 0; b <= 2; b++) s.set(cx + a, gy + 1 + b, cz, 0, false); s.render(bare);
+  assert.ok(Math.abs(out[mid] - bare[mid]) + Math.abs(out[mid + 2] - bare[mid + 2]) > 30, 'tinted, not the plain view: ' + [out[mid], out[mid + 1], out[mid + 2]] + ' vs ' + [bare[mid], bare[mid + 1], bare[mid + 2]]);
+  assert.ok(s.depth[50 * 160 + 80] > 5, 'the depth is that of the wall behind, not the veil: ' + s.depth[50 * 160 + 80]);
+});

@@ -568,12 +568,12 @@
       };
       state.spawnHostile = function () {   // at night, on open ground a little way off, never more than six near you
         var hostiles = state.mobs.filter(function (m) { return M.TYPES[m.type].kind === "hostile"; }).length;
-        if (state.daylight() >= 0.45 || hostiles >= 6 || state.mobs.length >= 40) return null;
+        if (state.daylight() >= 0.45 || hostiles >= (state.dim === "nether" ? 8 : 6) || state.mobs.length >= 40) return null;
         var p = state.p, a = mr() * 6.283, d = 14 + mr() * 10, x = Math.floor(p.x + Math.cos(a) * d), z = Math.floor(p.z + Math.sin(a) * d);
         if (x < 2 || z < 2 || x >= S - 2 || z >= S - 2) return null;
         var h = w.heightAt(x, z);
         if (h <= SEA || get(x, h, z) === WATER || get(x, h + 1, z) !== AIR || get(x, h + 2, z) !== AIR) return null;
-        var roll = mr(), type = roll < 0.4 ? "zombie" : roll < 0.65 ? "skeleton" : roll < 0.85 ? "bomber" : "spider";
+        var roll = mr(), type = state.dim === "nether" ? (roll < 0.45 ? "ember" : roll < 0.85 ? "warden" : "bomber") : roll < 0.4 ? "zombie" : roll < 0.65 ? "skeleton" : roll < 0.85 ? "bomber" : "spider";
         var m = M.create(type, x + 0.5, h + 1.01, z + 0.5); state.mobs.push(m); return m;
       };
       state.updateMobs = function (dt) {
@@ -813,7 +813,9 @@
         K.sfx("coin"); state.say(state.dimNames[dest]);
         return true;
       };
+      state.phase = 0;
       state.portalStep = function (dt) {
+        state.phase += dt;
         var p = state.p, fx = Math.floor(p.x), fz = Math.floor(p.z);
         var cellY = get(fx, Math.floor(p.y + 0.2), fz) === PORTAL ? Math.floor(p.y + 0.2) : get(fx, Math.floor(p.y + 1.2), fz) === PORTAL ? Math.floor(p.y + 1.2) : -1;
         if (cellY < 0) { state.portalT = 0; state.portalLock = false; return; }
@@ -959,8 +961,14 @@
           var sx = ((i + 0.5) / RW * 2 - 1) * scale * aspect, sy = (1 - (j + 0.5) / RH * 2) * scale;
           var dx = d.x + rx * sx + ux * sy, dy = d.y + uy * sy, dz = d.z + rz * sx + uz * sy;
           var inv2 = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz); dx *= inv2; dy *= inv2; dz *= inv2;
-          var r = skyR, gg = skyG, bb = skyB, k = (j * RW + i) * 4; state.depth[j * RW + i] = 1e9;
-          if (cast(e.x, e.y, e.z, dx, dy, dz, FAR, false, inWater)) {
+          var r = skyR, gg = skyG, bb = skyB, k = (j * RW + i) * 4, veil = 0, veilR = 0, veilG = 0, veilB = 0; state.depth[j * RW + i] = 1e9;
+          var got = cast(e.x, e.y, e.z, dx, dy, dz, FAR, false, inWater);
+          if (got && hit.b === PORTAL) {   // a portal is a shimmering veil: what is behind it shows through
+            var pv = 0.55 + 0.45 * Math.sin((hit.hx + hit.hz) * 5 + hit.hy * 7 + state.phase * 3);
+            veil = 0.5; veilR = 150 * pv; veilG = 60 * pv; veilB = 230 * pv;
+            got = cast(hit.hx + dx * 0.03, hit.hy + dy * 0.03, hit.hz + dz * 0.03, dx, dy, dz, FAR, false, inWater);
+          }
+          if (got) {
             state.depth[j * RW + i] = hit.t; var tex = texture(hit.b, hit.face), u, v;
             if (hit.face === 1) { u = hit.nx !== 0 ? hit.hz : hit.hx; v = 1 - hit.hy; } else { u = hit.hx; v = hit.hz; }
             u = Math.floor((u - Math.floor(u)) * 16); v = Math.floor((v - Math.floor(v)) * 16);
@@ -970,6 +978,7 @@
             if (hit.b === WATER) { r = r * 0.7; gg = gg * 0.8; }
             if (hit.b === LAVA) { r = tex[o]; gg = tex[o + 1]; bb = tex[o + 2]; }   // lava glows, night does not darken it
           } else if (dy < -0.05) { r = 20; gg = 20; bb = 30; }
+          if (veil) { r = r * (1 - veil) + veilR * veil; gg = gg * (1 - veil) + veilG * veil; bb = bb * (1 - veil) + veilB * veil; }
           if (inWater) { r *= 0.55; gg *= 0.75; bb = bb * 0.9 + 30; }
           out[k] = r; out[k + 1] = gg; out[k + 2] = bb; out[k + 3] = 255;
         }
