@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "required": ["kit"],
+  "properties": {
+    "kit": { "type": "string", "enum": ["fps"] },
+    "title": { "type": "string", "maxLength": 60 },
+    "theme": { "type": "string", "enum": ["bunker", "space", "ruins", "lab", "factory"] },
+    "music": { "type": "string", "enum": ["overworld", "underground", "castle", "boss"] },
+    "musicStyle": {
+      "type": "object",
+      "properties": {
+        "mood": { "type": "string", "enum": ["happy", "calm", "tense", "epic", "mystery", "spooky"] },
+        "tempo": { "type": "string", "enum": ["slow", "medium", "fast"] },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 9999 }
+      }
+    },
+    "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "levels": { "type": "integer", "minimum": 1, "maximum": 6 },
+    "size": { "type": "string", "enum": ["small", "medium", "large"] },
+    "mode": { "type": "string", "enum": ["campaign", "arena"] },
+    "ammo": { "type": "string", "enum": ["scarce", "normal", "plenty"] },
+    "enemies": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["guard", "runner", "sniper", "brute", "turret"] },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "weapons": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["pistol", "shotgun", "rifle", "magnum"] },
+      "minItems": 1,
+      "maxItems": 4
+    },
+    "boss": { "type": "boolean" },
+    "world": {
+      "type": "object",
+      "properties": { "seed": { "type": "integer", "minimum": 0, "maximum": 9999 } }
+    },
+    "features": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["sprint", "regen", "armor"] }
+    }
+  }
+}

@@ -159,3 +159,17 @@ def test_the_sandbox_is_a_kit_with_a_schema_a_guide_checks_and_its_own_variety()
     assert len(seen) > 6
     kept = kits.keep_seeds({"world": {"seed": 77}}, kits.repair_spec({"kit": "sandbox", "title": "Yeni"}, "sandbox"))
     assert kept["world"]["seed"] == 77
+
+
+def test_the_fps_kit_is_a_registered_kit_with_a_schema_checks_and_variety():
+    from k_minigames import kgamelib
+    assert kgamelib.kit_of(["fps"]) == "fps" and "kgame.fps.js" in kgamelib.install_files(["fps"])
+    assert kits.schema("fps")["properties"]["kit"]["enum"] == ["fps"]
+    assert len(kits.checks("fps")) >= 5
+    spec = kits.repair_spec({"kit": "fps"}, "fps")
+    assert spec["kit"] == "fps" and spec["theme"] in ("bunker", "space", "ruins", "lab", "factory")
+    assert spec["enemies"] and spec["weapons"] and 1 <= spec["levels"] <= 6 and isinstance(spec["world"]["seed"], int)
+    kept = kits.repair_spec({"kit": "fps", "theme": "lab", "weapons": ["shotgun"], "boss": False}, "fps")
+    assert kept["theme"] == "lab" and kept["weapons"] == ["shotgun"] and kept["boss"] is False
+    page = kits.compile_page(kept)
+    assert "kgame.fps.js" in page and "kgame.hud.js" in page and "K.kit.run(" in page

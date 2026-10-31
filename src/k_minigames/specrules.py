@@ -198,3 +198,54 @@ def apply_sandbox(spec: dict, description: str) -> dict:
         if len(moods) == 1:
             spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
     return spec
+
+
+FPS_THEMES = {"bunker": r"siginak|\bbunker", "space": r"uzay istasyon|uzay gemisinde|uzay ussu", "ruins": r"harabe|antik|kalinti", "lab": r"laboratuvar|\blab\b", "factory": r"fabrika|endustri"}
+FPS_WEAPONS = {"pistol": r"tabanca|\bpistol", "shotgun": r"pompali|\bshotgun", "rifle": r"tufek|otomatik silah|\brifle", "magnum": r"magnum|guclu tek atis"}
+FPS_ENEMIES = {"guard": r"nobetci|muhafiz|\basker", "runner": r"kosucu|zombi|yaklasip vuran", "sniper": r"keskin nisanci|\bsniper", "brute": r"\bdev\b|\biri dusman|agir dusman|\bbrute", "turret": r"\btaret|sabit silah"}
+
+
+def apply_fps(spec: dict, description: str) -> dict:
+    """The same kind of rules for the first person shooter: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    found = [name for name, rx in FPS_THEMES.items() if re.search(rx, text)]
+    if len(found) == 1:
+        spec["theme"] = found[0]
+    for field, table in (("weapons", FPS_WEAPONS), ("enemies", FPS_ENEMIES)):
+        names = [n for n, rx in table.items() if re.search(rx, text) and not _negated(text, re.search(rx, text).end())]
+        if names:   # only ever adds: a keyword list is never the whole story, the model's list stays
+            spec[field] = list(dict.fromkeys(list(spec.get(field) or []) + names))
+    if re.search(r"patronsuz|patron olmasin|patron yok|patron istemiyorum|bosssuz", text):
+        spec["boss"] = False
+    elif re.search(r"\bpatron|\bboss", text):
+        spec["boss"] = True
+    if re.search(r"\barena|dalga dalga|hayatta kal", text):
+        spec["mode"] = "arena"
+    elif re.search(r"kampanya|bolumler", text):
+        spec["mode"] = "campaign"
+    if re.search(r"bol mermi|sinirsiz mermi|mermi bol", text):
+        spec["ammo"] = "plenty"
+    elif re.search(r"az mermi|kit mermi|mermi az|mermi kit", text):
+        spec["ammo"] = "scarce"
+    count = re.search(rf"\b({_NUMBER})\s+bolum", text)
+    if count and 1 <= _number(count.group(1)) <= 6:
+        spec["levels"] = _number(count.group(1))
+    sizes = {"small": r"\bkucuk|\bminik|\bufak", "large": r"\bbuyuk|\bdevasa|\bgenis"}
+    which = [n for n, rx in sizes.items() if re.search(rx, text)]
+    if len(which) == 1:
+        spec["size"] = which[0]
+    features = list(spec.get("features") or [])
+    for name, rx in (("regen", r"can yenilen|can dolsun|iyilesen|\bregen"), ("armor", r"zirhla basla|zirhli basla|zirh ile basla"), ("sprint", r"hizli kos|kosabil")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

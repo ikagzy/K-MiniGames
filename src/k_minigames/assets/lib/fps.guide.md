@@ -1,0 +1,10 @@
+# kgame.fps.js: birinci şahıs nişancı kiti (FPS)
+Oyunu KOD olarak değil ÖZET olarak yaz: tek çağrı `K.kit.run({...})`; kütüphane dosyaları için `<script src>` yazma. Kit bölümleri (odalar, koridorlar, kapılar, kilitli kapı ve anahtar, çıkış), düşmanları, silahları, mermi/can/zırh toplamayı, ses ve ekranları kendisi kurar; sen yalnızca özeti yaz.
+Özet alanları (hepsi isteğe bağlı, yazmazsan varsayılan): `title`, `theme` (bunker sığınak, space uzay istasyonu, ruins harabe, lab laboratuvar, factory fabrika), `music` (overworld, underground, castle, boss), `difficulty` (1-5), `levels` (1-6 bölüm sayısı), `size` (small, medium, large: bölümün büyüklüğü), `mode` (campaign: bölümler, arena: dalgalar halinde gelen düşmanlar), `ammo` (scarce kıt, normal, plenty bol mermi), `enemies` (guard nöbetçi ateş eder, runner koşucu yaklaşıp vurur, sniper keskin nişancı uzaktan, brute iri ve dayanıklı, turret sabit taret; en az biri), `weapons` (pistol tabanca, shotgun pompalı, rifle otomatik tüfek, magnum güçlü tek atış; en az biri), `boss` (true: son bölümde patron var, çıkış ancak patron ölünce açılır), `features` (sprint daha hızlı, regen can yavaşça dolar, armor zırhla başlar).
+`musicStyle` (isteğe bağlı, `music` yerine geçer): özgün müziği KENDİ BESTELER: `{mood: happy | calm | tense | epic | mystery | spooky, tempo: slow | medium | fast}`.
+Sayıları (seed gibi) yazma, kit kendisi koyar. Bölümlerin yerleşimini kit üretir, sen çizmezsin.
+Oynanış: W A S D yürür, fare ya da oklar bakar (önce ekrana tıkla), sol tık ya da Boşluk ateş eder, 1-4 ya da Q ya da tekerlek silah seçer, Shift koşar, E ya da kapıya yürümek kapıyı açar (kilitli kapı için kırmızı anahtar), Esc duraklatır. Ekranda can, zırh, mermi, harita ve düşman sayısı görünür.
+Örnek:
+```js
+K.kit.run({ kit: 'fps', title: 'Sığınak', theme: 'bunker', difficulty: 3, levels: 3, size: 'medium', enemies: ['guard', 'runner', 'sniper'], weapons: ['pistol', 'shotgun', 'rifle'], boss: true, ammo: 'normal', mode: 'campaign', features: ['regen'] });
+```

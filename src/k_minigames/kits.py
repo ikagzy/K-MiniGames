@@ -46,6 +46,16 @@ _CHECKS["sandbox"] = [
      "return game.world.count(2) > 100 && game.world.count(3) > 100;"),
 ]
 
+_CHECKS["fps"] = [
+    ("Oyun açılır ve oyuncu sahnededir.", "return !!game.p && Number.isFinite(game.p.x) && game.g.current === 'play';"),
+    ("Oyuncu ileri yürüyebilir.",
+     "const x = game.p.x, y = game.p.y; K.press('w'); await new Promise(r => setTimeout(r, 600)); K.press('w', false); return Math.hypot(game.p.x - x, game.p.y - y) > 0.5;"),
+    ("Oyuncu ateş edebilir ve mermi harcar.",
+     "const a = game.p.ammo; const before = a.bullets + a.shells + a.heavy; K.press(' '); await new Promise(r => setTimeout(r, 500)); K.press(' ', false); return a.bullets + a.shells + a.heavy < before;"),
+    ("Bölümde düşman vardır.", "await new Promise(r => setTimeout(r, 3500)); return game.state.enemies.length > 0;"),
+    ("Oyuncu duvarların içine girmez.", "return !game.state.solid(Math.floor(game.p.x), Math.floor(game.p.y));"),
+]
+
 _SYSTEM = (
     "Sen bir oyun tasarımcısısın. Kullanıcının tarif ettiği oyun için KOD YAZMA; yalnızca oyunun ÖZETİNİ (tek bir JSON "
     "nesnesi) ver. Uygulama bu özeti hazır kit ile oyuna çevirir. Özetteki seçenekleri aşağıdaki kılavuzdan seç; olmayan "
@@ -158,7 +168,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit == "sandbox" and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -168,6 +178,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _shooter_variety(spec)
     elif kit == "sandbox":
         _sandbox_variety(spec)
+    elif kit == "fps":
+        _fps_variety(spec)
     return spec
 
 
@@ -218,6 +230,21 @@ def _sandbox_variety(spec: dict) -> None:
     spec.setdefault("time", random.choice(("cycle", "cycle", "day")))
     if not spec.get("music") and not spec.get("musicStyle"):
         spec["musicStyle"] = {"mood": random.choice(("calm", "calm", "mystery", "happy")), "tempo": "slow", "seed": random.randint(0, 9999)}
+
+
+def _fps_variety(spec: dict) -> None:
+    """The same for the first person shooter: the open parts of the game are drawn."""
+    spec.setdefault("theme", random.choice(("bunker", "bunker", "space", "ruins", "lab", "factory")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["musicStyle"] = {"mood": random.choice(("tense", "tense", "epic", "spooky")), "tempo": random.choice(("medium", "fast")), "seed": random.randint(0, 9999)}
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec.setdefault("levels", random.choice((2, 3, 3, 4)))
+    spec.setdefault("size", random.choice(("small", "medium", "medium", "large")))
+    if not spec.get("enemies"):
+        spec["enemies"] = random.sample(["guard", "runner", "sniper", "brute", "turret"], random.choice((3, 3, 4)))
+    if not spec.get("weapons"):
+        spec["weapons"] = random.choice((["pistol", "shotgun"], ["pistol", "shotgun", "rifle"], ["pistol", "rifle", "magnum"]))
+    spec.setdefault("boss", random.random() < 0.6)
 
 
 def keep_seeds(before: dict, after: dict) -> dict:

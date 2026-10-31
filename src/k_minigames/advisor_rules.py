@@ -3,16 +3,19 @@ is replaced by questions, because the game is not understood yet. Rules only hol
 import re
 
 DECIDED = re.compile(r"sen (karar|se[cç]|nas[iı]l istersen|yap)|fark etmez|bilmiyorum|[oö]nemli de[gğ]il|you decide|surprise me|don'?t mind|whatever", re.I)
-KITS = (("sandbox", re.compile(r"minecraft|k[uü]p d[uü]nya|blok|maden|in[sş]aat|cube world|mining|voxel", re.I)),
+KITS = (("fps", re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pompal[iı]|silahla|tabanca|t[uü]fek|s[iı][gğ][iı]nak|bunker", re.I)),
+        ("sandbox", re.compile(r"minecraft|k[uü]p d[uü]nya|blok|maden|in[sş]aat|cube world|mining|voxel", re.I)),
         ("shooter", re.compile(r"uzay|ni[sş]anc[iı]|gemi|shoot|space|shooter", re.I)),
         ("platformer", re.compile(r"platform|z[iı]pla|mario|jump|run", re.I)))
 QUESTIONS = {
+    "fps": "Güzel! Hangi ortamda geçsin: sığınak, uzay istasyonu, harabe, laboratuvar ya da fabrika? Hangi silahlar ve düşmanlar olsun, sonunda patron var mı?",
     "sandbox": "Güzel fikir! Hangi bölgede geçsin (orman, çöl ya da ova) ve dünya ne kadar büyük olsun? Mağara, maden ve göller olsun mu?",
     "shooter": "Süper! Hangi tür düşmanlar çıksın, sonunda patron olsun mu? Gemi tek mi çift mi ateş etsin?",
     "platformer": "Tamam! Karakter nasıl biri olsun, bölümler hangi dünyada geçsin? Kaç canla başlasın?",
     None: "Olur! Nasıl bir oyun düşünüyorsun: koşup zıplamalı bir platform oyunu, uzay nişancısı ya da madencilik ve inşaat olan bir küp dünya?",
 }
 QUESTIONS_EN = {
+    "fps": "Nice! Which setting: bunker, space station, ruins, lab or factory? Which weapons and enemies, and a boss at the end?",
     "sandbox": "Nice! Which region (forest, desert or plains), and how big should the world be? Do you want caves, ores and lakes?",
     "shooter": "Great! Which enemies should show up, and should there be a boss at the end? Single or double fire?",
     "platformer": "Okay! What should the hero be like, and what world should the levels be in? How many lives?",

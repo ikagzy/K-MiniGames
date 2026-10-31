@@ -83,3 +83,21 @@ def test_the_siz_suz_ending_is_read_in_both_vowel_forms():
     level = specrules.apply({"kit": "platformer", "generate": [{"coins": 3, "spikes": 2}]}, "altınsız ve dikensiz olsun")["generate"][0]
     assert level["coins"] == 0 and level["spikes"] == 0
     assert specrules.apply({"kit": "platformer", "generate": [{"blocks": 3}]}, "bloksuz")["generate"][0]["blocks"] == 0
+
+
+def test_the_fps_rules_set_only_what_the_words_say_and_only_add_to_lists():
+    spec = specrules.apply_fps({"kit": "fps", "enemies": ["guard"], "weapons": ["pistol"]}, "Laboratuvarda geçen, pompalı ve tüfekli, keskin nişancılar olan, sonunda patronu olan, 4 bölüm, bol mermi, zırhla başlayan bir oyun")
+    assert spec["theme"] == "lab" and spec["weapons"] == ["pistol", "shotgun", "rifle"] and "sniper" in spec["enemies"] and spec["enemies"][0] == "guard"
+    assert spec["boss"] is True and spec["levels"] == 4 and spec["ammo"] == "plenty" and "armor" in spec["features"]
+    arena = specrules.apply_fps({"kit": "fps"}, "Dalga dalga gelen düşmanlara karşı çok zor bir arena, patronsuz, az mermi")
+    assert arena["mode"] == "arena" and arena["boss"] is False and arena["ammo"] == "scarce" and arena["difficulty"] >= 4
+    assert "theme" not in specrules.apply_fps({"kit": "fps"}, "bir oyun"), "nothing said, nothing set"
+    quoted = specrules.apply_fps({"kit": "fps"}, 'Adı "Fabrika Savaşı" olan basit bir oyun')
+    assert "theme" not in quoted, "a quoted title is not a setting"
+
+
+def test_the_advisor_asks_for_an_fps_wish_and_does_not_confuse_it_with_the_space_shooter():
+    from k_minigames import advisor_rules
+    assert "silahlar" in advisor_rules.question_for([], "fps oyunu yap")
+    assert "silahlar" in advisor_rules.question_for([], "pompalı tüfekle düşman vurduğum bir oyun")
+    assert "düşmanlar çıksın" in advisor_rules.question_for([], "uzay oyunu yap") and "silahlar" not in advisor_rules.question_for([], "uzay oyunu yap")

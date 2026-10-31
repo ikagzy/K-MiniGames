@@ -57,6 +57,9 @@ MODULES["shooter"] = Module(
 MODULES["sandbox"] = Module(
     "sandbox", ("kgame.voxeldata.js", "kgame.voxelmobs.js", "kgame.voxel.js"), "sandbox.guide.md", ("core", "audio2", "kits"),
     "küp dünya kiti (madencilik ve inşaat, eski Minecraft tadında küçük blok dünyası): arazi, mağara, maden, ağaç, kırma ve koyma hazır; model yalnızca özet yazar")
+MODULES["fps"] = Module(
+    "fps", ("kgame.fps.js",), "fps.guide.md", ("core", "hud", "audio2", "kits"),
+    "birinci şahıs nişancı (FPS) KİTİ: odalar ve koridorlar, düşmanlar, silahlar, mermi, anahtar ve kilitli kapı, patron, arena kipi hazır; model yalnızca özet yazar")
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
 _TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
 _FIRST_SCRIPT = re.compile(r"<script\b", re.I)
