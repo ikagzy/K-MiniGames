@@ -286,3 +286,66 @@ test('every biome, size and time of day runs for a few seconds, and the music st
     assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
   }
 });
+
+test('farming: the hoe makes a field, seeds make a crop, it grows in stages by itself, ripe wheat gives wheat and seeds, and the crafting menu makes bread', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0, time: 'day' });
+  run(s, 1.5);
+  let t = null;
+  for (const pitch of [-0.7, -0.9, -1.1, -0.5, -0.3]) { s.p.pitch = pitch; t = s.target(); if (t && t.ny === 1) break; }   // a pitch that looks at the top of a block
+  assert.ok(t && t.ny === 1, 'the top of a block is in reach');
+  const x = t.x, y = t.y, z = t.z;
+  s.set(x, y, z, 1, false);   // grass under the crosshair
+  const pick = (id) => { s.select(s.hotbar().indexOf(id)); assert.strictEqual(s.selectedBlock(), id, 'the ' + K.voxel.names[id] + ' is in the bar'); };
+  pick(20); assert.strictEqual(s.placeBlock(), false, 'seeds only go on a field');
+  pick(22); assert.strictEqual(s.placeBlock(), true, 'the hoe digs the grass');
+  assert.strictEqual(s.get(x, y, z), 16);
+  assert.strictEqual(s.placeBlock(), false, 'a field is not dug again');
+  pick(20); const seeds = s.inv.count[20];
+  assert.strictEqual(s.placeBlock(), true);
+  assert.strictEqual(s.get(x, y + 1, z), 17, 'a young crop on the field');
+  assert.strictEqual(s.inv.count[20], seeds - 1);
+  assert.strictEqual(s.crops.length, 1);
+  run(s, K.voxel.cropSeconds + 1); assert.strictEqual(s.get(x, y + 1, z), 18, 'it grew');
+  run(s, K.voxel.cropSeconds); assert.strictEqual(s.get(x, y + 1, z), 19, 'it is ripe');
+  assert.strictEqual(s.crops.length, 0, 'a ripe crop stops growing');
+  const wheat = s.inv.count[21] || 0, seedsNow = s.inv.count[20];
+  const seen = s.target();
+  assert.strictEqual(seen.b, 19, 'the crosshair is on the ripe crop');
+  K.press('f'); run(s, 0.1); K.press('f', false); run(s, 0.05);   // (a key acts once per press: a frame must see it released)
+  assert.strictEqual(s.inv.count[21], wheat + 1, 'wheat');
+  assert.ok(s.inv.count[20] >= seedsNow + 1, 'and seeds back');
+  assert.strictEqual(s.hud.harvested, 1);
+  // a young crop gives only its seed back, and walking through a crop is allowed
+  s.set(x, y + 1, z, 17, true); s.crops.push({ x, y: y + 1, z, age: 0 });
+  const had = s.inv.count[20]; K.press('f'); run(s, 0.1); K.press('f', false);
+  assert.strictEqual(s.inv.count[20], had + 1);
+  // crafting
+  s.inv.count[21] = 3;
+  assert.strictEqual(s.craft(2), true);
+  assert.strictEqual(s.inv.count[23], 1, 'bread'); assert.strictEqual(s.inv.count[21], 0);
+  assert.strictEqual(s.craft(2), false, 'not enough wheat now');
+  const logs = s.inv.count[5], planks = s.inv.count[7];
+  assert.strictEqual(s.craft(0), true); assert.strictEqual(s.inv.count[7], planks + 4); assert.strictEqual(s.inv.count[5], logs - 1);
+  K.press('x'); run(s, 0.1); K.press('x', false);
+  assert.strictEqual(s.showCraft, true);
+  const bread = s.inv.count[23]; s.inv.count[21] = 3;
+  K.press('3'); run(s, 0.1); K.press('3', false);
+  assert.strictEqual(s.inv.count[23], bread + 1, 'a number key crafts while the menu is open');
+});
+
+test('plants are walked through, tools and food cannot be placed as blocks, and breaking grass can give seeds', () => {
+  const K = fresh();
+  const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small', trees: 0 });
+  run(s, 1.5);
+  const px = Math.floor(s.p.x), pz = Math.floor(s.p.z), py = Math.floor(s.p.y);
+  s.set(px + 1, py, pz, 19, false);
+  s.p.x = px + 0.6; K.press('d'); run(s, 0.6); K.press('d', false);
+  assert.ok(s.p.x > px + 1.2, 'the ripe wheat did not stop the player');
+  s.inv.count[23] = 1; s.inv.order.push(23);
+  s.select(s.hotbar().indexOf(23));
+  s.p.pitch = -0.7; assert.strictEqual(s.placeBlock(), false, 'bread is eaten, not built with');
+  let seeds = 0;
+  for (let i = 0; i < 80; i++) { const had = s.inv.count[20]; s.set(60 + i, 12, 60, 1, false); s.p.x = 60 + i + 0.5; s.p.z = 58.5; s.p.y = 14; s.p.yaw = 0; s.p.pitch = -1.2; run(s, 0.05); const t = s.target(); if (t && t.b === 1) { s.breakBlock(); if (s.inv.count[20] > had) seeds++; } }
+  assert.ok(seeds > 3 && seeds < 60, 'some grass gives seeds, not all: ' + seeds);
+});
