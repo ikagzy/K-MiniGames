@@ -279,7 +279,7 @@ def test_create_spec_asks_with_the_kits_schema_and_guide_and_returns_the_spec_wi
     from k_minigames.generator import Generator
     client = SpecClient('```json\n{"theme": "night", "levels": [["P.F", "###"]]}\n```')
     spec = Generator(client, "m").create_spec("gece temalı mario", "platformer", memory="")
-    assert spec == {"kit": "platformer", "theme": "night", "levels": [["P.F", "###"]]}
+    assert spec["kit"] == "platformer" and spec["theme"] == "night" and spec["levels"] == [["P.F", "###"]]   # (a tune is drawn for it, nothing else)
     messages, kwargs = client.calls[0]
     assert kwargs["schema"]["properties"]["theme"]["enum"]          # the answer is kept in shape
     assert "K.kit.run" in messages[0]["content"] and "ÖZET" in messages[0]["content"]

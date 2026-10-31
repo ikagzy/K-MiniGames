@@ -344,13 +344,15 @@ class Generator:
                   memory: str = "") -> dict:
         user = (f"Oyunun şimdiki özeti:\n```json\n{json.dumps(spec, ensure_ascii=False, indent=1)}\n```\n\n"
                 f"Kullanıcının isteği:\n{request}\n\nİsteği uygulayıp özetin TAMAMINI yeniden ver (tek JSON nesnesi).")
-        return self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+        new = self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+        return kits.keep_seeds(spec, new)   # an edit does not rebuild the levels
 
     def fix_spec(self, spec: dict, problems: list[str], kit: str, cancel: Callable[[], bool] | None = None, *,
                  memory: str = "") -> dict:
         user = (f"Oyunun özeti:\n```json\n{json.dumps(spec, ensure_ascii=False, indent=1)}\n```\n\nOyunda şu sorunlar bulundu:\n"
                 + "\n".join(f"- {p}" for p in problems) + "\n\nÖzeti düzeltip TAMAMINI yeniden ver (tek JSON nesnesi).")
-        return self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+        new = self._spec(kit, [_system(kits.system_prompt(kit), memory), {"role": "user", "content": user}], cancel)
+        return kits.keep_seeds(spec, new)
 
     def write_tests(self, html: str, checklist: list[str], cancel: Callable[[], bool] | None = None,
                     *, memory: str = "", modules=()) -> list[str | None]:

@@ -90,7 +90,7 @@ def test_repair_spec_keeps_what_the_schema_allows_and_picks_every_seed_itself():
             "campaign": {"count": 40, "seed": 5}, "musicStyle": {"mood": "calm", "seed": 9999},
             "generate": [{"width": 5000, "pits": 3, "seed": 7}], "bogus": True}
     out = kits.repair_spec(spec, "platformer")
-    assert out["kit"] == "platformer" and "bogus" not in out and "theme" not in out
+    assert out["kit"] == "platformer" and "bogus" not in out and out["theme"] != "lava"   # an unknown theme is replaced by a drawn one
     assert out["features"] == ["ice", "spring"]
     assert out["hero"]["lives"] <= 9 and "extra" not in out["hero"] and "jump" not in out["hero"]
     assert out["campaign"]["count"] == 20 and out["generate"][0]["width"] == 160 and out["generate"][0]["pits"] == 3
@@ -100,4 +100,24 @@ def test_repair_spec_keeps_what_the_schema_allows_and_picks_every_seed_itself():
 
 def test_repair_spec_gives_a_spec_without_levels_one_default_level():
     out = kits.repair_spec({"kit": "platformer", "theme": "sky"}, "platformer")
-    assert out["generate"] == [{"seed": out["generate"][0]["seed"]}]
+    assert len(out["generate"]) == 1 and 0 <= out["generate"][0]["seed"] <= 9999
+
+
+def test_what_the_spec_leaves_open_is_drawn_and_what_it_says_is_kept():
+    seen = set()
+    for _ in range(40):
+        out = kits.repair_spec({"kit": "platformer", "generate": [{"enemies": 0, "width": 40}]}, "platformer")
+        level = out["generate"][0]
+        assert level["enemies"] == 0 and level["width"] == 40, "what the model wrote stays"
+        assert out["theme"] and out["musicStyle"]["mood"] and 0 <= level["style"] <= 4 and 1 <= level["coins"] <= 4
+        seen.add((out["theme"], level["pits"], level["style"]))
+    assert len(seen) > 8, "the open parts vary from game to game"
+    sky = kits.repair_spec({"kit": "platformer", "theme": "sky", "music": "boss"}, "platformer")
+    assert sky["theme"] == "sky" and "musicStyle" not in sky, "a named theme and tune are kept"
+
+
+def test_an_edit_keeps_the_seeds_of_the_levels_the_campaign_and_the_music():
+    before = {"generate": [{"seed": 11}, {"seed": 22}], "campaign": {"count": 6, "seed": 33}, "musicStyle": {"mood": "calm", "seed": 44}}
+    after = kits.repair_spec({"kit": "platformer", "title": "Yeni", "generate": [{}, {}], "campaign": {"count": 6}, "musicStyle": {"mood": "calm"}}, "platformer")
+    out = kits.keep_seeds(before, after)
+    assert [lv["seed"] for lv in out["generate"]] == [11, 22] and out["campaign"]["seed"] == 33 and out["musicStyle"]["seed"] == 44

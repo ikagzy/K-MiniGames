@@ -129,7 +129,44 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
+    if kit == "platformer":
+        _platformer_variety(spec)
     return spec
+
+
+_THEMES = ("sky", "cave", "castle", "night", "underwater", "space", "forest")
+_MOODS = ("happy", "calm", "tense", "epic", "mystery", "spooky")
+
+
+def _platformer_variety(spec: dict) -> None:
+    """A small model writes only what the description says, so a vague description gave the same default game every time. What the
+    spec leaves open (theme, music, how long a level is, how much is in it, its style) is drawn at random within sensible ranges;
+    what the model wrote is never touched."""
+    spec.setdefault("theme", random.choice(_THEMES))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["musicStyle"] = {"mood": random.choice(_MOODS), "seed": random.randint(0, 9999)}
+    for level in spec.get("generate") or []:
+        difficulty = level.setdefault("difficulty", random.choice((1, 2, 2, 3)))
+        level.setdefault("width", random.randrange(50, 101, 10))
+        for field, low, high in (("pits", 1, 3), ("enemies", 1, 3), ("blocks", 1, 3), ("coins", 1, 4), ("pipes", 0, 3)):
+            level.setdefault(field, random.randint(low, high))
+        if difficulty >= 2:
+            level.setdefault("flyers", random.randint(0, 2))
+        if difficulty >= 3:
+            level.setdefault("spikes", random.randint(0, 2))
+        level.setdefault("style", random.randrange(5))
+
+
+def keep_seeds(before: dict, after: dict) -> dict:
+    """After an edit the levels, the campaign and the music keep the seeds they had, so a change of the title does not rebuild the levels."""
+    old_levels = before.get("generate") if isinstance(before.get("generate"), list) else []
+    for old, new in zip(old_levels, after.get("generate") or []):
+        if isinstance(old, dict) and isinstance(new, dict) and "seed" in old:
+            new["seed"] = old["seed"]
+    for part in ("campaign", "musicStyle"):
+        if isinstance(before.get(part), dict) and isinstance(after.get(part), dict) and "seed" in before[part]:
+            after[part]["seed"] = before[part]["seed"]
+    return after
 
 
 def compile_page(spec: dict) -> str:
