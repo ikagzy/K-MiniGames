@@ -150,6 +150,61 @@
   NAME[159] = "lapis"; COLOR[159] = [[40, 70, 200]]; NAME[160] = "kızıltaş tozu"; COLOR[160] = [[210, 30, 30]]; NAME[161] = "zümrüt"; COLOR[161] = [[60, 210, 100]];
   NAME[162] = "büyü masası"; COLOR[162] = [[110, 60, 170], [70, 40, 120], [40, 25, 70]];
   NAME[34] = "yün"; COLOR[34] = [[236, 236, 236], [226, 226, 230], [226, 226, 230]];
+
+  // ---- hand crafting like the game it follows: a pattern on a grid (2x2 in your pockets, 3x3 at a table) makes things, some in any order (shapeless) ----
+  var ST = ID.STICK;
+  var ring = function (m) { return { rows: ["MMM", "M M", "MMM"], key: { M: m } }; }, full = function (m) { return { rows: ["MMM", "MMM", "MMM"], key: { M: m } }; };
+  var STATIC_PATTERNS = {
+    "tahta": { shapeless: [ID.LOG] }, "çubuk": { rows: ["P", "P"], key: { P: ID.PLANKS } }, "üretim masası": { rows: ["PP", "PP"], key: { P: ID.PLANKS } },
+    "meşale": { rows: ["C", "S"], key: { C: ID.COAL, S: ST } }, "fırın": ring(ID.COBBLE), "sandık": ring(ID.PLANKS),
+    "kumtaşı": { rows: ["SS", "SS"], key: { S: ID.SAND } }, "taş tuğla": { rows: ["SS", "SS"], key: { S: ID.STONE } }, "ekmek": { rows: ["WWW"], key: { W: ID.WHEAT } },
+    "demir blok": full(ID.IRON_INGOT), "altın blok": full(ID.GOLD_INGOT), "elmas blok": full(ID.DIAMOND), "saman balyası": full(ID.WHEAT),
+    "yün (4 ip)": { rows: ["SS", "SS"], key: { S: 114 } }, "yatak": { rows: ["WWW", "PPP"], key: { W: 34, P: ID.PLANKS } },
+    "çit": { rows: ["PSP", "PSP"], key: { P: ID.PLANKS, S: ST } }, "kapı": { rows: ["PP", "PP", "PP"], key: { P: ID.PLANKS } }, "merdiven": { rows: ["S S", "SSS", "S S"], key: { S: ST } },
+    "kara kaya": { shapeless: [ID.COBBLE, ID.COBBLE, ID.COBBLE, ID.COBBLE, ID.COAL] }, "çakmak": { shapeless: [ID.IRON_INGOT, ID.COAL] },
+    "büyü masası": { rows: ["D D", "KKK"], key: { D: ID.DIAMOND, K: 151 } }, "ışık taşı": { rows: ["K", "K"], key: { K: 155 } }
+  };
+  var SHAPES = { "kazma": ["MMM", " S ", " S "], "balta": ["MM", "MS", " S"], "kürek": ["M", "S", "S"], "kılıç": ["M", "M", "S"], "çapa": ["MM", " S", " S"],
+                 "miğfer": ["MMM", "M M"], "göğüslük": ["M M", "MMM", "MMM"], "pantolon": ["MMM", "M M", "M M"], "bot": ["M M", "M M"] };
+  D.patternFor = function (r) {   // the pattern of a recipe: { rows, key } (blank = empty) or { shapeless: [ids] }; the furnace has no pattern
+    if (r.where === "furnace") return null;
+    if (STATIC_PATTERNS[r.name]) return STATIC_PATTERNS[r.name];
+    var m = r.need[0][0], parts = r.name.split(" "), last = parts[parts.length - 1];
+    if (/\(bloktan\)/.test(r.name)) return { shapeless: [m] };
+    if (SHAPES[last]) return { rows: SHAPES[last], key: { M: m, S: ST } };
+    if (/yarım blok$/.test(r.name)) return { rows: ["MMM"], key: { M: m } };
+    if (/basamak$/.test(r.name)) return { rows: ["M  ", "MM ", "MMM"], key: { M: m } };
+    if (/^cilalı/.test(r.name)) return { rows: ["MM", "MM"], key: { M: m } };
+    return null;
+  };
+  // grid: ids (0 = empty) in rows of `size`; the first recipe whose pattern fits (a shaped one may be mirrored, and sits anywhere on the grid) comes back as { recipe, give }
+  D.matchGrid = function (cells, size) {
+    var used = cells.filter(function (c) { return c; }); if (!used.length) return null;
+    var r0 = size, r1 = -1, c0 = size, c1 = -1, i, j;
+    for (i = 0; i < size; i++) for (j = 0; j < size; j++) if (cells[i * size + j]) { r0 = Math.min(r0, i); r1 = Math.max(r1, i); c0 = Math.min(c0, j); c1 = Math.max(c1, j); }
+    var h = r1 - r0 + 1, w = c1 - c0 + 1, sub = [];
+    for (i = 0; i < h; i++) { var row = []; for (j = 0; j < w; j++) row.push(cells[(r0 + i) * size + c0 + j]); sub.push(row); }
+    for (var k = 0; k < D.recipes.length; k++) {
+      var r = D.recipes[k], p = r._pattern === undefined ? (r._pattern = D.patternFor(r)) : r._pattern;
+      if (!p) continue;
+      if (p.shapeless) {
+        if (p.shapeless.length !== used.length) continue;
+        var a = p.shapeless.slice().sort().join(","), b = used.slice().sort(function (x, y) { return x - y; }).join(",");
+        if (p.shapeless.slice().sort(function (x, y) { return x - y; }).join(",") === b) return { recipe: r, name: r.name, give: r.give };
+        continue;
+      }
+      if (p.rows.length !== h || p.rows[0].length !== w) continue;
+      var fits = function (mirror) {
+        for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+          var ch = p.rows[y].charAt(mirror ? w - 1 - x : x), want = ch === " " ? 0 : p.key[ch];
+          if ((sub[y][x] || 0) !== want) return false;
+        }
+        return true;
+      };
+      if (fits(false) || fits(true)) return { recipe: r, name: r.name, give: r.give };
+    }
+    return null;
+  };
   D.hasIcon = function (id) { return D.isBlock(id) || !!D.icon(id); };
 
   // ---- achievements: each one looks at the game state (s.ever: kinds you ever held, s.stats, s.hud, s.deaths) ----
@@ -262,7 +317,7 @@
   add("merdiven", "table", [[ID.STICK, 7]], [149, 3]);
   add("kara kaya", "table", [[ID.COBBLE, 4], [41, 1]], [151, 4]);   // the frame of a portal to the Kor Diyarı
   add("çakmak", "table", [[42, 1], [41, 1]], [152, 1]);
-  add("büyü masası", "table", [[44, 2], [151, 4]], [162, 1]);   // tools, swords and armour are enchanted with lapis and levels
+  add("büyü masası", "table", [[44, 2], [151, 3]], [162, 1]);   // tools, swords and armour are enchanted with lapis and levels
   add("ışık taşı", "table", [[155, 2]], [154, 2]);   // köz tozu comes from the creatures of the Kor Diyarı
   for (var ar = 0; ar < 4; ar++) {
     var armMat = [113, ID.IRON_INGOT, ID.GOLD_INGOT, ID.DIAMOND][ar], armCost = [5, 8, 7, 4];

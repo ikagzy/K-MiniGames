@@ -228,11 +228,12 @@ test('fly: it is off until you turn it on with G or a double tap of space, then 
   const walk = (spec, shift, sneakKey) => {
     const t = K.kit.run({ kit: 'sandbox', world: { seed: 1 }, size: 'small', trees: 0, ...spec });
     run(t, 1.5); const x = t.p.x, z = t.p.z;
-    K.press('w'); if (shift) K.press('Control'); if (sneakKey) K.press('Shift'); run(t, 0.4); K.press('w', false); K.press('Control', false); K.press('Shift', false);
-    return Math.hypot(t.p.x - x, t.p.z - z);
+    if (shift) { K.press('w'); run(t, 0.05); K.press('w', false); run(t, 0.05); }   // W twice quickly: running
+    const x1 = t.p.x, z1 = t.p.z; K.press('w'); if (sneakKey) K.press('Shift'); run(t, 0.4); K.press('w', false); K.press('Shift', false);
+    return Math.hypot(t.p.x - x1, t.p.z - z1);
   };
   assert.ok(walk({ features: ['sprint'] }) > walk({}) * 1.2, 'the sprint feature is faster');
-  assert.ok(walk({}, true) > walk({}) * 1.3, 'ctrl runs faster');
+  assert.ok(walk({}, true) > walk({}) * 1.3, 'W twice runs faster');
   assert.ok(walk({}, false, true) < walk({}) * 0.6, 'shift sneaks, slower');
 });
 
@@ -331,11 +332,10 @@ test('farming: the hoe makes a field, seeds make a crop, it grows in stages by i
   const logs = s.inv.count[5], planks = s.inv.count[7];
   assert.strictEqual(s.craft('tahta'), true); assert.strictEqual(s.inv.count[7], planks + 4); assert.strictEqual(s.inv.count[5], logs - 1);
   K.press('x'); run(s, 0.1); K.press('x', false); run(s, 0.05);
-  assert.strictEqual(s.showCraft, true);
-  const bread = s.inv.count[23]; s.inv.count[21] = 3;
-  s.craftCursor = K.voxeldata.recipeIndex('ekmek');
-  K.press('Enter'); run(s, 0.1); K.press('Enter', false);
-  assert.strictEqual(s.inv.count[23], bread + 1, 'Enter crafts the recipe the cursor is on');
+  assert.strictEqual(s.showInv, true, 'X opens the inventory with the crafting grid');
+  s.closeUi(); s.openScreen('table'); s.cells[0] = { id: 21, n: 3 }; s.cells[1] = { id: 21, n: 3 }; s.cells[2] = { id: 21, n: 3 };
+  const made = s.matchResult(); assert.ok(made && made.name === 'ekmek', 'three wheat in a row make bread');
+  assert.strictEqual(s.takeResult(), true); assert.ok(s.cursor && s.cursor.id === 23 && s.cursor.n === 1); s.closeUi();
 });
 
 test('plants are walked through, tools and food cannot be placed as blocks, and breaking grass can give seeds', () => {
@@ -1200,10 +1200,10 @@ test('a real game starts with empty hands, the recipe list follows the table and
   // a right click on a table opens the menu
   s.set(px + 2, py + 1, pz, 24, false); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
   let t = null; for (const pitch of [-0.6, -0.5, -0.4, -0.3, -0.2]) { s.p.pitch = pitch; const h = s.target(); if (h && h.b === 24) { t = h; break; } }
-  assert.ok(t, 'the table is under the crosshair'); assert.ok(!s.showCraft);
-  assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.showCraft, true);
+  assert.ok(t, 'the table is under the crosshair'); assert.ok(!s.showInv);
+  assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.showInv, true); assert.strictEqual(s.screen, 'table');
   assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
-  s.craftCursor = 999; s.menuMove(1); assert.ok(s.craftCursor < s.craftList().length);
+  s.closeUi(); assert.strictEqual(s.screen, 'inv');
 });
 
 test('swimming: you can climb out of the water onto a bank that is a block higher', () => {
@@ -1236,7 +1236,7 @@ test('the inventory opens with E, shows what you hold in a grid, a click moves a
   assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
 });
 
-test('Shift sneaks: slower, the eye is lower, and you do not walk off an edge; Ctrl runs', () => {
+test('Shift sneaks: slower, the eye is lower, and you do not walk off an edge; W twice runs', () => {
   const K = fresh();
   const { s, cx, cz, gy } = yard(K, 94);
   for (let x = cx + 1; x <= cx + 8; x++) for (let z = cz - 3; z <= cz + 3; z++) { s.set(x, gy, z, 0, false); }   // a drop to the east of x = cx
@@ -1390,4 +1390,68 @@ test('villagers live in the village, wander, trade by profession (the better the
   assert.ok(Object.values(s.inv.count).reduce((a, b) => a + b, 0) > before);
   s.mobs = [K.voxelmobs.create('villager', v.x + 1, v.gy + 1, v.z + 1)]; s.say(''); stand(s, v.x - 4, v.gy + 1.01, v.z - 14); const hx = v.x - 4, hz = v.z - 13;
   assert.strictEqual(s.get(hx, v.gy + 1, hz), 127, 'a hay bale to steal');
+});
+
+test('hand crafting like the game it follows: a pattern on the 2x2 grid of the pockets or the 3x3 of a table, shaped ones anywhere on the grid and mirrored, shapeless ones in any order', () => {
+  const K = fresh(); const D = K.voxeldata; const m = (cells, size) => { const r = D.matchGrid(cells, size); return r && r.name; };
+  // the pockets: 2x2
+  assert.strictEqual(m([5, 0, 0, 0], 2), 'tahta', 'a log anywhere makes planks'); assert.strictEqual(m([0, 0, 0, 5], 2), 'tahta');
+  assert.strictEqual(m([7, 0, 7, 0], 2), 'çubuk', 'two planks one over the other make sticks'); assert.strictEqual(m([7, 7, 0, 0], 2), null, 'side by side is not a stick');
+  assert.strictEqual(m([7, 7, 7, 7], 2), 'üretim masası'); assert.strictEqual(m([7, 7, 7, 0], 2), null);
+  assert.strictEqual(m([41, 0, 40, 0], 2), 'meşale'); assert.strictEqual(m([40, 0, 41, 0], 2), null, 'a torch is coal over a stick');
+  assert.strictEqual(m([4, 4, 4, 4], 2), 'kumtaşı'); assert.strictEqual(m([3, 3, 3, 3], 2), 'taş tuğla'); assert.strictEqual(m([114, 114, 114, 114], 2), 'yün (4 ip)');
+  assert.strictEqual(m([42, 41, 0, 0], 2), 'çakmak', 'shapeless: iron and coal in any order'); assert.strictEqual(m([0, 41, 42, 0], 2), 'çakmak');
+  // the table: 3x3
+  const pick = (mat) => [mat, mat, mat, 0, 40, 0, 0, 40, 0];
+  assert.strictEqual(m(pick(7), 3), 'odun kazma'); assert.strictEqual(m(pick(27), 3), 'taş kazma'); assert.strictEqual(m(pick(42), 3), 'demir kazma'); assert.strictEqual(m(pick(44), 3), 'elmas kazma'); assert.strictEqual(m(pick(43), 3), 'altın kazma');
+  assert.strictEqual(m([0, 42, 0, 0, 42, 0, 0, 40, 0], 3), 'demir kılıç', 'a sword sits in the middle column'); assert.strictEqual(m([42, 0, 0, 42, 0, 0, 40, 0, 0], 3), 'demir kılıç', 'or in the left one');
+  assert.strictEqual(m([0, 0, 0, 0, 42, 0, 0, 42, 40], 3), null, 'the handle goes at the bottom, not beside');
+  assert.strictEqual(m([42, 42, 0, 42, 40, 0, 0, 40, 0], 3), 'demir balta'); assert.strictEqual(m([0, 42, 42, 0, 40, 42, 0, 40, 0], 3), 'demir balta', 'an axe may be mirrored');
+  assert.strictEqual(m([42, 0, 0, 40, 0, 0, 40, 0, 0], 3), 'demir kürek'); assert.strictEqual(m([42, 42, 0, 0, 40, 0, 0, 40, 0], 3), 'demir çapa');
+  assert.strictEqual(m([42, 42, 42, 42, 0, 42, 0, 0, 0], 3), 'demir miğfer'); assert.strictEqual(m([42, 0, 42, 42, 42, 42, 42, 42, 42], 3), 'demir göğüslük');
+  assert.strictEqual(m([42, 42, 42, 42, 0, 42, 42, 0, 42], 3), 'demir pantolon'); assert.strictEqual(m([42, 0, 42, 42, 0, 42, 0, 0, 0], 3), 'demir bot');
+  assert.strictEqual(m([27, 27, 27, 27, 0, 27, 27, 27, 27], 3), 'fırın'); assert.strictEqual(m([7, 7, 7, 7, 0, 7, 7, 7, 7], 3), 'sandık');
+  assert.strictEqual(m([7, 40, 7, 7, 40, 7, 0, 0, 0], 3), 'çit'); assert.strictEqual(m([7, 7, 0, 7, 7, 0, 7, 7, 0], 3), 'kapı'); assert.strictEqual(m([40, 0, 40, 40, 40, 40, 40, 0, 40], 3), 'merdiven');
+  assert.strictEqual(m([34, 34, 34, 7, 7, 7, 0, 0, 0], 3), 'yatak'); assert.strictEqual(m([21, 21, 21, 0, 0, 0, 0, 0, 0], 3), 'ekmek'); assert.strictEqual(m([0, 0, 0, 21, 21, 21, 0, 0, 0], 3), 'ekmek');
+  assert.strictEqual(m([27, 27, 27, 0, 0, 0, 0, 0, 0], 3), 'kırık taş yarım blok'); assert.strictEqual(m([27, 0, 0, 27, 27, 0, 27, 27, 27], 3), 'kırık taş basamak'); assert.strictEqual(m([0, 0, 27, 0, 27, 27, 27, 27, 27], 3), 'kırık taş basamak', 'stairs may be mirrored');
+  assert.strictEqual(m([42, 42, 42, 42, 42, 42, 42, 42, 42], 3), 'demir blok'); assert.strictEqual(m([21, 21, 21, 21, 21, 21, 21, 21, 21], 3), 'saman balyası'); assert.strictEqual(m([31, 0, 0, 0, 0, 0, 0, 0, 0], 3), 'altın külçe (bloktan)'); assert.strictEqual(m([2, 0, 0, 0, 0, 0, 0, 0, 0], 3), null);
+  assert.strictEqual(m([44, 0, 44, 151, 151, 151, 0, 0, 0], 3), 'büyü masası'); assert.strictEqual(m([27, 27, 27, 27, 41, 0, 0, 0, 0], 3), 'kara kaya');
+  assert.strictEqual(m([0, 0, 0, 0, 0, 0, 0, 0, 0], 3), null, 'an empty grid makes nothing'); assert.strictEqual(m([7, 7, 7, 7, 7, 7, 0, 0, 0], 3), null, 'a pattern that is nowhere');
+  assert.strictEqual(m(pick(3), 3), null, 'smooth stone is no pickaxe head');
+  for (const r of D.recipes) { if (r.where === 'furnace') { assert.strictEqual(D.patternFor(r), null); continue; } assert.ok(D.patternFor(r), 'a pattern for ' + r.name); }
+});
+
+test('the inventory screen: pick a stack up with the mouse, put it on the grid, take the result; the table has 3x3, the furnace smelts with fuel; closing gives everything back', () => {
+  const K = fresh(); const D = K.voxeldata;
+  const { s } = yard(K, 100);
+  for (const id of [5, 7, 27, 41, 42, 40, 3, 21]) s.inv.count[id] = 0; s.inv.count[5] = 3;
+  s.openScreen('inv'); assert.strictEqual(s.showInv, true); assert.strictEqual(s.gridSize(), 2); assert.strictEqual(s.uiOpen(), true);
+  const L = s.invLayout();
+  const at = (x, y) => { K.setMouse(x, y, undefined); };
+  const find = (pred) => { for (let x = 0; x < 640; x += 8) for (let y = 0; y < 400; y += 8) { const h = s.invHit(x, y); if (h && pred(h)) return { x: x + 2, y: y + 2, h }; } return null; };
+  const logs = find((h) => h.kind === 'grid' && h.id === 5); assert.ok(logs, 'the logs are found in the grid');
+  at(logs.x, logs.y); assert.strictEqual(s.uiClick(0), true); assert.deepStrictEqual({ ...s.cursor }, { id: 5, n: 3 }); assert.strictEqual(s.inv.count[5], 0);
+  const cx = L.cellX + 2, cy = L.cellY + 2; at(cx, cy); s.uiClick(0);
+  assert.strictEqual(s.cells[0].id, 5); assert.strictEqual(s.cells[0].n, 3); assert.strictEqual(s.cursor, null);
+  const made = s.matchResult(); assert.strictEqual(made.name, 'tahta'); assert.strictEqual(made.give[1], 4);
+  at(L.resX + 2, L.resY + 2); s.uiClick(0); assert.strictEqual(s.cursor.id, 7); assert.strictEqual(s.cursor.n, 4); assert.strictEqual(s.cells[0].n, 2);
+  s.uiClick(0); assert.strictEqual(s.cursor.n, 8); s.uiClick(0); assert.strictEqual(s.cursor.n, 12); assert.strictEqual(s.cells[0], null, 'the logs are used up');
+  assert.strictEqual(s.matchResult(), null);
+  at(cx, cy); s.uiClick(2); assert.strictEqual(s.cells[0].id, 7); assert.strictEqual(s.cells[0].n, 1); assert.strictEqual(s.cursor.n, 11);
+  at(cx, cy + L.cell); s.uiClick(2); assert.strictEqual(s.matchResult().name, 'çubuk');
+  at(L.resX + 2, L.resY + 2); s.uiClick(0); assert.ok(s.cursor.id === 7, 'a hand holding planks cannot take sticks'); assert.strictEqual(s.cursor.n, 10);
+  s.closeUi(); assert.strictEqual(s.cursor, null); assert.strictEqual(s.inv.count[7], 12, 'hand and grid are back'); assert.strictEqual(s.cells.filter(Boolean).length, 0);
+  assert.ok(s.stats.crafted['tahta'] >= 3);
+  s.openScreen('table'); assert.strictEqual(s.gridSize(), 3);
+  s.cells[0] = { id: 7, n: 1 }; s.cells[1] = { id: 7, n: 1 }; s.cells[2] = { id: 7, n: 1 }; s.cells[4] = { id: 40, n: 1 }; s.cells[7] = { id: 40, n: 1 };
+  assert.strictEqual(s.matchResult().name, 'odun kazma'); s.closeUi();
+  s.addItem(27, 4); s.addItem(41, 2); s.addItem(5, 1); s.openScreen('furnace'); assert.strictEqual(s.gridSize(), 2); const fl = s.invLayout();
+  s.pickFromInventory(27, false); at(fl.fin.x + 2, fl.fin.y + 2); s.uiClick(0); assert.strictEqual(s.furn.input.n, 4);
+  s.pickFromInventory(41, false); at(fl.ffuel.x + 2, fl.ffuel.y + 2); s.uiClick(0); assert.strictEqual(s.furn.fuel.n, 2);
+  s.pickFromInventory(40, false); s.addItem(40, 1); s.dropCursor();
+  s.pickFromInventory(5, false); at(fl.fin.x + 2, fl.fin.y + 2); s.uiClick(0); assert.strictEqual(s.furn.input.id, 27, 'a log is not smelted into the input slot'); s.dropCursor();
+  for (let i = 0; i < 60 * 4; i++) { s.furnaceUpdate(1 / 60); } assert.ok(s.furn.out && s.furn.out.id === 3 && s.furn.out.n >= 2, 'stone is smelted from cobblestone: ' + JSON.stringify(s.furn.out));
+  assert.strictEqual(s.furn.fuel.n, 1, 'one coal is used and burns for eight');
+  s.closeUi(); assert.ok(s.inv.count[3] >= 2, 'the smelted stone is back in the inventory');
+  assert.ok(s.render(new Uint8ClampedArray(160 * 100 * 4))[3] === 255);
 });

@@ -594,8 +594,8 @@
           { label: m.confirm ? "Emin misin? Tekrar seç: dünya sıfırlanır" : "Dünyayı sıfırla (kaydı sil)", act: function () { if (m.confirm) state.resetWorld(); else m.confirm = true; } }];
         return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
       };
-      var CONTROL_LINES = ["W A S D  yürü     Boşluk  zıpla     Ctrl  koş     Shift  eğil (kenardan düşmez)", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
-                           "Tekerlek, Q ya da 1-9  eşya seç       E  envanter       X  tarifler", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)", "Geçit: 4x5 kara kaya çerçeve (köşesiz), çakmakla içine bak ve sağ tık. Cam çerçeve = Gök Adaları"];
+      var CONTROL_LINES = ["W A S D  yürü     Boşluk  zıpla     W'ya iki kez bas  koş     Shift  eğil", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
+                           "Tekerlek, Q ya da 1-9  eşya seç       E  envanter ve üretim (2x2 ızgara)", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)", "Geçit: 4x5 kara kaya çerçeve (köşesiz), çakmakla içine bak ve sağ tık. Cam çerçeve = Gök Adaları"];
       state.menuUpdate = function (dt) {
         var m = state.menu;
         g.ui.items = {};
@@ -767,7 +767,7 @@
       state.placeBlock = function () {
         var bedT = target(); if (bedT && bedT.b === BED) return state.sleep();
         if (bedT && bedT.b === ENCH_TABLE && !K.key("Shift")) { state.enchanting = true; state.enchCursor = 0; return true; }   // a right click on a büyü masası opens its spells
-        if (bedT && (bedT.b === TABLE || bedT.b === FURNACE) && !K.key("Shift")) { state.showCraft = true; state.craftCursor = 0; return true; }   // a right click on a table or a furnace opens its recipes (Shift puts a block next to it)
+        if (bedT && (bedT.b === TABLE || bedT.b === FURNACE) && !K.key("Shift")) { state.openScreen(bedT.b === TABLE ? "table" : "furnace"); return true; }   // a right click on a table or a furnace opens its recipes (Shift puts a block next to it)
         if (bedT && (bedT.b === DOOR_LO || bedT.b === DOOR_HI)) return state.toggleDoor(bedT.x, bedT.y, bedT.z);   // a right click on a door opens or shuts it
         if (D.FOOD[state.selectedBlock()]) return state.eat(state.selectedBlock());
         var t = target(), id = state.selectedBlock();
@@ -1039,15 +1039,36 @@
         offer.get.forEach(function (g) { state.addItem(g[0], g[1]); });
         K.sfx("coin"); state.stats.traded = (state.stats.traded || 0) + 1; return true;
       };
-      // ---- the inventory screen: where the cells are, which one the mouse is over, moving an item to the chosen slot ----
-      state.invScroll = 0; state.lastClicks = K.mouse ? K.mouse.clicks : 0;
-      function invLayout() { var x0 = Math.floor(g.width / 2 - 190), y0 = 40, cell = 40, rows = 4; return { x0: x0, y0: y0, cell: cell, rows: rows, w: 380, h: 34 + rows * cell + 18 + cell + 24, gridY: y0 + 34, barY: y0 + 34 + rows * cell + 18 }; }
+      // ---- the inventory screen with hand crafting, like the game it follows: the mouse picks a stack up (left: all, right: half) and puts it in the 2x2 grid of your pockets
+      // (3x3 at a table, a furnace has its own slots); a pattern on the grid shows its result, and clicking the result takes it ----
+      state.invScroll = 0; state.screen = "inv"; state.cursor = null; state.cells = []; for (var ci = 0; ci < 9; ci++) state.cells.push(null);
+      state.furn = { input: null, fuel: null, out: null, progress: 0, burn: 0 };
+      var FUEL = { 41: 8, 5: 2, 7: 1.5, 40: 0.5 };
+      state.gridSize = function () { return state.screen === "table" ? 3 : 2; };
+      function invLayout() {
+        var size = state.screen === "table" ? 3 : state.screen === "furnace" ? 0 : 2, cell = 40, x0 = Math.floor(g.width / 2 - 190), y0 = 26, topH = size === 3 ? 128 : 92;
+        var L = { x0: x0, y0: y0, cell: cell, rows: 3, w: 380, size: size };
+        L.gridY = y0 + 30 + topH + 8; L.barY = L.gridY + 3 * cell + 12; L.h = L.barY + cell + 8 - y0;
+        L.cellX = size === 3 ? x0 + 70 : x0 + 190; L.cellY = y0 + 34;
+        L.resX = size === 3 ? x0 + 290 : x0 + 318; L.resY = y0 + 34 + (size === 3 ? 38 : 20);
+        L.fin = { x: x0 + 110, y: y0 + 36 }; L.ffuel = { x: x0 + 110, y: y0 + 92 }; L.fout = { x: x0 + 270, y: y0 + 62 };
+        return L;
+      }
+      state.invLayout = invLayout;
       state.invHit = function (mx, my) {
-        var L = invLayout(), all = state.hotbar(), col = Math.floor((mx - (L.x0 + 10)) / L.cell);
+        var L = invLayout(), all = state.hotbar(), cell = L.cell, i;
+        var inside = function (x, y) { return mx >= x && mx < x + cell - 4 && my >= y && my < y + cell - 4; };
+        if (L.size) {
+          for (i = 0; i < L.size * L.size; i++) if (inside(L.cellX + (i % L.size) * cell, L.cellY + Math.floor(i / L.size) * cell)) return { kind: "cell", index: i };
+          if (inside(L.resX, L.resY)) return { kind: "result" };
+        } else {
+          if (inside(L.fin.x, L.fin.y)) return { kind: "fin" }; if (inside(L.ffuel.x, L.ffuel.y)) return { kind: "ffuel" }; if (inside(L.fout.x, L.fout.y)) return { kind: "fout" };
+        }
+        var col = Math.floor((mx - (L.x0 + 10)) / cell);
         if (col < 0 || col > 8) return null;
-        var row = Math.floor((my - L.gridY) / L.cell);
+        var row = Math.floor((my - L.gridY) / cell);
         if (row >= 0 && row < L.rows) { var id = all[state.invScroll * 9 + row * 9 + col]; return id ? { kind: "grid", id: id } : null; }
-        if (my >= L.barY && my < L.barY + L.cell) { var at = state.windowStart() + col; return at < all.length ? { kind: "hotbar", index: at } : null; }
+        if (my >= L.barY && my < L.barY + cell) { var at = state.windowStart() + col; return at < all.length ? { kind: "hotbar", index: at, id: all[at] } : null; }
         return null;
       };
       state.moveItem = function (id) {   // the item goes to the chosen slot and the one that was there takes its place
@@ -1058,16 +1079,72 @@
         inv.order = all.concat(inv.order.filter(function (i) { return all.indexOf(i) < 0; }));
         state.select(to); return true;
       };
-      state.invUpdate = function () {   // a click while the inventory is open (the counter keeps clicks that were over within a frame)
-        var clicks = K.mouse ? K.mouse.clicks : 0, fresh = clicks !== state.lastClicks;
-        state.lastClicks = clicks;
-        if (!state.showInv || !fresh) return;
-        var hit = state.invHit(K.mouse.x, K.mouse.y);
-        if (!hit) return;
-        if (hit.kind === "hotbar") state.select(hit.index); else state.moveItem(hit.id);
+      function slotClick(slot, button, canPlace) {   // what a click does to one slot with the stack in the hand: the new content of the slot
+        var c = state.cursor;
+        if (!c) {
+          if (!slot) return slot;
+          var take = button === 2 ? Math.ceil(slot.n / 2) : slot.n; state.cursor = { id: slot.id, n: take };
+          return slot.n - take > 0 ? { id: slot.id, n: slot.n - take } : null;
+        }
+        if (canPlace && !canPlace(c.id)) return slot;
+        var put = button === 2 ? 1 : c.n, rest = c.n - put;
+        if (!slot) { state.cursor = rest > 0 ? { id: c.id, n: rest, free: c.free } : null; return { id: c.id, n: put }; }
+        if (slot.id === c.id) { state.cursor = rest > 0 ? { id: c.id, n: rest, free: c.free } : null; return { id: slot.id, n: Math.min(64, slot.n + put) }; }
+        state.cursor = { id: slot.id, n: slot.n }; return { id: c.id, n: c.n };   // another kind: they swap
+      }
+      state.pickFromInventory = function (id, half) {
+        if (state.cursor) return false;
+        if (state.creative) { state.cursor = { id: id, n: half ? 1 : 64, free: true }; return true; }
+        var have = inv.count[id] || 0, n = half ? Math.ceil(have / 2) : have; if (n <= 0) return false;
+        inv.count[id] -= n; state.cursor = { id: id, n: n };
+        if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1);
+        return true;
       };
+      state.dropCursor = function () { var c = state.cursor; if (!c) return; if (!c.free) state.addItem(c.id, c.n); state.cursor = null; };
+      state.returnItems = function () {   // closing the screen: everything in the hand, on the grid and in the furnace goes back to the inventory
+        state.dropCursor();
+        for (var i = 0; i < 9; i++) if (state.cells[i]) { state.addItem(state.cells[i].id, state.cells[i].n); state.cells[i] = null; }
+        ["input", "fuel", "out"].forEach(function (k) { if (state.furn[k]) { state.addItem(state.furn[k].id, state.furn[k].n); state.furn[k] = null; } });
+        state.furn.progress = 0;
+      };
+      state.matchResult = function () { var size = state.gridSize(), ids = []; for (var i = 0; i < size * size; i++) ids.push(state.cells[i] ? state.cells[i].id : 0); return D.matchGrid(ids, size); };
+      state.takeResult = function () {
+        var m = state.matchResult(), size = state.gridSize(); if (!m) return false;
+        var c = state.cursor; if (c && (c.id !== m.give[0] || c.n + m.give[1] > 64)) return false;
+        for (var i = 0; i < size * size; i++) if (state.cells[i]) { state.cells[i].n--; if (state.cells[i].n <= 0) state.cells[i] = null; }
+        state.cursor = { id: m.give[0], n: (c ? c.n : 0) + m.give[1], free: c && c.free };
+        state.stats.crafted[m.name] = (state.stats.crafted[m.name] || 0) + 1; K.sfx("coin"); return true;
+      };
+      state.smeltOf = function (id) { for (var i = 0; i < D.recipes.length; i++) { var r = D.recipes[i]; if (r.where === "furnace" && r.need[0][0] === id) return r; } return null; };
+      state.furnaceUpdate = function (dt) {   // the furnace works while its screen is open: a coal burns eight items, one takes a moment
+        var f = state.furn;
+        if (!state.showInv || state.screen !== "furnace") return;
+        var r = f.input && state.smeltOf(f.input.id);
+        if (r && (!f.out || (f.out.id === r.give[0] && f.out.n < 64))) {
+          if (f.burn < 1 && f.fuel && FUEL[f.fuel.id]) { f.burn += FUEL[f.fuel.id]; f.fuel.n--; if (f.fuel.n <= 0) f.fuel = null; }
+          if (f.burn >= 1) {
+            f.progress += dt;
+            if (f.progress >= 1.6) { f.progress = 0; f.burn -= 1; f.input.n--; if (f.input.n <= 0) f.input = null; f.out = f.out ? { id: f.out.id, n: f.out.n + r.give[1] } : { id: r.give[0], n: r.give[1] }; state.stats.smelted++; state.addXp(1); K.sfx("click"); }
+          } else f.progress = 0;
+        } else f.progress = 0;
+      };
+      state.uiClick = function (button) {   // a mouse button pressed while the inventory screen is open
+        if (!state.showInv) return false;
+        var hit = state.invHit(K.mouse.x, K.mouse.y);
+        if (!hit) return false;
+        if (hit.kind === "cell") state.cells[hit.index] = slotClick(state.cells[hit.index], button);
+        else if (hit.kind === "result") state.takeResult();
+        else if (hit.kind === "fin") state.furn.input = slotClick(state.furn.input, button, function (id) { return !!state.smeltOf(id); });
+        else if (hit.kind === "ffuel") state.furn.fuel = slotClick(state.furn.fuel, button, function (id) { return !!FUEL[id]; });
+        else if (hit.kind === "fout") state.furn.out = slotClick(state.furn.out, button, function () { return false; });
+        else if (state.cursor) state.dropCursor();   // a stack put on the inventory goes back into it
+        else state.pickFromInventory(hit.id, button === 2);
+        return true;
+      };
+      state.openScreen = function (kind) { state.returnItems(); state.screen = kind; state.showInv = true; };
+      state.invUpdate = function () { state.furnaceUpdate(1 / 60); };
       state.uiOpen = function () { return !!(state.showInv || state.showCraft || state.showAch || state.showHelp || state.trade || state.enchanting); };
-      state.closeUi = function () { state.showInv = state.showCraft = state.showAch = state.showHelp = false; state.trade = null; state.enchanting = false; };
+      state.closeUi = function () { state.returnItems(); state.showInv = state.showCraft = state.showAch = state.showHelp = false; state.trade = null; state.enchanting = false; state.screen = "inv"; };
       // ---- the player ----
       function collides(x, y, z) {
         for (var bx = Math.floor(x - 0.3); bx <= Math.floor(x + 0.3); bx++) for (var bz = Math.floor(z - 0.3); bz <= Math.floor(z + 0.3); bz++)
@@ -1123,7 +1200,7 @@
         else if (state.ever[152] && !state.hinted.lighter) { state.hinted.lighter = true; state.say("Çakmak: çerçeveye bakıp sağ tıkla, geçit açılır. İçine girip bekle."); }
         var inLava = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA || get(Math.floor(p.x), Math.floor(p.y + 1), Math.floor(p.z)) === LAVA;
         if (inLava) { state.lavaT = (state.lavaT || 0) + dt; if (state.lavaT >= 0.5) { state.lavaT = 0; state.hurt(4, "lav"); } } else state.lavaT = 0;
-        state.hungerT += dt * (K.key("Control") ? 1.8 : 1);
+        state.hungerT += dt * (state.running ? 1.8 : 1);
         if (state.hungerT >= 45) { state.hungerT = 0; if (!state.creative) state.food = Math.max(0, state.food - 1); }
         if (state.food >= 18 && state.health < 20) { state.regenT += dt; if (state.regenT >= 4) { state.regenT = 0; state.health++; } } else state.regenT = 0;
         if (state.food <= 0) { state.starveT += dt; if (state.starveT >= 4) { state.starveT = 0; if (state.health > 1) state.hurt(1, "açlık"); } } else state.starveT = 0;
@@ -1140,7 +1217,13 @@
         if (state.showCraft) { turn = 0; tilt = 0; }   // the arrows move in the recipe list instead
         p.yaw += turn * 2.2 * dt; p.pitch = Math.max(-1.5, Math.min(1.5, p.pitch + tilt * 1.6 * dt));
         var f = (K.key("w") ? 1 : 0) - (K.key("s") ? 1 : 0), r = (K.key("d") ? 1 : 0) - (K.key("a") ? 1 : 0);
-        var sneak = K.key("Shift") && !flying, run = K.key("Control") && !flying && !sneak;   // Ctrl runs, Shift sneaks (slower, and you do not walk off an edge)
+        var wNow = K.key("w"), sneak = K.key("Shift") && !flying;   // W twice quickly runs until W is let go (Ctrl would close a browser tab with W), Shift sneaks
+        state.clock = (state.clock || 0) + dt;
+        if (wNow && !state.wWas) { if (state.clock - (state.lastW === undefined ? -9 : state.lastW) < 0.35) state.running = true; state.lastW = state.clock; }
+        if (!wNow || sneak) state.running = false;
+        state.wWas = wNow;
+        var run = !!state.running && !flying && !sneak && f > 0;
+        if (!run) state.running = false;
         state.sneaking = sneak;
         var speed = 4.3 * state.sprintMul * (run ? 1.5 : sneak ? 0.35 : flying ? 1.6 : 1) * (state.blocking || state.eating ? 0.6 : 1);
         var len = Math.sqrt(f * f + r * r) || 1;
@@ -1357,29 +1440,41 @@
         c.fillStyle = "rgba(0,0,0,0.45)"; c.fillRect(mx - 2, my - 2, N * cell + 4, N * cell + 4);
         for (var kk in state.visited) { var vz = Math.floor(kk / N), vx = kk % N; c.fillStyle = "#6fbf73"; c.fillRect(mx + vx * cell, my + vz * cell, cell - 1, cell - 1); }
         if (state.chunk) { c.fillStyle = "#fff"; c.fillRect(mx + state.chunk.x * cell, my + state.chunk.z * cell, cell - 1, cell - 1); }
-        if (state.showInv) {   // the inventory: a grid of everything you hold, and the nine slots of the bar; a click on an item puts it in the chosen slot
-          var L = invLayout(), allInv = state.hotbar(), startInv = state.windowStart(), maxScroll = Math.max(0, Math.ceil(allInv.length / 9) - L.rows);
+        if (state.showInv) {   // the inventory screen: the pockets' grid or the table's or the furnace's on top, what you hold below, the bar at the bottom
+          var L = invLayout(), allInv = state.hotbar(), startInv = state.windowStart(), maxScroll = Math.max(0, Math.ceil(allInv.length / 9) - L.rows), cellPx = L.cell - 4;
           state.invScroll = Math.max(0, Math.min(maxScroll, state.invScroll));
-          c.fillStyle = "rgba(20,20,24,0.94)"; c.fillRect(L.x0, L.y0, L.w, L.h); c.strokeStyle = "#8a8a92"; c.lineWidth = 2; c.strokeRect(L.x0, L.y0, L.w, L.h);
-          c.fillStyle = "#fff"; c.font = "bold 15px sans-serif"; c.fillText("Envanter" + (state.creative ? "  (yaratıcı mod)" : ""), L.x0 + 12, L.y0 + 22);
-          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(allInv.length > L.rows * 9 ? "tekerlek: kaydır" : "bir eşyaya tıkla: seçili yuvaya koy", L.x0 + L.w - 190, L.y0 + 22);
-          var drawCell = function (x, y, id, on) {
-            c.fillStyle = on ? "rgba(255,224,130,0.35)" : "rgba(90,90,98,0.55)"; c.fillRect(x, y, L.cell - 4, L.cell - 4); c.strokeStyle = on ? "#ffe082" : "#2c2c32"; c.lineWidth = on ? 2 : 1; c.strokeRect(x, y, L.cell - 4, L.cell - 4);
-            if (!id) return;
-            drawIcon(c, id, x + 4, y + 4, L.cell - 12);
-            if (!state.creative && inv.count[id] > 1) { c.fillStyle = "#fff"; c.font = "bold 11px sans-serif"; c.textAlign = "right"; c.fillText(String(inv.count[id]), x + L.cell - 7, y + L.cell - 8); c.textAlign = "left"; }
+          c.fillStyle = "rgba(20,20,24,0.95)"; c.fillRect(L.x0, L.y0, L.w, L.h); c.strokeStyle = "#8a8a92"; c.lineWidth = 2; c.strokeRect(L.x0, L.y0, L.w, L.h);
+          c.fillStyle = "#fff"; c.font = "bold 15px sans-serif"; c.fillText(state.screen === "table" ? "Üretim masası" : state.screen === "furnace" ? "Fırın" : "Envanter" + (state.creative ? "  (yaratıcı mod)" : ""), L.x0 + 12, L.y0 + 22);
+          var slotBox = function (x, y, on) { c.fillStyle = on ? "rgba(255,224,130,0.30)" : "rgba(90,90,98,0.55)"; c.fillRect(x, y, cellPx, cellPx); c.strokeStyle = on ? "#ffe082" : "#2c2c32"; c.lineWidth = on ? 2 : 1; c.strokeRect(x, y, cellPx, cellPx); };
+          var stack = function (x, y, id, n, on) {
+            slotBox(x, y, on); if (!id) return;
+            drawIcon(c, id, x + 4, y + 4, cellPx - 8);
+            if (!state.creative && n > 1) { c.fillStyle = "#fff"; c.font = "bold 11px sans-serif"; c.textAlign = "right"; c.fillText(String(n), x + cellPx - 3, y + cellPx - 4); c.textAlign = "left"; }
           };
-          for (var gi = 0; gi < L.rows * 9; gi++) { var gid = allInv[state.invScroll * 9 + gi]; drawCell(L.x0 + 10 + (gi % 9) * L.cell, L.gridY + Math.floor(gi / 9) * L.cell, gid, gid && gid === state.selectedBlock()); }
-          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText("Çubuk (1-9)", L.x0 + 12, L.barY - 5);
-          for (var bi = 0; bi < 9; bi++) drawCell(L.x0 + 10 + bi * L.cell, L.barY, allInv[startInv + bi], startInv + bi === state.slot);
-          var over = state.invHit(K.mouse.x, K.mouse.y);
-          if (over && (over.id || over.index !== undefined)) {
-            var oid = over.id || allInv[over.index];
-            if (oid) {
-              var tip = NAMES[oid] + (state.creative ? "" : "  x" + inv.count[oid]) + (state.enchantNote ? state.enchantNote(oid) : ""), tw = c.measureText ? c.measureText(tip).width + 14 : 120;
-              c.fillStyle = "rgba(10,10,14,0.95)"; c.fillRect(K.mouse.x + 12, K.mouse.y - 4, tw, 22); c.fillStyle = "#fff"; c.font = "12px sans-serif"; c.fillText(tip, K.mouse.x + 19, K.mouse.y + 11);
-            }
+          var arrow = function (x, y) { c.fillStyle = "#cfd8dc"; c.font = "bold 22px sans-serif"; c.fillText("→", x, y); };
+          if (L.size) {
+            for (var ti = 0; ti < L.size * L.size; ti++) { var tc = state.cells[ti]; stack(L.cellX + (ti % L.size) * L.cell, L.cellY + Math.floor(ti / L.size) * L.cell, tc && tc.id, tc && tc.n); }
+            var made = state.matchResult(); arrow(L.resX - 30, L.resY + 26); stack(L.resX, L.resY, made && made.give[0], made && made.give[1], !!made);
+            c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(L.size === 3 ? "3x3 ızgaraya diz" : "2x2 ızgaraya diz", L.x0 + 12, L.cellY + 16);
+          } else {
+            var fs = state.furn; stack(L.fin.x, L.fin.y, fs.input && fs.input.id, fs.input && fs.input.n); stack(L.ffuel.x, L.ffuel.y, fs.fuel && fs.fuel.id, fs.fuel && fs.fuel.n); stack(L.fout.x, L.fout.y, fs.out && fs.out.id, fs.out && fs.out.n);
+            c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText("eritilecek", L.fin.x + 44, L.fin.y + 22); c.fillText("yakıt (kömür...)", L.ffuel.x + 44, L.ffuel.y + 22);
+            c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(L.fin.x + 56, L.fin.y + 44, 90, 6); c.fillStyle = "#ffab40"; c.fillRect(L.fin.x + 56, L.fin.y + 44, 90 * Math.min(1, fs.progress / 1.6), 6); arrow(L.fout.x - 38, L.fout.y + 26);
           }
+          for (var gi = 0; gi < L.rows * 9; gi++) { var gid = allInv[state.invScroll * 9 + gi]; stack(L.x0 + 10 + (gi % 9) * L.cell, L.gridY + Math.floor(gi / 9) * L.cell, gid, gid && inv.count[gid], gid && gid === state.selectedBlock()); }
+          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(allInv.length > L.rows * 9 ? "tekerlek: kaydır" : "Çubuk (1-9)", L.x0 + 12, L.barY - 3);
+          for (var bi = 0; bi < 9; bi++) { var bid = allInv[startInv + bi]; stack(L.x0 + 10 + bi * L.cell, L.barY, bid, bid && inv.count[bid], startInv + bi === state.slot); }
+          var over = state.invHit(K.mouse.x, K.mouse.y), tipId = 0, tipExtra = "";
+          if (over) {
+            if (over.kind === "grid" || over.kind === "hotbar") { tipId = over.id; tipExtra = state.creative ? "" : "  x" + inv.count[over.id]; }
+            else if (over.kind === "cell" && state.cells[over.index]) tipId = state.cells[over.index].id;
+            else if (over.kind === "result") { var rm = state.matchResult(); if (rm) tipId = rm.give[0]; }
+          }
+          if (tipId && !state.cursor) {
+            var tip = NAMES[tipId] + tipExtra + (state.enchantNote ? state.enchantNote(tipId) : ""), tw = c.measureText ? c.measureText(tip).width + 14 : 120;
+            c.fillStyle = "rgba(10,10,14,0.95)"; c.fillRect(K.mouse.x + 12, K.mouse.y - 4, tw, 22); c.fillStyle = "#fff"; c.font = "12px sans-serif"; c.fillText(tip, K.mouse.x + 19, K.mouse.y + 11);
+          }
+          if (state.cursor) stack(K.mouse.x - 16, K.mouse.y - 16, state.cursor.id, state.cursor.n, false);   // the stack in the hand follows the mouse
         }
         if (state.trade) {
           var tr = state.trade;
@@ -1436,8 +1531,8 @@
         if (state.showHelp) {
           c.fillStyle = "rgba(0,0,0,0.8)"; c.fillRect(g.width / 2 - 190, 50, 380, 250);
           c.fillStyle = "#fff"; c.font = "14px sans-serif";
-          ["KONTROLLER", "W A S D  yürü     Boşluk  zıpla     Ctrl  koş     Shift  eğil", "Fare ya da oklar  bak (önce sayfaya tıkla)", "Sol tık  blok kır / vur        Sağ tık  blok koy / ye / aç",
-           "Tekerlek / Q / 1-9  eşya seç", "E  envanter   X  tarifler (yukarı/aşağı, Enter)   B  başarımlar   C  yaratıcı mod", "Kazarken en iyi aletin kullanılır; masa ve fırın yakında olmalı", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
+          ["KONTROLLER", "W A S D  yürü     Boşluk  zıpla     W'ya iki kez bas  koş     Shift  eğil", "Fare ya da oklar  bak (önce sayfaya tıkla)", "Sol tık  blok kır / vur        Sağ tık  blok koy / ye / aç",
+           "Tekerlek / Q / 1-9  eşya seç", "E  envanter + üretim ızgarası   B  başarımlar   C  yaratıcı mod", "Kazarken en iyi aletin kullanılır; masa ve fırın yakında olmalı", "G ya da Boşluk'a iki kez bas  uç (uçma özelliğiyle)", "H  bu yardımı kapat"].forEach(function (line, n) {
             c.fillText(line, g.width / 2 - 175, 80 + n * 26);
           });
         }
@@ -1460,7 +1555,8 @@
         document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && !state.menu.open && !state.uiOpen() && g.current === "play" && state.menuStarted) state.openMenu("pause"); });   // Esc gives the mouse back: the pause menu opens
         document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.menu.open) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });
         canvas.addEventListener("mousedown", function (e) {
-          if (state.menu.open || state.uiOpen()) return;
+          if (state.menu.open) return;
+          if (state.uiOpen()) { if (state.showInv) state.uiClick(e.button === 2 ? 2 : 0); return; }
           if (e.button === 0) mouseLeft = true; else if (e.button === 2) state.rightDown();
         });
         document.addEventListener("mouseup", function (e) { if (e.button === 0) mouseLeft = false; else if (e.button === 2) state.rightUp(); });
@@ -1477,12 +1573,12 @@
           if (state.uiOpen() && typeof document !== "undefined" && document.pointerLockElement && document.exitPointerLock) { try { document.exitPointerLock(); } catch (e) { /* not locked */ } }   // a screen with items needs the mouse
           once("Escape", function () { if (state.uiOpen()) state.closeUi(); else state.openMenu("pause"); });
           state.step(dt);
-          if (K.voxel.keyActions) once("e", state.placeBlock); else once("e", function () { state.showInv = !state.showInv; });   // E opens the inventory (F and E as keys for digging and placing are only for the tests)
+          if (K.voxel.keyActions) once("e", state.placeBlock); else once("e", function () { if (state.showInv) state.closeUi(); else state.openScreen("inv"); });   // E opens the inventory (F and E as keys for digging and placing are only for the tests)
           once("q", function () { state.select(state.slot + 1); });
-          once("i", function () { state.showInv = !state.showInv; }); once("Tab", function () { state.showInv = !state.showInv; });
+          once("i", function () { if (state.showInv) state.closeUi(); else state.openScreen("inv"); }); once("Tab", function () { if (state.showInv) state.closeUi(); else state.openScreen("inv"); });
           once("c", function () { state.setCreative(!state.creative); }); once("h", function () { state.showHelp = !state.showHelp; });
           once("g", function () { if (state.canFly) state.flying = !state.flying; });
-          once("x", function () { state.showCraft = !state.showCraft; });
+          once("x", function () { if (state.showInv) state.closeUi(); else state.openScreen("inv"); });
           once("b", function () { state.showAch = !state.showAch; });
           once("ArrowUp", function () { if (state.showCraft) state.menuMove(-1); else if (state.enchanting) state.enchCursor = Math.max(0, state.enchCursor - 1); else if (state.trade) state.trade.cursor = Math.max(0, state.trade.cursor - 1); }); once("ArrowDown", function () { if (state.showCraft) state.menuMove(1); else if (state.enchanting) state.enchCursor = Math.min(Math.max(0, state.enchantable().length - 1), state.enchCursor + 1); else if (state.trade) state.trade.cursor = Math.min(state.trade.offers.length - 1, state.trade.cursor + 1); });
           once("Enter", function () { if (state.showCraft) state.craft(state.craftList()[state.craftCursor]); else if (state.trade) state.doTrade(state.trade.offers[state.trade.cursor]); });
