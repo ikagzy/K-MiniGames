@@ -78,3 +78,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-69 | 2026-10-28 | specrules düzeltmesi (yıldız≠gece teması): v3 uygulama 0,976 (ham 0,972), elle yazılmış 0,94/0,97; exe ve arkadaş paketi yenilendi | cd174f9 |
 | CP-70 | 2026-10-28 | bölüm çeşitliliği: 5 bölüm tarzı (tepeli/merdivenli, çukurlu, düşman kapışması, gökyüzü), kampanyada tarz ve yoğunluk çeşitlemesi; 146 JS testi; exe henüz yeniden derlenmedi | 65475ec |
 | CP-71 | 2026-10-28 | k-ai uygulamada görünmüyordu (ayar 'k-ai-v3', Ollama 'k-ai-v3:latest' diyor, uygulama 14B öneriyordu): is_installed ile düzeltildi; ayar ve KUR.bat ':latest' yazıyor; exe yeniden derlenmedi | d430a27 |
+| CP-72 | 2026-10-28 | kök sebep: Claude'un AppData yazmaları sanal klasöre gidiyordu, ayar değişiklikleri kullanıcının uygulamasına ulaşmadı; tools/k-ai-sec.bat eklendi | e958afc |
