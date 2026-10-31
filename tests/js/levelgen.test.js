@@ -67,3 +67,30 @@ test('levelsFor turns a spec into level rows: custom rows win, then generators, 
   assert.strictEqual(K.levels.fromSpec({}).length, 1);
   assert.strictEqual(K.levels.fromSpec({ levels: [], generate: [] }).length, 1);
 });
+
+test('levels have styles: hills raise the ground, a gauntlet puts enemies in pairs, and every style stays finishable', () => {
+  const K = fresh();
+  const raised = (rows) => rows.slice(0, rows.length - 3).some((r) => r.includes('#'));   // solid ground above the normal ground line
+  let plainRaised = 0;
+  for (let seed = 0; seed < 20; seed++) {
+    assert.ok(raised(K.levels.generate({ width: 80, seed, style: 1, difficulty: 2 })), 'a hills level always has a raised part');
+    if (raised(K.levels.generate({ width: 80, seed, style: 0, difficulty: 2 }))) plainRaised++;
+  }
+  assert.ok(plainRaised <= 8, 'a plain level only now and then has a hill');
+  const pairs = (rows) => /E.E/.test(rows.join('\n'));
+  assert.ok([...Array(20).keys()].some((seed) => pairs(K.levels.generate({ width: 100, seed, style: 3, enemies: 5 }))));
+  for (let style = 0; style < K.levels.STYLES; style++) {
+    for (let seed = 0; seed < 40; seed++) {
+      const rows = K.levels.generate({ width: 40 + seed * 2, difficulty: 1 + (seed % 5), seed, style, pits: 5, enemies: 5, blocks: 5, pipes: 5, coins: 5, flyers: 3, spikes: 4 });
+      assert.ok(K.levels.validate(K.levels.parse(rows), { jump: 4, gap: 3 }).ok, 'style ' + style + ' seed ' + seed);
+    }
+  }
+});
+
+test('a campaign mixes the styles and the levels of one difficulty are not the same kind of level', () => {
+  const K = fresh();
+  const list = K.levels.campaign({ count: 12, from: 1, to: 5, width: 60, seed: 7 });
+  assert.ok(new Set(list.map((o) => o.style)).size >= 4, 'at least four different styles in twelve levels');
+  for (let i = 1; i < list.length; i++) assert.notStrictEqual(list[i].style, list[i - 1].style, 'two levels in a row never share a style');
+  assert.ok(new Set(list.map((o) => o.enemies + ',' + o.pits + ',' + o.coins + ',' + o.blocks)).size >= 6, 'the densities vary from level to level');
+});
