@@ -75,3 +75,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-66 | 2026-10-28 | v2 sorununun sebebi bulundu: öğrenilemeyen rastgele seed rakamları (dönüştürme bozuk değil); seed artık modele yazdırılmıyor, uygulama dolduruyor; v3 eğitimi bekliyor | b67ba09 |
 | CP-67 | 2026-10-28 | k-ai v3 (ek eğitim, ham 0,97/0,88) + onarım ve kurallar katmanı; uygulamada v2+kurallar (Ollama'da doğruluk 0,84, elle yazılmış 0,84); exe yeniden derlendi | 99f5cc1 |
 | CP-68 | 2026-10-28 | Ollama bozulmasının kök sebebi çözüldü (GGUF'ta rope_theta 10000 yazılıyordu); v1/v2/v3 yeniden kuruldu, Ollama ham = HF; uygulamada k-ai-v3 (+onarım+kurallar: doğruluk 0,97, elle yazılmış 0,94) | 1b58529 |
+| CP-69 | 2026-10-28 | specrules düzeltmesi (yıldız≠gece teması): v3 uygulama 0,976 (ham 0,972), elle yazılmış 0,94/0,97; exe ve arkadaş paketi yenilendi | cd174f9 |
