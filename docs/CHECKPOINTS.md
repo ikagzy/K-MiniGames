@@ -91,3 +91,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-82 | 2026-10-31 | küp dünya: yarım blok, basamak, çit, kapı, merdiven (şekilli bloklar), ana menü ve Esc menüsü; 203 JS testi | 9bcf740 |
 | CP-83 | 2026-10-31 | küp dünya boyutları (Kor Diyarı, Gök Adaları), geçit/çakmak/kara kaya, kapı kaydı düzeltmesi; v5.5 sürümü; 207 JS testi | 1d36a7e |
 | CP-84 | 2026-10-31 | Kor Diyarı canlıları (közcü, kor bekçisi), köz tozu ve ışık taşı tarifi, saydam geçit; 209 JS testi | ba04203 |
+| CP-85 | 2026-10-31 | küp dünya: eşyasız başlangıç, masa/fırın yakınlığına göre tarifler, sağ tıkla menü, elde tutulan eşya; 210 JS testi | 46e6a38 |
