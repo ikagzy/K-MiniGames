@@ -129,3 +129,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-120 | 2026-10-31 | son denetim: yarışta çimde başlayan arabalar, fare kilidi söz hatası, küp dünya/kule/nişancı denetimleri düzeltildi; 311 JS, 578 Python testi | 18c8bc6 |
 | CP-121 | 2026-10-31 | k-ai v8: 11 oyun türünü öğrendi (2900 örnek, doğruluk 0,972, v7 0,961); paket v8 ile; 311 JS, 578 Python testi | 9b8f209 |
 | CP-122 | 2026-10-31 | paket 1 GB altına indirildi: k-ai-v8 q4_0 (875 MB, doğruluk aynı), KUR.bat ayarı k-ai-v8'e günceller; zip ~0,87 GB | e170694 |
+| CP-123 | 2026-10-31 | Masaustu kisayolu, MIT lisansi, kod GitHub'a (ikagzy/K-MiniGames, public) itildi | 4fc88a2 |
