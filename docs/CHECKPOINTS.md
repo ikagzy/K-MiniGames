@@ -118,3 +118,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-109 | 2026-10-31 | küp dünya: sandık ekranı çantayla üst üste binmez, deneme alanı menüden kaldırıldı; 245 JS testi | b6b0046 |
 | CP-110 | 2026-10-31 | çakmak dokusu değişti; FPS kitine ana menü ve Esc duraklatma menüsü; 246 JS testi | 6645015 |
 | CP-111 | 2026-10-31 | FPS: 4 elle çizilmiş harita (depo, liman, kale, tünel), taktik (Valorant tarzı) mod: hazırlık/satın alma, spike, turlar; Python kuralları; 249 JS testi | b5a61fc |
+| CP-112 | 2026-10-31 | yarış kiti: yukarıdan 2B piksel araba yarışı (pist üretici, rakipler, turlar, nitro, enerjik yarış müziği), Python kuralları; 256 JS, 548 Python testi | 8a6e544 |
