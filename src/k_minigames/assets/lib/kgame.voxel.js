@@ -826,6 +826,7 @@
         if (state.creative) return;
         var tier = state.have(kind); if (tier < 0) return;
         var id = kind === "hoe" ? D.hoeId(tier) : D.toolId(kind, tier);
+        if (tier === 3) return;   // a golden tool never breaks
         var unb = state.enchLevel(id, "unb"); if (unb && mr() < unb / (unb + 1)) return;   // a tough tool often does not wear
         state.wear[id] = (state.wear[id] === undefined ? D.DUR[tier] : state.wear[id]) - 1;
         if (state.wear[id] <= 0) { inv.count[id]--; delete state.wear[id]; state.say("Alet kırıldı: " + NAMES[id]); }
@@ -842,6 +843,8 @@
         return best;
       };
       var SWORD = [4, 5, 6, 4, 7];   // damage with a wood, stone, iron, gold, diamond sword (bare hands 1)
+      var HIT = { sword: SWORD, axe: [3, 4, 5, 3, 6], pickaxe: [2, 3, 4, 2, 5], shovel: [1, 2, 3, 1, 4], hoe: [1, 1, 2, 1, 3] };   // every kind of tool hits with its own damage: the axe hits hard, the hoe hardly at all
+      state.damageOf = function (id) { var t = D.toolOf(id); return t && HIT[t.kind] ? HIT[t.kind][t.tier] : 1; };
       state.killMob = function (m) {
         m.dead = true; state.kills++; state.addXp(M.TYPES[m.type].kind === "hostile" ? 5 : 1);
         M.drops(m.type, mr).forEach(function (d) { state.addItem(d[0], d[1]); });
@@ -849,9 +852,10 @@
       state.attackMob = function (m) {
         if (m.dead || state.attackCd > 0) return false;   // a dead one is not hit again
         state.attackCd = 0.5;
-        var tier = state.have("sword"), dmg = tier >= 0 ? SWORD[tier] + state.enchLevel(D.toolId("sword", tier), "sharp") : 1, p = state.p, dx = m.x - p.x, dz = m.z - p.z, L = Math.sqrt(dx * dx + dz * dz) || 1;
+        var held = D.toolOf(state.selectedBlock()), tier = state.have("sword"), kindUsed = held ? held.kind : tier >= 0 ? "sword" : null;
+        var dmg = held ? HIT[held.kind][held.tier] + (held.kind === "sword" ? state.enchLevel(state.selectedBlock(), "sharp") : 0) : tier >= 0 ? SWORD[tier] + state.enchLevel(D.toolId("sword", tier), "sharp") : 1, p = state.p, dx = m.x - p.x, dz = m.z - p.z, L = Math.sqrt(dx * dx + dz * dz) || 1;
         m.hp -= dmg; m.flash = 0.25; m.kx = dx / L * 5; m.kz = dz / L * 5; m.vy = 4; if (M.TYPES[m.type].kind === "passive") m.fear = 4;
-        K.sfx("hit"); if (tier >= 0) state.useTool("sword");
+        K.sfx("hit"); if (kindUsed) state.useTool(kindUsed);
         if (m.hp <= 0) state.killMob(m);
         return true;
       };
@@ -1752,7 +1756,7 @@
           for (var bi = 0; bi < 9; bi++) { var bs = state.slots[bi]; stack(L.x0 + 10 + bi * L.cell, L.barY, bs && bs.id, bs && bs.n, bi === state.slot); }
           var over = state.invHit(K.mouse.x, K.mouse.y), tipId = 0, tipExtra = "";
           if (over) {
-            if (over.kind === "slot" && over.id) { tipId = over.id; tipExtra = state.creative ? "" : "  x" + state.slots[over.index].n; }
+            if (over.kind === "slot" && over.id) { tipId = over.id; tipExtra = state.creative ? "" : "  x" + state.slots[over.index].n; if (D.toolOf(over.id)) tipExtra += "  hasar " + state.damageOf(over.id); }
             else if (over.kind === "cell" && state.cells[over.index]) tipId = state.cells[over.index].id;
             else if (over.kind === "chest" && state.chestOpen && state.chestOpen.slots[over.index]) tipId = state.chestOpen.slots[over.index].id;
             else if (over.kind === "result") { var rm = state.matchResult(); if (rm) tipId = rm.give[0]; }

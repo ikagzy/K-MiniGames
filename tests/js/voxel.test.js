@@ -1680,3 +1680,13 @@ test('no flood: breaking blocks beside a poured flow only fills the hole; the te
   for (let i = 0; i < 6; i++) { s.set(ox + 9 + i % 3, gy, oz - 6 + (i >> 1), 0, true); s.flow(ox + 9 + i % 3, gy, oz - 6 + (i >> 1)); }
   assert.ok(before() - n0 < 30, 'no flood: ' + (before() - n0));
 });
+
+test('golden tools never break, and every kind of tool hits with its own damage (the held one counts)', () => {
+  const K = fresh(); const D = K.voxeldata; const { s, cx, cz, gy } = yard(K, 136);
+  s.creative = false; const gold = D.toolId('pickaxe', 3); s.addItem(gold, 1); s.wear[gold] = 1; s.addItem(D.toolId('axe', 4), 1); s.addItem(D.hoeId(4), 1); s.addItem(D.toolId('sword', 4), 1);
+  s.useTool('pickaxe'); s.useTool('pickaxe'); assert.strictEqual(s.inv.count[gold], 1, 'gold does not break'); assert.strictEqual(s.wear[gold], 1);
+  const dmg = (id) => s.damageOf(id);
+  assert.ok(dmg(D.toolId('sword', 4)) > dmg(D.toolId('axe', 4)) && dmg(D.toolId('axe', 4)) > dmg(D.toolId('pickaxe', 4)) && dmg(D.toolId('pickaxe', 4)) > dmg(D.toolId('shovel', 4)) && dmg(D.toolId('shovel', 4)) > dmg(D.hoeId(4)), 'each kind has its own');
+  const mob = () => { const m = { type: 'zombie', x: s.p.x + 1, y: s.p.y, z: s.p.z, vx: 0, vy: 0, vz: 0, hp: 100, kx: 0, kz: 0, flash: 0 }; return m; };
+  for (const [id, want] of [[D.toolId('axe', 4), 6], [D.hoeId(4), 3]]) { s.select(s.hotbar().indexOf(id)); s.attackCd = 0; const m = mob(); s.attackMob(m); assert.strictEqual(100 - m.hp, want, 'held tool ' + id); }
+});
