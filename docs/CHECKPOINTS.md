@@ -126,3 +126,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-117 | 2026-10-31 | kule savunması kiti: tohumdan yol, 4 kule (3 seviye), 4 düşman + patron, dalgalar, fare/klavye (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 289 JS, 568 Python testi | 0b6e3c5 |
 | CP-118 | 2026-10-31 | dövüş kiti: yumruk, tekme, blok, ateş topu, kombo, turlar, yapay zekâ rakip, iki kişilik (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 299 JS, 573 Python testi | 5665b88 |
 | CP-119 | 2026-10-31 | block blast kiti: 3 parça sürükle-bırak, satır/sütun patlatma, kombo, geri al/ipucu/bomba (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 308 JS, 578 Python testi | ba0d954 |
+| CP-120 | 2026-10-31 | son denetim: yarışta çimde başlayan arabalar, fare kilidi söz hatası, küp dünya/kule/nişancı denetimleri düzeltildi; 311 JS, 578 Python testi | 18c8bc6 |
