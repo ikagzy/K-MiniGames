@@ -503,3 +503,36 @@ def apply_fighter(spec: dict, description: str) -> dict:
     if difficulty:
         spec["difficulty"] = difficulty
     return spec
+
+
+BLAST_THEMES = {"candy": r"seker|candy|tatli|renkli", "neon": r"neon|parlak|siber", "ocean": r"okyanus|deniz|mavi su", "night": r"\bgece|karanlik"}
+
+
+def apply_blast(spec: dict, description: str) -> dict:
+    """The same kind of rules for the block blast game: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    found = [name for name, rx in BLAST_THEMES.items() if re.search(rx, text)]
+    if len(found) == 1:
+        spec["theme"] = found[0]
+    sizes = {"small": r"\bkucuk tahta|6x6|6 ya 6|\bminik", "large": r"\bbuyuk tahta|10x10|10 a 10|\bdevasa|\bgenis tahta"}
+    which = [n for n, rx in sizes.items() if re.search(rx, text)]
+    if len(which) == 1:
+        spec["size"] = which[0]
+    goal = re.search(r"(\d{3,6})\s*(puan|skor)", text) or re.search(r"(puan|skor)\w*\s*(\d{3,6})", text)
+    if goal:
+        spec["goal"] = int([g for g in goal.groups() if g and g.isdigit()][0])
+    features = list(spec.get("features") or [])
+    for name, rx in (("hint", r"ipucu|\bhint|nereye koyacagimi goster"), ("undo", r"geri al|\bundo|hamle geri|yanlis hamle"), ("bomb", r"\bbomba|patlayici")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

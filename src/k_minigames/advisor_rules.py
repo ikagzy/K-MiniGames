@@ -4,6 +4,7 @@ import re
 
 DECIDED = re.compile(r"sen (karar|se[cç]|nas[iı]l istersen|yap)|fark etmez|bilmiyorum|[oö]nemli de[gğ]il|you decide|surprise me|don'?t mind|whatever", re.I)
 KITS = (("fps", re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pompal[iı]|silahla|tabanca|t[uü]fek|s[iı][gğ][iı]nak|bunker", re.I)),
+        ("blast", re.compile(r"block blast|blok patlat\w*|blast|8x8|parça yerle[sş]tir|sat[iı]r patlat", re.I)),
         ("sandbox", re.compile(r"minecraft|k[uü]p d[uü]nya|blok|maden|in[sş]aat|cube world|mining|voxel", re.I)),
         ("football", re.compile(r"futbol|\bma[cç]\b|halisaha|football|soccer|kaleci|\bgol\b", re.I)),
         ("puzzle", re.compile(r"bulmaca|tetris|puzzle|eşleştir|eslestir|hafıza|hafiza|\bkart|match|candy|şeker", re.I)),
@@ -19,6 +20,7 @@ QUESTIONS = {
     "adventure": "Güzel! Kahraman kim olsun: şövalye, okçu ya da büyücü? Zindan mı, orman, çöl ya da kale mi? Hangi canavarlar çıksın, sonunda patron olsun mu?",
     "tower": "Güzel! Hangi ortamda geçsin: çim, çöl, gece ya da lav? Kaç dalga olsun, hangi düşmanlar (asker, koşucu, zırhlı, sürü) ve hangi kuleler (ok, top, buz, keskin nişancı)?",
     "fighter": "Güzel! Hangi sahnede dövüşelim: dojo, sokak, tapınak ya da yanardağ? Dövüşçün ve rakibin kim olsun (dövüşçü, ninja, koca), kaç tur sürsün, özel hareket ister misin?",
+    "blast": "Güzel! Hangi temada olsun: şeker, neon, okyanus ya da gece? Tahta küçük (6x6), orta (8x8) ya da büyük (10x10) mü, hedef puan olsun mu, geri alma ve ipucu ister misin?",
     "race": "Güzel! Hangi ortamda yarışsın: şehir, çöl, orman ya da gece? Kaç tur ve kaç rakip olsun, nitro istiyor musun?",
     "fps": "Güzel! Hangi ortamda geçsin: sığınak, uzay istasyonu, harabe, laboratuvar ya da fabrika? Hangi silahlar ve düşmanlar olsun, sonunda patron var mı?",
     "sandbox": "Güzel fikir! Hangi bölgede geçsin (orman, çöl ya da ova) ve dünya ne kadar büyük olsun? Mağara, maden ve göller olsun mu?",
@@ -32,6 +34,7 @@ QUESTIONS_EN = {
     "adventure": "Nice! Which hero: knight, ranger or mage? Which setting (dungeon, forest, desert, castle), which monsters, and a boss at the end?",
     "tower": "Nice! Which setting: grass, desert, night or lava? How many waves, which enemies and which towers (arrow, cannon, frost, sniper)?",
     "fighter": "Nice! Which stage: dojo, street, temple or volcano? Who are you and who is the rival (brawler, ninja, sumo), how many rounds, and do you want a special move?",
+    "blast": "Nice! Which theme: candy, neon, ocean or night? Which board size (6x6, 8x8, 10x10), a goal score, and do you want undo and hints?",
     "race": "Nice! Which setting: city, desert, forest or night? How many laps and rivals, and do you want nitro?",
     "fps": "Nice! Which setting: bunker, space station, ruins, lab or factory? Which weapons and enemies, and a boss at the end?",
     "sandbox": "Nice! Which region (forest, desert or plains), and how big should the world be? Do you want caves, ores and lakes?",
@@ -40,7 +43,7 @@ QUESTIONS_EN = {
     None: "Sounds fun! What kind of game: a run-and-jump platformer, a space shooter or a cube world for mining and building?",
 }
 STRONG_FPS = re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pompal[iı]", re.I)   # words that mean a first person shooter and nothing else
-KIT_MODULES = ("platformer", "shooter", "sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter")
+KIT_MODULES = ("platformer", "shooter", "sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter", "blast")
 
 
 def fix_modules(history: list, names: list) -> list:

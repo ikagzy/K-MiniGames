@@ -101,9 +101,16 @@ _CHECKS["fighter"] = [
     ("Rakip yapay zekâ ile oynar.", "const s = game.state, a = s.f[0], b = s.f[1]; b.hp = b.maxHp; const x = b.x; a.hp = a.maxHp; await new Promise(r => setTimeout(r, 4000)); return Math.abs(b.x - x) > 1 || a.hp < a.maxHp;"),
 ]
 
+_CHECKS["blast"] = [
+    ("Oyun açılır, tahta boştur ve üç parça verilir.", "return game.g.current === 'play' && game.state.board.length >= 6 && game.state.pieces.filter(Boolean).length === 3;"),
+    ("Parça tahtaya konabilir.", "const s = game.state; for (let i = 0; i < 3; i++) { const p = s.pieces[i]; if (!p) continue; for (let y = 0; y < s.N; y++) for (let x = 0; x < s.N; x++) if (s.canPlace(p, x, y)) return s.place(i, x, y) === true && s.score > 0; } return false;"),
+    ("Satır dolunca patlar.", "const s = game.state; s.board.forEach(r => r.fill(0)); s.board[s.N - 1] = new Array(s.N).fill(1); s.board[s.N - 1][s.N - 1] = 0; s.pieces = [{ cells: [[0, 0]], color: [255, 0, 0], bomb: false, w: 1, h: 1 }, s.pieces[1], s.pieces[2]]; s.place(0, s.N - 1, s.N - 1); await new Promise(r => setTimeout(r, 600)); return s.board[s.N - 1].every(v => v === 0) && s.lines >= 1;"),
+    ("Klavye ile oynanır.", "const s = game.state; s.paused = false; s.menu.open = false; const m = s.moves; s.cx = 0; s.cy = 0; K.press('1'); await new Promise(r => setTimeout(r, 120)); K.press('1', false); K.press('ArrowRight'); await new Promise(r => setTimeout(r, 120)); K.press('ArrowRight', false); return s.cx === 1;"),
+]
+
 # the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
 _PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
-for _kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter"):
+for _kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter", "blast"):
     _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
 
 _SYSTEM = (
@@ -218,7 +225,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter") and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter", "blast") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -242,6 +249,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _tower_variety(spec)
     elif kit == "fighter":
         _fighter_variety(spec)
+    elif kit == "blast":
+        _blast_variety(spec)
     return spec
 
 
@@ -398,6 +407,17 @@ def _fighter_variety(spec: dict) -> None:
     spec.setdefault("time", random.choice((45, 60, 60, 90)))
     if not spec.get("features"):
         spec["features"] = random.choice((["special"], ["special"], ["special", "rage"], ["rage"], []))
+
+
+def _blast_variety(spec: dict) -> None:
+    """The same for the block blast game: the open parts are drawn."""
+    spec.setdefault("theme", random.choice(("candy", "candy", "neon", "ocean", "night")))
+    spec.setdefault("size", random.choice(("medium", "medium", "small", "large")))
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["music"] = "blast"   # the tune written for the block blast kit
+    if not spec.get("features"):
+        spec["features"] = random.choice((["undo"], ["hint"], ["hint", "undo"], ["bomb"], ["undo", "bomb"], []))
 
 
 def keep_seeds(before: dict, after: dict) -> dict:

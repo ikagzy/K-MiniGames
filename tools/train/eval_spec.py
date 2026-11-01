@@ -17,6 +17,7 @@ import specdata_fps
 import specdata_fighter
 import specdata_football
 import specdata_adventure
+import specdata_blast
 import specdata_puzzle
 import specdata_race
 import specdata_shooter
@@ -27,6 +28,7 @@ KITS = {   # per kit: how the app's messages are made for it, how a generated ex
     "shooter": (specdata_shooter.messages, specdata_shooter.score_shooter, specdata_shooter.expect_ok_shooter),
     "sandbox": (specdata_sandbox.messages, specdata_sandbox.score_sandbox, specdata_sandbox.expect_ok_sandbox),
     "fps": (specdata_fps.messages, specdata_fps.score_fps, specdata_fps.expect_ok_fps),
+    "blast": (specdata_blast.messages, specdata_blast.score_blast, specdata_blast.expect_ok_blast),
     "fighter": (specdata_fighter.messages, specdata_fighter.score_fighter, specdata_fighter.expect_ok_fighter),
     "tower": (specdata_tower.messages, specdata_tower.score_tower, specdata_tower.expect_ok_tower),
     "adventure": (specdata_adventure.messages, specdata_adventure.score_adventure, specdata_adventure.expect_ok_adventure),

@@ -78,6 +78,9 @@ MODULES["tower"] = Module(
 MODULES["fighter"] = Module(
     "fighter", ("kgame.fighter.js",), "fighter.guide.md", ("core", "audio2", "kits"),
     "dövüş KİTİ (yandan görünümlü 2 boyutlu piksel): yumruk, tekme, blok, özel hareket, turlar, yapay zekâ rakip ve iki kişilik mod hazır; model yalnızca özet yazar")
+MODULES["blast"] = Module(
+    "blast", ("kgame.blast.js",), "blast.guide.md", ("core", "audio2", "kits"),
+    "blok yerleştirme KİTİ (Block Blast türü, 2 boyutlu piksel): üç parçayı tahtaya sürükle, dolan satır ve sütun patlar, kombo, en iyi skor hazır; model yalnızca özet yazar")
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
 _TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
 _FIRST_SCRIPT = re.compile(r"<script\b", re.I)

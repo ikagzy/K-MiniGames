@@ -1,0 +1,111 @@
+{
+  "type": "object",
+  "required": [
+    "kit"
+  ],
+  "properties": {
+    "kit": {
+      "type": "string",
+      "enum": [
+        "blast"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "theme": {
+      "type": "string",
+      "enum": [
+        "candy",
+        "neon",
+        "ocean",
+        "night"
+      ]
+    },
+    "size": {
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    "difficulty": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "goal": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "music": {
+      "type": "string",
+      "enum": [
+        "blast",
+        "overworld",
+        "underground",
+        "castle",
+        "boss",
+        "race",
+        "football",
+        "puzzle",
+        "adventure",
+        "tower",
+        "fighter"
+      ]
+    },
+    "musicStyle": {
+      "type": "object",
+      "properties": {
+        "mood": {
+          "type": "string",
+          "enum": [
+            "happy",
+            "calm",
+            "tense",
+            "epic",
+            "mystery",
+            "spooky"
+          ]
+        },
+        "tempo": {
+          "type": "string",
+          "enum": [
+            "slow",
+            "medium",
+            "fast"
+          ]
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        }
+      }
+    },
+    "world": {
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "hint",
+          "undo",
+          "bomb"
+        ]
+      }
+    }
+  }
+}
