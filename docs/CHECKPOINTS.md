@@ -121,3 +121,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-112 | 2026-10-31 | yarış kiti: yukarıdan 2B piksel araba yarışı (pist üretici, rakipler, turlar, nitro, enerjik yarış müziği), Python kuralları; 256 JS, 548 Python testi | 8a6e544 |
 | CP-113 | 2026-10-31 | futbol kiti: 2B piksel maç, iki takım için eşit yapay zekâ, altın gol, ana menü; Python kuralları; 263 JS, 553 Python testi | aff6477 |
 | CP-114 | 2026-10-31 | k-ai v7: yarış, futbol ve FPS taktik modunu öğrendi (1850 örnek, doğruluk 0,989); zip v7 ile yenilendi; 264 JS, 553 Python testi | 4355df0 |
+| CP-115 | 2026-10-31 | bulmaca kiti: düşen bloklar, üçlü eşleştirme, hafıza kartları (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 272 JS, 558 Python testi | 04ede7d |
