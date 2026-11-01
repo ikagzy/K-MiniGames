@@ -112,3 +112,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-103 | 2026-10-31 | küp dünya: lav hasarı yarıya indi; lavdan çıkış ve kova portal dökümü tarayıcıda denendi; 239 JS testi | a8cef01 |
 | CP-104 | 2026-10-31 | küp dünya: dökülen su ve lav yayılır (düşer, zeminde akar, su+lav kara kaya); 240 JS testi | 9a374ea |
 | CP-105 | 2026-10-31 | küp dünya: kovayla dökülen sıvı tek kaynak + akış, kovayla geri çekilir; 241 JS testi | ed5e03d |
+| CP-106 | 2026-10-31 | küp dünya: menüden Deneme alanı kur (lav/su havuzu, hazır kara kaya çerçevesi, saman, masa, fırın, sandık, eşyalar), yüzeyde zıplayarak çıkış; 242 JS testi | 9805a5b |
