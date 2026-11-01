@@ -116,3 +116,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-107 | 2026-10-31 | küp dünya: akış sel yapmaz, deneme alanı eski çantayı sandığa koyup çakmak/kova verir, hız dökümü menzili; 243 JS testi | 1ee444f |
 | CP-108 | 2026-10-31 | küp dünya: altın aletler kırılmaz, her alet kendi hasarıyla vurur (elde tutulan), ipucunda hasar; 244 JS testi | 7795d1b |
 | CP-109 | 2026-10-31 | küp dünya: sandık ekranı çantayla üst üste binmez, deneme alanı menüden kaldırıldı; 245 JS testi | b6b0046 |
+| CP-110 | 2026-10-31 | çakmak dokusu değişti; FPS kitine ana menü ve Esc duraklatma menüsü; 246 JS testi | 6645015 |
