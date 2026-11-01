@@ -110,3 +110,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-101 | 2026-10-31 | küp dünya: 36 gerçek envanter yeri (64'lük yığın, istenen yere koyma), oyuncu ve dünya kaydı, işleme masası dokusu; 237 JS testi | b7e864a |
 | CP-102 | 2026-10-31 | küp dünya: fare sıçraması düzeltildi, lav/su yüzme ve akış, kova ve hızlı portal dökümü, envanterde sürükleyerek dağıtma, çapa samanı hızlı kırar; 239 JS testi | 784f5e1 |
 | CP-103 | 2026-10-31 | küp dünya: lav hasarı yarıya indi; lavdan çıkış ve kova portal dökümü tarayıcıda denendi; 239 JS testi | a8cef01 |
+| CP-104 | 2026-10-31 | küp dünya: dökülen su ve lav yayılır (düşer, zeminde akar, su+lav kara kaya); 240 JS testi | 9a374ea |
