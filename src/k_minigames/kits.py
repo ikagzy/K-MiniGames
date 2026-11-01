@@ -291,7 +291,7 @@ def _football_variety(spec: dict) -> None:
     """The same for the football match: the open parts of the match are drawn."""
     spec.setdefault("theme", random.choice(("grass", "grass", "night", "indoor", "street")))
     if not spec.get("music") and not spec.get("musicStyle"):
-        spec["musicStyle"] = {"mood": random.choice(("happy", "epic", "tense")), "tempo": random.choice(("medium", "fast")), "seed": random.randint(0, 9999)}
+        spec["music"] = "football"   # the tune written for the football kit
     spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
     spec.setdefault("teamSize", random.choice((4, 5, 5, 6)))
     spec.setdefault("duration", random.choice((90, 120, 120, 180)))

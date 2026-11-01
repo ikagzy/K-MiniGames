@@ -46,7 +46,7 @@
   function circle(c, cx, cy, r) { for (var a = 0; a < 6.2832; a += 0.5 / r) c.fillRect(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), 1, 1); }
 
   K.kit.define("football", {
-    defaults: { title: "Futbol", theme: "grass", teamSize: 5, duration: 120, difficulty: 3, home: "red", away: "blue", keeper: true, music: "overworld", world: { seed: 1 }, width: 640, height: 400, features: [] },
+    defaults: { title: "Futbol", theme: "grass", teamSize: 5, duration: 120, difficulty: 3, home: "red", away: "blue", keeper: true, music: "football", world: { seed: 1 }, width: 640, height: 400, features: [] },
 
     check: function (spec) {
       var errors = [], ms = spec.musicStyle;

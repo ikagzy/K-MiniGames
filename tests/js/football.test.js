@@ -84,3 +84,9 @@ test('your team plays by itself as well as the other: with nobody controlling, t
   }
   assert.ok(homeShots >= 2, 'the home side shoots by itself: ' + homeShots); assert.ok(homeShots >= awayShots * 0.45, 'about as good as the opponent: ' + homeShots + ' against ' + awayShots);
 });
+
+test('the football tune: written for the kit, a lead and a bass of the same length, played by default', () => {
+  const K = fresh(); const t = K.music.tracks.football; assert.ok(t, 'the football tune exists'); assert.ok(t.bpm >= 120 && t.bass && t.loop);
+  const beats = (notes) => notes.reduce((a, n) => a + n.beats, 0); assert.strictEqual(beats(t.notes), beats(t.bass), 'lead and bass stay together');
+  assert.strictEqual(K.kit.run(spec()).spec.music, 'football');
+});

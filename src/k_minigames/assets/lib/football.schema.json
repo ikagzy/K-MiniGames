@@ -26,6 +26,7 @@
     "music": {
       "type": "string",
       "enum": [
+        "football",
         "overworld",
         "underground",
         "castle",

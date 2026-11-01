@@ -14,6 +14,8 @@ THEMES = ("bunker", "space", "ruins", "lab", "factory")
 ENEMIES = ("guard", "runner", "sniper", "brute", "turret")
 WEAPONS = ("pistol", "shotgun", "rifle", "magnum")
 FEATURES = ("sprint", "regen", "armor")
+MAPS = ("depo", "liman", "kale", "tunel")
+TAC_WORDS = ["tur tur oynanan taktik modda olsun", "taktik nişancı modu: bölgeye spike kurmalı", "bir bölgeye bomba kurup savunduğum taktik mod", "hazırlıkta silah alıp tur tur oynadığım taktik mod"]
 TITLES = ("Sığınak", "Son Hat", "Kızıl Alarm", "Derin Tesis", "Gece Operasyonu", "Çelik Koridor", "Sıfır Nokta")
 DEFAULTS = {"theme": "bunker", "difficulty": 3, "levels": 3, "size": "medium", "mode": "campaign", "ammo": "normal", "enemies": ("guard", "runner", "sniper"),
             "weapons": ("pistol", "shotgun", "rifle"), "boss": True}
@@ -28,7 +30,8 @@ TR = {
     "difficulty": {1: ["çok kolay", "en kolay zorlukta"], 2: ["kolay", "rahat bir zorlukta"], 3: ["orta zorlukta", "dengeli zorlukta"], 4: ["zor", "zorlayıcı"],
                    5: ["çok zor", "acımasız zorlukta", "kabus gibi zor"]},
     "size": {"small": ["küçük bölümler", "küçük haritalar"], "medium": ["orta büyüklükte bölümler"], "large": ["büyük ve geniş bölümler", "devasa haritalar"]},
-    "mode": {"campaign": ["bölümlerden oluşsun", "bölüm bölüm ilerleyelim"], "arena": ["arena modunda olsun", "dalga dalga gelen düşmanlara karşı hayatta kalma", "tek bir arenada dalgalar halinde düşman gelsin"]},
+    "map": {"depo": ["depo haritasında", "bir depoda"], "liman": ["liman haritasında", "limanda"], "kale": ["kale haritasında", "bir kalede"], "tunel": ["tünel haritasında", "tünelde"]},
+    "mode": {"campaign": ["bölümlerden oluşsun", "bölüm bölüm ilerleyelim"], "tactical": TAC_WORDS, "arena": ["arena modunda olsun", "dalga dalga gelen düşmanlara karşı hayatta kalma", "tek bir arenada dalgalar halinde düşman gelsin"]},
     "ammo": {"scarce": ["mermi kıt olsun", "az mermi", "mermi bulmak zor olsun"], "normal": ["normal miktarda mermi"], "plenty": ["bol mermi", "mermi bol olsun", "sınırsız gibi mermi"]},
     "enemies": {"guard": ["ateş eden nöbetçiler", "silahlı muhafızlar"], "runner": ["üstüne koşan koşucular", "yaklaşıp vuran düşmanlar"],
                 "sniper": ["keskin nişancılar", "uzaktan vuran keskin nişancı düşmanlar"], "brute": ["iri ve dayanıklı düşmanlar", "dev gibi ağır düşmanlar"],
@@ -60,7 +63,11 @@ def _spec(rng: random.Random, fields: set) -> dict:
     if "size" in fields:
         spec["size"] = rng.choice(("small", "medium", "large"))
     if "mode" in fields:
-        spec["mode"] = rng.choice(("campaign", "arena"))
+        spec["mode"] = rng.choice(("campaign", "arena", "tactical"))
+        if spec["mode"] in ("arena", "tactical") and rng.random() < 0.5:
+            spec["map"] = rng.choice(MAPS)
+        if spec["mode"] == "tactical" and rng.random() < 0.4:
+            spec["rounds"] = rng.randint(2, 7)
     if "ammo" in fields:
         spec["ammo"] = rng.choice(("scarce", "plenty"))
     if "enemies" in fields:
@@ -94,6 +101,8 @@ def _phrase(rng: random.Random, field: str, spec: dict) -> str:
         return rng.choice([f"{word} bölüm sürsün", f"{word} bölümlük bir oyun", f"toplam {word} bölüm olsun"])
     if field in ("enemies", "weapons"):
         return ", ".join(rng.choice(TR[field][k]) for k in spec[field]) + (" olsun" if field == "weapons" and rng.random() < 0.5 else "")
+    if field == "rounds":
+        return rng.choice([f"{spec['rounds']} tur kazanan maçı alsın", f"ilk {spec['rounds']} turu kazanan galip gelsin"])
     if field == "boss":
         return rng.choice(TR["boss"][spec["boss"]])
     if field == "features":
@@ -102,7 +111,7 @@ def _phrase(rng: random.Random, field: str, spec: dict) -> str:
 
 
 def _mentioned(spec: dict) -> list:
-    return [f for f in ("title", "theme", "musicStyle", "difficulty", "levels", "size", "mode", "ammo", "enemies", "weapons", "boss", "features") if f in spec]
+    return [f for f in ("title", "theme", "musicStyle", "difficulty", "levels", "size", "mode", "map", "rounds", "ammo", "enemies", "weapons", "boss", "features") if f in spec]
 
 
 def _describe(rng: random.Random, fields: list, spec: dict) -> str:
@@ -131,7 +140,10 @@ def _describe(rng: random.Random, fields: list, spec: dict) -> str:
 # ---- edits: a spec and a request in, the whole new spec out ----
 def _edit(rng: random.Random, spec: dict):
     new = json.loads(json.dumps(spec))
-    kind = rng.choice(["weapon", "boss_on", "boss_off", "harder", "easier", "levels", "theme", "arena", "regen"])
+    kind = rng.choice(["weapon", "boss_on", "boss_off", "harder", "easier", "levels", "theme", "arena", "regen", "tactical"])
+    if kind == "tactical":
+        new["mode"] = "tactical"
+        return rng.choice(["taktik moda çevir", "tur tur taktik mod olsun", "spike kurmalı taktik mod yap"]), new, "mode"
     if kind == "weapon":
         pool = [w for w in WEAPONS if w not in new.get("weapons", [])]
         if pool:
@@ -225,6 +237,10 @@ def _value(field: str, spec: dict):
         return spec.get("title")
     if field == "boss":
         return bool(spec.get("boss", DEFAULTS["boss"]))
+    if field == "map":
+        return spec.get("map", "")
+    if field == "rounds":
+        return spec.get("rounds", 4)
     return spec.get(field, DEFAULTS.get(field))
 
 
@@ -251,6 +267,8 @@ HAND_EVAL_FPS = [
     {"kit": "fps", "prompt": "Tek bölümlük, çok zor, patronsuz bir nişancı", "expect": {"levels": 1, "difficulty": 5, "boss": False}},
     {"kit": "fps", "prompt": "Adı Sıfır Nokta olsun, birinci şahıs, korku müzikli", "expect": {"title": "Sıfır Nokta", "music": "spooky"}},
     {"kit": "fps", "prompt": "Bana sadece düz bir FPS yap", "expect": {}},
+    {"kit": "fps", "prompt": "Liman haritasında tur tur oynanan taktik nişancı modu, zor", "expect": {"mode": "tactical", "map": "liman", "difficulty": 4}},
+    {"kit": "fps", "prompt": "Kalede dalga dalga düşman gelsin, arena olsun, bol mermi", "expect": {"mode": "arena", "map": "kale", "ammo": "plenty"}},
 ]
 
 
