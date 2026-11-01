@@ -114,3 +114,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-105 | 2026-10-31 | küp dünya: kovayla dökülen sıvı tek kaynak + akış, kovayla geri çekilir; 241 JS testi | ed5e03d |
 | CP-106 | 2026-10-31 | küp dünya: menüden Deneme alanı kur (lav/su havuzu, hazır kara kaya çerçevesi, saman, masa, fırın, sandık, eşyalar), yüzeyde zıplayarak çıkış; 242 JS testi | 9805a5b |
 | CP-107 | 2026-10-31 | küp dünya: akış sel yapmaz, deneme alanı eski çantayı sandığa koyup çakmak/kova verir, hız dökümü menzili; 243 JS testi | 1ee444f |
+| CP-108 | 2026-10-31 | küp dünya: altın aletler kırılmaz, her alet kendi hasarıyla vurur (elde tutulan), ipucunda hasar; 244 JS testi | 7795d1b |
