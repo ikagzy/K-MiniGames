@@ -340,7 +340,7 @@ class Generator:
         # the small model's gaps are closed by rules that read the description (specrules)
         if not self.model.startswith(TUNED_PREFIX):
             return spec
-        return {"platformer": specrules.apply, "shooter": specrules.apply_shooter, "sandbox": specrules.apply_sandbox, "fps": specrules.apply_fps, "race": specrules.apply_race, "football": specrules.apply_football, "puzzle": specrules.apply_puzzle, "adventure": specrules.apply_adventure, "tower": specrules.apply_tower}.get(kit, lambda sp, text: sp)(spec, description)
+        return {"platformer": specrules.apply, "shooter": specrules.apply_shooter, "sandbox": specrules.apply_sandbox, "fps": specrules.apply_fps, "race": specrules.apply_race, "football": specrules.apply_football, "puzzle": specrules.apply_puzzle, "adventure": specrules.apply_adventure, "tower": specrules.apply_tower, "fighter": specrules.apply_fighter}.get(kit, lambda sp, text: sp)(spec, description)
 
     def edit_spec(self, spec: dict, request: str, kit: str, cancel: Callable[[], bool] | None = None, *,
                   memory: str = "") -> dict:

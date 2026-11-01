@@ -93,9 +93,17 @@ _CHECKS["tower"] = [
     ("Kule düşmana ateş eder.", "const s = game.state; s.gold = 9999; const c = s.map.cells[Math.floor(s.map.cells.length / 3)]; for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1]]) if (s.canBuild(c[0] + dx, c[1] + dy)) s.build(c[0] + dx, c[1] + dy, 'arrow'); await new Promise(r => setTimeout(r, 14000)); return s.kills > 0 || s.shots.length > 0 || s.gold > 9000 + 5;"),
 ]
 
+_CHECKS["fighter"] = [
+    ("Oyun açılır ve iki dövüşçü sahnededir.", "return game.g.current === 'play' && game.state.f.length === 2 && Number.isFinite(game.state.f[0].x);"),
+    ("Dövüşçü yürüyebilir.", "await new Promise(r => setTimeout(r, 2200)); const f = game.state.f[0], x = f.x; K.press('a'); await new Promise(r => setTimeout(r, 500)); K.press('a', false); K.press('d'); await new Promise(r => setTimeout(r, 300)); K.press('d', false); return Math.abs(f.x - x) > 2;"),
+    ("Yumruk ve tekme atılabilir.", "const s = game.state, f = s.f[0]; f.st = 'idle'; f.move = null; const a = s.attack(f, 'punch'); await new Promise(r => setTimeout(r, 400)); f.st = 'idle'; f.move = null; return a === true && s.attack(f, 'kick') === true;"),
+    ("Vuruş rakibin canını azaltır.", "const s = game.state, a = s.f[0], b = s.f[1]; a.st = 'idle'; a.move = null; b.hp = b.maxHp; b.st = 'idle'; b.block = false; a.x = 140; b.x = 162; b.ai.off = true; s.attack(a, 'kick'); await new Promise(r => setTimeout(r, 500)); b.ai.off = false; return b.hp < b.maxHp;"),
+    ("Rakip yapay zekâ ile oynar.", "const s = game.state, a = s.f[0], b = s.f[1]; b.hp = b.maxHp; const x = b.x; a.hp = a.maxHp; await new Promise(r => setTimeout(r, 4000)); return Math.abs(b.x - x) > 1 || a.hp < a.maxHp;"),
+]
+
 # the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
 _PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
-for _kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower"):
+for _kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter"):
     _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
 
 _SYSTEM = (
@@ -210,7 +218,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower") and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower", "fighter") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -232,6 +240,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _adventure_variety(spec)
     elif kit == "tower":
         _tower_variety(spec)
+    elif kit == "fighter":
+        _fighter_variety(spec)
     return spec
 
 
@@ -373,6 +383,21 @@ def _tower_variety(spec: dict) -> None:
     spec.setdefault("boss", random.random() < 0.7)
     if not spec.get("features"):
         spec["features"] = random.choice((["speed"], ["speed"], ["freeze"], ["bonus"], ["speed", "freeze"], []))
+
+
+def _fighter_variety(spec: dict) -> None:
+    """The same for the fighting game: the open parts are drawn."""
+    spec.setdefault("theme", random.choice(("dojo", "street", "street", "temple", "volcano")))
+    spec.setdefault("hero", random.choice(("brawler", "brawler", "ninja", "sumo")))
+    spec.setdefault("rival", random.choice([t for t in ("brawler", "ninja", "sumo") if t != spec["hero"]]))
+    spec.setdefault("color", random.choice(("red", "blue", "yellow", "green")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["music"] = "fighter"   # the tune written for the fighter kit
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec.setdefault("rounds", random.choice((2, 2, 3)))
+    spec.setdefault("time", random.choice((45, 60, 60, 90)))
+    if not spec.get("features"):
+        spec["features"] = random.choice((["special"], ["special"], ["special", "rage"], ["rage"], []))
 
 
 def keep_seeds(before: dict, after: dict) -> dict:

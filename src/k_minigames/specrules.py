@@ -458,3 +458,48 @@ def apply_tower(spec: dict, description: str) -> dict:
     if difficulty:
         spec["difficulty"] = difficulty
     return spec
+
+
+FIGHT_THEMES = {"dojo": r"dojo|dovus salon|salon", "street": r"sokak|mahalle|sehir", "temple": r"tapinak|manastir", "volcano": r"yanardag|volkan|lav\b"}
+FIGHT_TYPES = {"brawler": r"dovuscu|boksor|kavgaci", "ninja": r"ninja|suikast", "sumo": r"sumo|koca adam|dev gibi|iri adam"}
+FIGHT_COLORS = {"red": r"kirmizi", "blue": r"\bmavi", "yellow": r"\bsari", "green": r"\byesil"}
+
+
+def apply_fighter(spec: dict, description: str) -> dict:
+    """The same kind of rules for the fighting game: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    found = [name for name, rx in FIGHT_THEMES.items() if re.search(rx, text)]
+    if len(found) == 1:
+        spec["theme"] = found[0]
+    kinds = [n for n, rx in FIGHT_TYPES.items() if re.search(rx, text)]
+    if len(kinds) == 1:
+        if re.search(r"(rakip|karsimda|karsi taraf)\w*\s+(?:bir\s+)?" + FIGHT_TYPES[kinds[0]], text):
+            spec["rival"] = kinds[0]
+        else:
+            spec["hero"] = kinds[0]
+    elif len(kinds) == 2:
+        spec["hero"], spec["rival"] = kinds[0], kinds[1]
+    colors = [n for n, rx in FIGHT_COLORS.items() if re.search(rx + r"\s+(dovuscu|ninja|sumo|forma|kiyafet)", text)]
+    if len(colors) == 1:
+        spec["color"] = colors[0]
+    rounds = re.search(rf"\b({_NUMBER})\s+(tur|raunt|round)\b", text)
+    if rounds and 1 <= _number(rounds.group(1)) <= 5:
+        spec["rounds"] = _number(rounds.group(1))
+    seconds = re.search(r"(\d{2})\s*(saniye|sn)", text)
+    if seconds and 20 <= int(seconds.group(1)) <= 99:
+        spec["time"] = int(seconds.group(1))
+    features = list(spec.get("features") or [])
+    for name, rx in (("special", r"ozel hareket|ates topu|ozel vurus|\bspecial|\bhadouken"), ("versus", r"iki kisilik|iki oyunculu|arkadasla|\bversus|2 kisilik|ikinci oyuncu"), ("rage", r"ofke|\brage|cani azalinca guclen|gucleni")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec
