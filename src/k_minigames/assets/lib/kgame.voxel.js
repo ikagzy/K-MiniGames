@@ -650,20 +650,23 @@
         return true;
       };
       // a liquid runs into the hole you open: it falls down as far as it can and spreads 3 blocks sideways; water on lava makes stone
-      state.flow = function (x, y, z) {
-        var f = 0, d = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]], i;
-        for (i = 0; i < 5; i++) { var nb = get(x + d[i][0], y + d[i][1], z + d[i][2]); if (nb === LAVA) f = LAVA; else if (nb === WATER && f !== LAVA) f = WATER; }
-        if (!f) return 0;
-        var left = 90, spread = function (cx, cy, cz, range) {
+      state.spreadFluid = function (x, y, z, f, range, budget) {   // a liquid fills the cell, falls down as far as it can, and runs over the floor `range` blocks; water meeting lava makes kara kaya
+        var left = budget || 90, near = [[1, 0], [-1, 0], [0, 1], [0, -1]], other = f === WATER ? LAVA : WATER;
+        var spread = function (cx, cy, cz, r) {
           if (left <= 0 || cy < 1 || get(cx, cy, cz) !== AIR) return; left--;
-          var near = [[1, 0], [-1, 0], [0, 1], [0, -1], [0, 0]], k, other = f === WATER ? LAVA : WATER, mixed = false;
-          for (k = 0; k < 5; k++) if (get(cx + near[k][0], cy, cz + near[k][1]) === other || (k === 4 && get(cx, cy + 1, cz) === other)) mixed = true;
+          var k, mixed = get(cx, cy + 1, cz) === other;
+          for (k = 0; k < 4; k++) if (get(cx + near[k][0], cy, cz + near[k][1]) === other) mixed = true;
           if (mixed) { set(cx, cy, cz, OBSIDIAN, true); return; }
           set(cx, cy, cz, f, true);
-          if (get(cx, cy - 1, cz) === AIR) { spread(cx, cy - 1, cz, 3); return; }
-          if (range > 0) for (k = 0; k < 4; k++) spread(cx + near[k][0], cy, cz + near[k][1], range - 1);
+          if (get(cx, cy - 1, cz) === AIR) { spread(cx, cy - 1, cz, range); return; }
+          if (r > 0) for (k = 0; k < 4; k++) spread(cx + near[k][0], cy, cz + near[k][1], r - 1);
         };
-        spread(x, y, z, 3); return 90 - left;
+        spread(x, y, z, range); return (budget || 90) - left;
+      };
+      state.flow = function (x, y, z) {   // a liquid runs into a hole you open
+        var f = 0, d = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]], i;
+        for (i = 0; i < 5; i++) { var nb = get(x + d[i][0], y + d[i][1], z + d[i][2]); if (nb === LAVA) f = LAVA; else if (nb === WATER && f !== LAVA) f = WATER; }
+        return f ? state.spreadFluid(x, y, z, f, f === LAVA ? 2 : 4) : 0;
       };
       state.breakBlock = function () {
         var t = target();
@@ -1133,10 +1136,11 @@
         if ((cb !== AIR && cb !== WATER && cb !== LAVA) || cy < 1) return false;
         var near = function (what) { for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) if ((a || b || c) && get(cx + a, cy + b, cz + c) === what) return true; return false; };
         if (id === 164) {
-          set(cx, cy, cz, WATER, true);
-          for (var q = 1; q <= 6 && get(cx, cy - q, cz) === AIR; q++) set(cx, cy - q, cz, WATER, true);   // a poured stream falls
+          if (cb === WATER) return false;
           for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) if (get(cx + a, cy + b, cz + c) === LAVA) set(cx + a, cy + b, cz + c, OBSIDIAN, true);
-        } else set(cx, cy, cz, near(WATER) ? OBSIDIAN : LAVA, true);
+          set(cx, cy, cz, AIR, true); state.spreadFluid(cx, cy, cz, WATER, 4);   // the poured water runs: down, and over the floor
+        } else if (near(WATER)) set(cx, cy, cz, OBSIDIAN, true);
+        else { set(cx, cy, cz, AIR, true); state.spreadFluid(cx, cy, cz, LAVA, 2); }
         swap(163); return true;
       };
       state.rightUp = function () { state.eating = null; state.blocking = false; };

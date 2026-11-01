@@ -1628,3 +1628,12 @@ test('buckets and tools: a bucket scoops and pours, lava poured beside water bec
   assert.deepStrictEqual([s.slots[14] && s.slots[14].n, s.slots[15] && s.slots[15].n, s.slots[16] && s.slots[16].n], [1, 1, 1], 'a right drag puts one in each'); assert.strictEqual(s.cursor.n, 1);
   s.closeUi();
 });
+
+test('poured liquids run: water spreads over a flat floor and falls into a hole, lava spreads less, and water poured by lava makes kara kaya', () => {
+  const K = fresh(); const { s, cx, cz, gy } = yard(K, 132);
+  const w = s.spreadFluid(cx, gy + 1, cz, 14, 4); assert.ok(w >= 20, 'water covers the floor around: ' + w);
+  assert.strictEqual(s.get(cx + 3, gy + 1, cz), 14); assert.strictEqual(s.get(cx + 5, gy + 1, cz), 0, 'but not forever');
+  s.set(cx + 6, gy, cz - 6, 0, false); s.set(cx + 6, gy - 1, cz - 6, 0, false); s.spreadFluid(cx + 6, gy + 1, cz - 5, 14, 4); assert.strictEqual(s.get(cx + 6, gy, cz - 6), 14, 'it falls into the hole');
+  const l = s.spreadFluid(cx - 6, gy + 1, cz + 6, 37, 2); assert.ok(l >= 5 && l < w, 'lava runs less: ' + l);
+  s.spreadFluid(cx - 3, gy + 1, cz + 6, 14, 2); assert.ok([s.get(cx - 3, gy + 1, cz + 6), s.get(cx - 4, gy + 1, cz + 6)].includes(151), 'where they meet it is kara kaya');
+});
