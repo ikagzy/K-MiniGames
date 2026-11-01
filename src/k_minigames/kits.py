@@ -31,7 +31,7 @@ _CHECKS["shooter"] = [
      "const x = game.me.x; K.press('d'); await new Promise(r => setTimeout(r, 500)); K.press('d', false); return game.me.x > x + 20;"),
     ("Gemi ateş eder.",
      "K.press(' '); await new Promise(r => setTimeout(r, 400)); K.press(' ', false); return game.g.all('pbullet').length > 0;"),
-    ("Düşman dalgası gelir.", "await new Promise(r => setTimeout(r, 2500)); return game.g.all('enemy').length > 0;"),
+    ("Düşman dalgası gelir.", "for (let i = 0; i < 24; i++) { if (game.g.all('enemy').length > 0) return true; await new Promise(r => setTimeout(r, 250)); } return false;"),
     ("Gemi ekrandan çıkmaz.", "return game.me.x >= 0 && game.me.x + game.me.w <= game.g.width;"),
 ]
 
@@ -41,7 +41,7 @@ _CHECKS["sandbox"] = [
     ("Oyuncu ileri yürüyebilir.",
      "const x = game.p.x, z = game.p.z; K.press('w'); await new Promise(r => setTimeout(r, 600)); K.press('w', false); return Math.hypot(game.p.x - x, game.p.z - z) > 0.5;"),
     ("Oyuncu bir blok kırabilir.",
-     "game.state.p.pitch = -0.7; K.press('f'); await new Promise(r => setTimeout(r, 2500)); K.press('f', false); return game.hud.broken > 0;"),
+     "K.voxel.keyActions = true; game.state.p.pitch = -0.7; K.press('f'); await new Promise(r => setTimeout(r, 2500)); K.press('f', false); K.voxel.keyActions = false; return game.hud.broken > 0;"),
     ("Dünyada toprak ve taş vardır.",
      "return game.world.count(2) > 100 && game.world.count(3) > 100;"),
 ]
@@ -90,7 +90,7 @@ _CHECKS["tower"] = [
     ("Oyun açılır ve yol vardır.", "return game.g.current === 'play' && game.state.map.cells.length >= 24;"),
     ("Kule kurulabilir.", "const s = game.state; s.gold = 999; for (let y = 0; y < s.map.H; y++) for (let x = 0; x < s.map.W; x++) if (s.canBuild(x, y)) return s.build(x, y, s.spec.towers[0]) && s.towers.length === 1; return false;"),
     ("Dalga başlar ve düşman yolda yürür.", "const s = game.state; s.startWave(); await new Promise(r => setTimeout(r, 2500)); const e = s.enemies[0]; return !!e && e.dist > 0;"),
-    ("Kule düşmana ateş eder.", "const s = game.state; s.gold = 9999; const c = s.map.cells[Math.floor(s.map.cells.length / 3)]; for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1]]) if (s.canBuild(c[0] + dx, c[1] + dy)) s.build(c[0] + dx, c[1] + dy, 'arrow'); await new Promise(r => setTimeout(r, 14000)); return s.kills > 0 || s.shots.length > 0 || s.gold > 9000 + 5;"),
+    ("Kule düşmana ateş eder.", "const s = game.state; s.gold = 9999; s.startWave(); const c = s.map.cells[Math.floor(s.map.cells.length / 3)]; let t = null; for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1]]) if (s.canBuild(c[0] + dx, c[1] + dy)) { s.build(c[0] + dx, c[1] + dy, 'arrow'); t = s.towerAt(c[0] + dx, c[1] + dy); break; } await new Promise(r => setTimeout(r, 1300)); const e = s.enemies[0]; if (!e || !t) return false; let best = 0, bd = 1e9; for (let d = 0; d <= s.pathLen; d += 3) { const p = s.posAt(d), q = Math.hypot(p.x - t.x, p.y - t.y); if (q < bd) { bd = q; best = d; } } e.dist = best; const hp = e.hp; await new Promise(r => setTimeout(r, 2200)); return e.dead || e.hp < hp || s.kills > 0;"),
 ]
 
 _CHECKS["fighter"] = [

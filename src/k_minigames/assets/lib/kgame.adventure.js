@@ -192,6 +192,10 @@
         if (p.hp <= 0) { p.hp = 0; finish(false); }
         return true;
       };
+      state.clickAttack = function (sx, sy) {   // a click in picture pixels: turn towards it and strike (or shoot)
+        var p = state.p, cam = state.cam || { x: 0, y: 0 }; if (!p || state.over || state.paused) return false;
+        p.face = Math.atan2(sy + cam.y - p.y, sx + cam.x - p.x); return state.attack();
+      };
       state.usePotion = function () { var p = state.p; if (p.potions <= 0 || p.hp >= p.maxHp || state.over) return false; p.potions--; p.hp = Math.min(p.maxHp, p.hp + 6); K.sfx("coin"); state.say("İyileştin"); return true; };
       state.dash = function () { var p = state.p; if (!state.hasDash || p.dashCd > 0 || state.over) return false; p.dashT = 0.18; p.dashCd = 1; K.sfx("click"); return true; };
 
@@ -260,7 +264,7 @@
       };
 
       // ---- the menus ----
-      var CONTROLS = ["W A S D ya da oklar  yürü      Boşluk ya da J  saldır      Shift  atıl (dash özelliği)      Q  iksir iç", "R  yeniden başla      Esc  menü", "Anahtarı bul, kilitli kapıyı aç, merdivene in. Son katta patron seni bekliyor."];
+      var CONTROLS = ["W A S D ya da oklar  yürü      Boşluk, J ya da sol tık (tıkladığın yöne)  saldır      Shift  atıl (dash özelliği)      Q  iksir iç", "R  yeniden başla      Esc  menü", "Anahtarı bul, kilitli kapıyı aç, merdivene in. Son katta patron seni bekliyor."];
       state.openMenu = function (kind) { state.menu.open = true; state.menu.kind = kind; state.menu.index = 0; state.paused = true; };
       state.closeMenu = function () { state.menu.open = false; state.menu.started = true; state.paused = false; };
       state.toggleMusic = function () { state.musicOn = !state.musicOn; if (state.musicOn) { if (tune) K.music.play(tune); } else K.music.stop(); };
@@ -282,6 +286,7 @@
         var m = state.menu;
         if (m.kind === "controls") { if (tap("Escape") || tap("Enter") || tap(" ")) { m.kind = m.back || "main"; m.index = 0; } return; }
         var items = state.menuItems();
+        if (K.mouse && K.mouse.y) { var hv = Math.floor((K.mouse.y - rowY(items.length)) / 44); if (K.mouse.x > g.width / 2 - 150 && K.mouse.x < g.width / 2 + 150 && hv >= 0 && hv < items.length && state.hoverY !== K.mouse.y) { m.index = hv; state.hoverY = K.mouse.y; } }   // the mouse chooses a row
         if (tap("ArrowUp") || tap("w")) m.index = (m.index + items.length - 1) % items.length;
         if (tap("ArrowDown") || tap("s")) m.index = (m.index + 1) % items.length;
         if (tap("Enter") || tap(" ")) items[Math.min(m.index, items.length - 1)].act();
@@ -306,6 +311,7 @@
         var p = state.p, L = state.level; if (!state.bg) buildBg();
         camx = clamp(Math.round(p.x - VW / 2), 0, L.W * T - VW); camy = clamp(Math.round(p.y - VH / 2), 0, L.H * T - VH);
         if (state.shake > 0) { camx += Math.round((rnd() - 0.5) * 3); camy += Math.round((rnd() - 0.5) * 3); }
+        state.cam = { x: camx, y: camy };
         c.imageSmoothingEnabled = false; c.drawImage(state.bg, camx, camy, VW, VH, 0, 0, VW, VH);
         c.save(); c.translate(-camx, -camy);
         var list = [];
@@ -364,7 +370,7 @@
         drawWorld(sc); c.imageSmoothingEnabled = false; c.drawImage(small, 0, 0, g.width, g.height);
         if (!(state.menu.open && state.menu.kind === "main")) drawHud(c); if (state.menu.open) drawMenu(c);
       } }];
-      if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) g.canvas.addEventListener("mousedown", function (e) { if (e.button === 0 && state.menu.open) state.menuClick(); });
+      if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) g.canvas.addEventListener("mousedown", function (e) { if (e.button !== 0) return; if (state.menu.open) state.menuClick(); else state.clickAttack(K.mouse.x * VW / g.width, K.mouse.y * VH / g.height); });
       g.scene("play", { update: function (game, dt) {
         if (state.menu.open) { state.menuUpdate(); return; }
         if (tap("Escape")) { state.openMenu("pause"); return; }

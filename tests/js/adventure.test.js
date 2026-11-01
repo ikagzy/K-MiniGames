@@ -92,3 +92,9 @@ test('the adventure tune: written for the kit, a lead and a bass of the same len
   assert.ok(t.notes.every((n) => n.freq === 0 || n.freq > 100), 'every note was understood');
   assert.strictEqual(K.kit.run(spec()).spec.music, 'adventure');
 });
+
+test('a left click strikes towards the click: the knight swings that way, the ranger shoots that way', () => {
+  const K = fresh(); const s = K.kit.run(spec({ hero: 'ranger', difficulty: 1 })); s.start(); clearEnemies(s); const p = s.p; s.cam = { x: p.x - 160, y: p.y - 100 };
+  assert.strictEqual(s.clickAttack(160, 40), true, 'a click above the hero'); assert.ok(Math.abs(p.face + Math.PI / 2) < 0.05, 'turned up: ' + p.face); assert.strictEqual(s.shots.length, 1); assert.ok(s.shots[0].vy < -100 && Math.abs(s.shots[0].vx) < 5, 'the arrow flies up');
+  run(s, 1); assert.strictEqual(s.clickAttack(260, 100), true); assert.ok(Math.abs(p.face) < 0.05, 'now to the right');
+});

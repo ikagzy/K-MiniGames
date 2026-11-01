@@ -1841,7 +1841,7 @@
       var mouseLeft = false;
       if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) {
         var canvas = g.canvas;
-        canvas.addEventListener("click", function () { if (!state.menu.open && !state.uiOpen() && canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (e) { /* no lock: keys still work */ } } });
+        canvas.addEventListener("click", function () { if (!state.menu.open && !state.uiOpen() && canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { var lockAsk = canvas.requestPointerLock(); if (lockAsk && lockAsk.catch) lockAsk.catch(function () { /* not allowed here: keys still work */ }); } catch (e) { /* no lock: keys still work */ } } });
         document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && !state.menu.open && !state.uiOpen() && g.current === "play" && state.menuStarted) state.openMenu("pause"); });   // Esc gives the mouse back: the pause menu opens
         document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.menu.open) if (Math.abs(e.movementX) < 250 && Math.abs(e.movementY) < 250) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });   // a browser now and then reports a huge jump: ignored
         canvas.addEventListener("mousedown", function (e) {

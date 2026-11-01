@@ -310,6 +310,7 @@
         var m = state.menu;
         if (m.kind === "controls") { if (tap("Escape") || tap("Enter") || tap(" ")) { m.kind = m.back || "main"; m.index = 0; } return; }
         var items = state.menuItems();
+        if (K.mouse && K.mouse.y) { var hv = Math.floor((K.mouse.y - rowY(items.length)) / 44); if (K.mouse.x > g.width / 2 - 150 && K.mouse.x < g.width / 2 + 150 && hv >= 0 && hv < items.length && state.hoverY !== K.mouse.y) { m.index = hv; state.hoverY = K.mouse.y; } }   // the mouse chooses a row
         if (tap("ArrowUp") || tap("w")) m.index = (m.index + items.length - 1) % items.length;
         if (tap("ArrowDown") || tap("s")) m.index = (m.index + 1) % items.length;
         if (tap("Enter") || tap(" ")) items[Math.min(m.index, items.length - 1)].act();

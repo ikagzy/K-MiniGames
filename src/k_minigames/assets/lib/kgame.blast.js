@@ -168,7 +168,10 @@
       function slotAt(sx, sy) { if (sy < TRAY) return -1; var i = Math.floor((sx - 8) / 100); return i >= 0 && i < 3 && state.pieces[i] ? i : -1; }
       function anchor(p, sx, sy) { return { x: Math.round((sx - BX) / CS - p.w / 2), y: Math.round((sy - BY) / CS - p.h / 2) }; }
       state.mouseDown = function (sx, sy) { if (state.over || state.clearing) return false; var s = slotAt(sx, sy); if (s < 0) return false; state.sel = s; state.drag = { slot: s, x: sx, y: sy }; return true; };
-      state.mouseMove = function (sx, sy) { if (state.drag) { state.drag.x = sx; state.drag.y = sy; } };
+      state.mouseMove = function (sx, sy) {
+        if (state.drag) { state.drag.x = sx; state.drag.y = sy; return; }
+        var gx = Math.floor((sx - BX) / CS), gy = Math.floor((sy - BY) / CS); if (gx >= 0 && gy >= 0 && gx < N && gy < N) { state.cx = gx; state.cy = gy; }   // the cursor follows the mouse over the board
+      };
       state.mouseUp = function (sx, sy) {
         var dg = state.drag; state.drag = null; if (!dg) return false; var p = state.pieces[dg.slot], a = p ? anchor(p, sx, sy) : null;
         if (p && a && sy < TRAY) { if (state.place(dg.slot, a.x, a.y)) return true; state.say("Buraya sığmaz", 0.8); K.sfx("hit"); }
@@ -197,6 +200,7 @@
         var m = state.menu;
         if (m.kind === "controls") { if (tap("Escape") || tap("Enter") || tap(" ")) { m.kind = m.back || "main"; m.index = 0; } return; }
         var items = state.menuItems();
+        if (K.mouse && K.mouse.y) { var hv = Math.floor((K.mouse.y - rowY(items.length)) / 44); if (K.mouse.x > g.width / 2 - 150 && K.mouse.x < g.width / 2 + 150 && hv >= 0 && hv < items.length && state.hoverY !== K.mouse.y) { m.index = hv; state.hoverY = K.mouse.y; } }   // the mouse chooses a row
         if (tap("ArrowUp") || tap("w")) m.index = (m.index + items.length - 1) % items.length;
         if (tap("ArrowDown") || tap("s")) m.index = (m.index + 1) % items.length;
         if (tap("Enter") || tap(" ")) items[Math.min(m.index, items.length - 1)].act();
@@ -267,7 +271,7 @@
       if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) {
         var pos = function () { return [K.mouse.x * VW / g.width, K.mouse.y * VH / g.height]; };
         g.canvas.addEventListener("mousedown", function (e) { if (e.button !== 0) return; if (state.menu.open) { state.menuClick(); return; } if (!state.paused) { var p = pos(); state.mouseDown(p[0], p[1]); } });
-        g.canvas.addEventListener("mousemove", function () { if (!state.menu.open) { var p = pos(); state.mouseMove(p[0], p[1]); } });
+        g.canvas.addEventListener("mousemove", function () { if (!state.menu.open && !state.over) { var p = pos(); state.mouseMove(p[0], p[1]); } });
         document.addEventListener("mouseup", function (e) { if (e.button === 0 && state.drag) { var p = pos(); state.mouseUp(p[0], p[1]); } });
       }
       g.scene("play", { update: function (game, dt) {

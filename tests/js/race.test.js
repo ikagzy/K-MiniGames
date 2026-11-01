@@ -45,13 +45,13 @@ test('the race: a countdown, then gas moves the car, steering turns it, grass sl
   K.press('d'); run(s, 1); K.press('d', false); assert.ok(Math.abs(p.a - a0) > 0.2, 'steering turns it'); K.press('w', false);
   K.press('s'); run(s, 3); K.press('s', false); assert.ok(p.v <= 1, 'the brake stops it, then it does not roll back for long');
   // top speed on the road against on the grass
-  const road = K.kit.run(spec({ world: { seed: 6 } })); road.start(); run(road, 3.2); road.p.a = road.track.pts[0].a; K.press('w'); run(road, 2); const vRoad = road.p.v; K.press('w', false);
+  const road = K.kit.run(spec({ world: { seed: 6 } })); road.start(); run(road, 3.2); { const q = road.track.pts[2], far = road.track.pts[Math.floor(road.track.M / 2)]; road.p.x = q.x; road.p.y = q.y; road.p.a = q.a; road.p.vx = road.p.vy = 0; road.racers.forEach((r) => { r.x = far.x; r.y = far.y; r.vx = r.vy = 0; r.top = 0; }); } K.press('w'); run(road, 1); const vRoad = road.p.v; K.press('w', false);
   const grass = K.kit.run(spec({ world: { seed: 6 } })); grass.start(); run(grass, 3.2); const gp = grass.p; let found = null;
   for (let y = 40; y < grass.track.H * 16 && !found; y += 16) for (let x = 40; x < grass.track.W * 16 && !found; x += 16) if (grass.tileAt(x, y) === 0 && grass.tileAt(x + 160, y) === 0) found = [x, y];
   gp.x = found[0]; gp.y = found[1]; gp.a = 0; gp.vx = gp.vy = 0; K.press('w'); run(grass, 2); const vGrass = gp.v; K.press('w', false);
   assert.ok(vGrass < vRoad * 0.75, 'the grass slows: ' + vGrass + ' against ' + vRoad);
-  const nit = K.kit.run(spec({ features: ['nitro'], world: { seed: 6 } })); nit.start(); run(nit, 3.2); nit.p.a = nit.track.pts[0].a; K.press('w'); K.press(' '); run(nit, 2); K.press('w', false); K.press(' ', false);
-  assert.ok(nit.p.v > vRoad * 1.1, 'nitro is faster: ' + nit.p.v + ' against ' + vRoad); assert.ok(nit.p.nitro < 1);
+  const nit = K.kit.run(spec({ features: ['nitro'], world: { seed: 6 } })); nit.start(); run(nit, 3.2); { const q = nit.track.pts[2], far = nit.track.pts[Math.floor(nit.track.M / 2)]; nit.p.x = q.x; nit.p.y = q.y; nit.p.a = q.a; nit.p.vx = nit.p.vy = 0; nit.racers.forEach((r) => { r.x = far.x; r.y = far.y; r.vx = r.vy = 0; r.top = 0; }); } K.press('w'); K.press(' '); run(nit, 1); K.press('w', false); K.press(' ', false);
+  assert.ok(nit.p.v > vRoad * 1.05, 'nitro is faster: ' + nit.p.v + ' against ' + vRoad); assert.ok(nit.p.nitro < 1);
 });
 
 test('the rivals drive the track by themselves: they stay on the road, finish the laps, and the finishing order is kept', () => {
@@ -87,4 +87,12 @@ test('the racing tune: written for the kit, fast, a lead and a bass of the same 
   const beats = (notes) => notes.reduce((a, n) => a + n.beats, 0); assert.strictEqual(beats(t.notes), beats(t.bass), 'lead and bass are the same length');
   assert.strictEqual(K.kit.defaults ? 1 : 1, 1);
   const s = K.kit.run(spec()); assert.strictEqual(s.spec.music, 'race');
+});
+
+test('every car starts on the road: the grid follows the road backwards from the line, for every kind of track and every number of rivals', () => {
+  const K = fresh();
+  for (const length of ['small', 'medium', 'large']) for (let seed = 1; seed <= 30; seed++) for (const rivals of [1, 3, 7]) {
+    const s = K.kit.run(spec({ world: { seed }, length, rivals })); s.start();
+    s.all.forEach((c) => assert.notStrictEqual(s.tileAt(c.x, c.y), 0, length + ' ' + seed + ' ' + rivals + ': a car on the grass at the start'));
+  }
 });

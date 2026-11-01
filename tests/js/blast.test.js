@@ -89,3 +89,8 @@ test('the blast menus: a main menu first (the game waits), Esc pauses, the pause
   s.menuItems()[1].act(); assert.strictEqual(s.menu.kind, 'controls'); K.press('Escape'); run(s, 0.1); K.press('Escape', false); run(s, 0.1); assert.strictEqual(s.menu.kind, 'pause');
   s.menuItems()[4].act(); assert.strictEqual(s.menu.kind, 'main'); assert.strictEqual(s.menuItems()[0].label, 'Devam et');
 });
+
+test('the cursor follows the mouse over the board and ignores it outside', () => {
+  const K = fresh(); const s = K.kit.run(spec()); s.start(); s.cx = 0; s.cy = 0;
+  s.mouseMove(100 + 15 * 3 + 5, 8 + 15 * 4 + 5); assert.deepStrictEqual([s.cx, s.cy], [3, 4], 'over cell 3,4'); s.mouseMove(5, 5); assert.deepStrictEqual([s.cx, s.cy], [3, 4], 'outside: it stays');
+});

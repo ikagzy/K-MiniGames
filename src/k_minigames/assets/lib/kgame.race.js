@@ -131,9 +131,9 @@
       // ---- the cars ----
       var total = spec.rivals + 1, myIndex = Math.floor(total / 2);
       function mkCar(i, isPlayer, slot) {
-        var s0 = pts[0], row = Math.floor(slot / 2), col = slot % 2 ? 1 : -1, back = 26 + row * 30;
+        var row = Math.floor(slot / 2), col = slot % 2 ? 1 : -1, back = 26 + row * 30, s0 = pts[(M - Math.round(back / 9.5)) % M];   // the grid follows the road backwards from the line (a straight line back could end on the grass)
         var base = 0.62 + 0.07 * spec.difficulty;
-        return { me: isPlayer, x: s0.x - Math.cos(s0.a) * back + s0.nx * col * 16, y: s0.y - Math.sin(s0.a) * back + s0.ny * col * 16, a: s0.a, vx: 0, vy: 0, v: 0, next: 1, top: isPlayer ? TOP * car.top : TOP * (base + rnd() * 0.1), color: isPlayer ? COLORS[spec.color] : RIVAL_COLORS[i % RIVAL_COLORS.length], finished: false, lane: (rnd() - 0.5) * 2 * 14, name: isPlayer ? "SEN" : "R" + (i + 1), nitro: 1, lap: 0, steerShow: 0, boost: false };
+        return { me: isPlayer, x: s0.x + s0.nx * col * 16, y: s0.y + s0.ny * col * 16, a: s0.a, vx: 0, vy: 0, v: 0, next: 1, top: isPlayer ? TOP * car.top : TOP * (base + rnd() * 0.1), color: isPlayer ? COLORS[spec.color] : RIVAL_COLORS[i % RIVAL_COLORS.length], finished: false, lane: (rnd() - 0.5) * 2 * 14, name: isPlayer ? "SEN" : "R" + (i + 1), nitro: 1, lap: 0, steerShow: 0, boost: false };
       }
       state.reset = function () {
         state.time = 0; state.countdown = 3; state.finished = false; state.place = 0; state.finishOrder = []; state.message = ""; state.messageT = 0; state.shake = 0; state.parts = [];
@@ -222,6 +222,7 @@
         var m = state.menu;
         if (m.kind === "controls") { if (tap("Escape") || tap("Enter") || tap(" ")) { m.kind = m.back || "main"; m.index = 0; } return; }
         var items = state.menuItems();
+        if (K.mouse && K.mouse.y) { var hv = Math.floor((K.mouse.y - rowY(items.length)) / 44); if (K.mouse.x > g.width / 2 - 150 && K.mouse.x < g.width / 2 + 150 && hv >= 0 && hv < items.length && state.hoverY !== K.mouse.y) { m.index = hv; state.hoverY = K.mouse.y; } }   // the mouse chooses a row
         if (tap("ArrowUp") || tap("w")) m.index = (m.index + items.length - 1) % items.length;
         if (tap("ArrowDown") || tap("s")) m.index = (m.index + 1) % items.length;
         if (tap("Enter") || tap(" ")) items[Math.min(m.index, items.length - 1)].act();

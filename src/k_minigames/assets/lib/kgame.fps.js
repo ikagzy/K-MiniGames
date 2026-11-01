@@ -565,7 +565,7 @@
       }
       // ---- the menus: a main menu at the start, and Esc opens the pause menu (the game stands still behind it) ----
       var CONTROLS = ["W A S D  yürü      Shift  koş      Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık ya da Boşluk  ateş      1-4, Q ya da tekerlek  silah      E  kapıyı aç", "Anahtarı bul, kilitli kapıyı aç, çıkışa ulaş.      Esc  menü", "Taktik mod: hazırlıkta 1-5 satın al, Enter başlat; bir bölgede E basılı tut = spike kur, patlayana dek hayatta kal."];
-      state.lockMouse = function () { if (typeof document !== "undefined" && g.canvas && g.canvas.requestPointerLock && document.pointerLockElement !== g.canvas) { try { g.canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } };
+      state.lockMouse = function () { if (typeof document !== "undefined" && g.canvas && g.canvas.requestPointerLock && document.pointerLockElement !== g.canvas) { try { var lockAsk = g.canvas.requestPointerLock(); if (lockAsk && lockAsk.catch) lockAsk.catch(function () { /* not allowed here: keys still work */ }); } catch (e) { /* keys still work */ } } };
       state.openMenu = function (kind) { state.menu.open = true; state.menu.kind = kind; state.menu.index = 0; state.paused = true; state.firing = false; if (typeof document !== "undefined" && document.exitPointerLock && document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) { /* not locked */ } } };
       state.closeMenu = function () { state.menu.open = false; state.menu.started = true; state.paused = false; state.lockMouse(); };
       state.toggleMusic = function () { state.musicOn = !state.musicOn; if (state.musicOn) { if (tune) K.music.play(tune); } else K.music.stop(); };
@@ -613,7 +613,7 @@
       // ---- input from the mouse ----
       if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) {
         var canvas = g.canvas;
-        canvas.addEventListener("click", function () { if (!state.menu.open && canvas.requestPointerLock && document.pointerLockElement !== canvas && !state.ended) { try { canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } });
+        canvas.addEventListener("click", function () { if (!state.menu.open && canvas.requestPointerLock && document.pointerLockElement !== canvas && !state.ended) { try { var lockAsk = canvas.requestPointerLock(); if (lockAsk && lockAsk.catch) lockAsk.catch(function () { /* not allowed here: keys still work */ }); } catch (e) { /* keys still work */ } } });
         document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && g.current === "play" && !state.ended && !state.menu.open) state.openMenu("pause"); });
         document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.paused && state.p && Math.abs(e.movementX) < 250 && Math.abs(e.movementY) < 250) { state.p.a += e.movementX * 0.0024; state.p.pitch = Math.max(-0.5, Math.min(0.5, state.p.pitch - e.movementY * 0.0024)); } });
         canvas.addEventListener("mousedown", function (e) { if (e.button === 0) { if (state.menu.open) { state.menuClick(); return; } state.firing = true; } });
