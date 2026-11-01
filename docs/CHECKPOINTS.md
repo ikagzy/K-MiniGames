@@ -108,3 +108,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-99 | 2026-10-31 | fps: yukarı aşağı bakış (fare/oklar), ufuk kayması, dikey nişan; 231 JS testi | e330eec |
 | CP-100 | 2026-10-31 | küp dünya: sandık ekranı, envanterde istenen yere koyma, şekilli meşale/yatak/sandık/ekin, kapı ve yeni dokular (64x64, 256x160), saydam cam/su/yaprak, başarımlar sığar, müzik erken başlar; 236 JS testi | 5134d0e |
 | CP-101 | 2026-10-31 | küp dünya: 36 gerçek envanter yeri (64'lük yığın, istenen yere koyma), oyuncu ve dünya kaydı, işleme masası dokusu; 237 JS testi | b7e864a |
+| CP-102 | 2026-10-31 | küp dünya: fare sıçraması düzeltildi, lav/su yüzme ve akış, kova ve hızlı portal dökümü, envanterde sürükleyerek dağıtma, çapa samanı hızlı kırar; 239 JS testi | 784f5e1 |
