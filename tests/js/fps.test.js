@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { load } = require('./helpers');
 
 const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.hud.js', 'kgame.fps.js'];
-const fresh = () => load(...FILES);
+const fresh = () => { const K = load(...FILES); K.fps.menuAtStart = false; return K; };
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const spec = (o = {}) => ({ kit: 'fps', world: { seed: 5 }, size: 'medium', ...o });
 const px = () => new Uint8ClampedArray(160 * 100 * 4);
@@ -173,4 +173,20 @@ test('looking up and down: the arrows and the mouse tilt the view, the horizon m
   assert.ok(shoot(0) >= 25, 'level aim hits'); assert.strictEqual(shoot(0.2), 0, 'too high (the shot passes over its head)'); assert.strictEqual(shoot(-0.2), 0, 'too low (the shot hits the floor first)');
   assert.ok(shoot(0.02) >= 20, 'a little up still hits: the enemy is tall'); assert.ok(shoot(-0.03) >= 20, 'a little down hits too');
   p.x = 10.5; assert.ok(shoot(-0.3) >= 25, 'close up, aiming down hits'); p.pitch = 0; p.x = 5.5;
+});
+
+test('the game opens on a main menu (the world stands still), Enter starts it, Esc opens the pause menu, the pause menu restarts or goes back to the main menu, and the controls page shows and closes', () => {
+  const K = fresh(); K.fps.menuAtStart = true;
+  const s = K.kit.run(spec()); const g = s.g; s.start();
+  assert.strictEqual(s.menu.open, true); assert.strictEqual(s.menu.kind, 'main'); const t0 = s.time; run(s, 0.5); assert.strictEqual(s.time, t0, 'the world waits behind the main menu');
+  assert.deepStrictEqual(s.menuItems().map((i) => i.label), ['Oyna', 'Kontroller', 'Müzik: açık']);
+  K.press('Enter'); run(s, 0.1); K.press('Enter', false); run(s, 0.1); assert.strictEqual(s.menu.open, false, 'Enter starts'); run(s, 0.5); assert.ok(s.time > t0, 'time runs now');
+  K.press('Escape'); run(s, 0.1); K.press('Escape', false); run(s, 0.1); assert.strictEqual(s.menu.open, true); assert.strictEqual(s.menu.kind, 'pause'); const t1 = s.time; run(s, 0.5); assert.strictEqual(s.time, t1, 'paused');
+  assert.deepStrictEqual(s.menuItems().map((i) => i.label), ['Devam et', 'Kontroller', 'Müzik: açık', 'Baştan başla', 'Ana menü']);
+  s.menuItems()[1].act(); assert.strictEqual(s.menu.kind, 'controls'); K.press('Escape'); run(s, 0.1); K.press('Escape', false); run(s, 0.1); assert.strictEqual(s.menu.kind, 'pause', 'back from the controls');
+  s.menuItems()[2].act(); assert.strictEqual(s.musicOn, false); s.menuItems()[2].act();
+  s.menuItems()[4].act(); assert.strictEqual(s.menu.kind, 'main'); assert.strictEqual(s.menuItems()[0].label, 'Devam et', 'a started game continues');
+  s.menuItems()[0].act(); s.kills = 5; s.openMenu('pause'); s.menuItems()[3].act(); assert.strictEqual(s.kills, 0, 'restart'); assert.strictEqual(s.menu.open, false);
+  const c = { fillStyle: '', strokeStyle: '', font: '', textAlign: '', fillRect() {}, strokeRect() {}, fillText() {}, save() {}, restore() {}, translate() {}, beginPath() {}, arc() {}, fill() {} };
+  s.openMenu('main'); g.layers[0].draw && assert.doesNotThrow(() => g.layers[0].draw(c));
 });

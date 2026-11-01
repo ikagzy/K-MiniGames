@@ -154,7 +154,7 @@
     exit: { rows: ["..gggg..", ".gGGGGg.", "gGggggGg", "gGgGGgGg", "gGgGGgGg", "gGggggGg", ".gGGGGg.", "..gggg.."], pal: { g: [30, 140, 70], G: [120, 255, 160] } }
   };
 
-  K.fps = { themes: Object.keys(THEMES), kinds: Object.keys(KINDS), weapons: WEAPON_ORDER, sizes: Object.keys(SIZES), modes: MODES, genLevel: genLevel, genArena: genArena, bfs: bfs, menuAtStart: false };
+  K.fps = { themes: Object.keys(THEMES), kinds: Object.keys(KINDS), weapons: WEAPON_ORDER, sizes: Object.keys(SIZES), modes: MODES, genLevel: genLevel, genArena: genArena, bfs: bfs, menuAtStart: true };
 
   K.kit.define("fps", {
     defaults: {
@@ -184,6 +184,7 @@
       var seed = (spec.world && spec.world.seed) || 1, theme = THEMES[spec.theme], weapons = WEAPON_ORDER.filter(function (w) { return spec.weapons.indexOf(w) >= 0; });
       var state = { g: g, spec: spec, level: null, levelIndex: 0, p: null, enemies: [], pickups: [], open: {}, paused: false, ended: false, won: false, message: "", messageT: 0, flash: 0, shake: 0,
                     kills: 0, shots: 0, hits: 0, firing: false, fireT: 0, recoil: 0, muzzle: 0, heroHooks: [], regen: false, sprintMul: 1, startArmor: 0, wave: 0, waves: 0, waveQueue: [], explored: {}, time: 0, hurtT: 0, bossDead: false };
+      state.menu = { open: K.fps.menuAtStart !== false, kind: "main", index: 0, started: false }; state.paused = state.menu.open; state.musicOn = true;
       var tune = spec.music;
       if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
       var rnd = rng(seed * 31 + 5), zbuf = new Float32Array(RW);
@@ -471,7 +472,44 @@
         for (var yy = 0; yy < L.H; yy++) for (var xx = 0; xx < L.W; xx++) if (state.explored[yy * L.W + xx]) { var cv = L.cells[yy * L.W + xx]; c.fillStyle = cv === 0 ? "rgba(255,255,255,0.35)" : cv === 8 || cv === 9 ? (state.open[yy * L.W + xx] ? "rgba(255,255,255,0.35)" : "#c62828") : "rgba(120,120,140,0.8)"; c.fillRect(mx + xx * sz, my + yy * sz, sz, sz); }
         c.fillStyle = "#4caf50"; c.fillRect(mx + p.x * sz - 1, my + p.y * sz - 1, 3, 3);
         state.enemies.forEach(function (e) { if (!e.dead && state.explored[Math.floor(e.y) * L.W + Math.floor(e.x)]) { c.fillStyle = "#ff5252"; c.fillRect(mx + e.x * sz - 1, my + e.y * sz - 1, 2, 2); } });
-        if (state.paused) { c.fillStyle = "rgba(0,0,0,0.6)"; c.fillRect(0, 0, W, H); c.fillStyle = "#fff"; c.textAlign = "center"; c.font = "bold 28px sans-serif"; c.fillText("DURAKLATILDI", W / 2, H / 2 - 10); c.font = "14px sans-serif"; c.fillText("Esc: devam", W / 2, H / 2 + 20); c.textAlign = "left"; }
+      }
+      // ---- the menus: a main menu at the start, and Esc opens the pause menu (the game stands still behind it) ----
+      var CONTROLS = ["W A S D  yürü      Shift  koş      Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık ya da Boşluk  ateş      1-4, Q ya da tekerlek  silah      E  kapıyı aç", "Anahtarı bul, kilitli kapıyı aç, çıkışa ulaş.      Esc  menü"];
+      state.lockMouse = function () { if (typeof document !== "undefined" && g.canvas && g.canvas.requestPointerLock && document.pointerLockElement !== g.canvas) { try { g.canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } };
+      state.openMenu = function (kind) { state.menu.open = true; state.menu.kind = kind; state.menu.index = 0; state.paused = true; state.firing = false; if (typeof document !== "undefined" && document.exitPointerLock && document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) { /* not locked */ } } };
+      state.closeMenu = function () { state.menu.open = false; state.menu.started = true; state.paused = false; state.lockMouse(); };
+      state.toggleMusic = function () { state.musicOn = !state.musicOn; if (state.musicOn) { if (tune) K.music.play(tune); } else K.music.stop(); };
+      state.menuItems = function () {
+        var m = state.menu, music = { label: "Müzik: " + (state.musicOn ? "açık" : "kapalı"), act: state.toggleMusic }, controls = { label: "Kontroller", act: function () { m.back = m.kind; m.kind = "controls"; m.index = 0; } };
+        if (m.kind === "main") return [{ label: m.started ? "Devam et" : "Oyna", act: state.closeMenu }, controls, music];
+        return [{ label: "Devam et", act: state.closeMenu }, controls, music, { label: "Baştan başla", act: function () { state.reset(); if (state.musicOn && tune) K.music.play(tune); state.closeMenu(); } }, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
+      };
+      var menuRow = function (i, n) { return g.height / 2 - n * 22 + i * 44 + 10; };
+      state.menuClick = function () {
+        var m = state.menu; if (!m.open) return false;
+        if (m.kind === "controls") { m.kind = m.back || "main"; m.index = 0; return true; }
+        var items = state.menuItems(), i = Math.floor((K.mouse.y - (g.height / 2 - items.length * 22 + 10)) / 44);
+        if (K.mouse.x > g.width / 2 - 150 && K.mouse.x < g.width / 2 + 150 && i >= 0 && i < items.length) { m.index = i; items[i].act(); }
+        return true;
+      };
+      var tapped = {}, tap = function (k) { var d = K.key(k); var hit = d && !tapped[k]; tapped[k] = d; return hit; };
+      state.menuUpdate = function () {
+        var m = state.menu;
+        if (m.kind === "controls") { if (tap("Escape") || tap("Enter") || tap(" ")) { m.kind = m.back || "main"; m.index = 0; } return; }
+        var items = state.menuItems();
+        if (tap("ArrowUp") || tap("w")) m.index = (m.index + items.length - 1) % items.length;
+        if (tap("ArrowDown") || tap("s")) m.index = (m.index + 1) % items.length;
+        if (K.mouse && K.mouse.y) { var h = Math.floor((K.mouse.y - (g.height / 2 - items.length * 22 + 10)) / 44); if (K.mouse.x > g.width / 2 - 150 && K.mouse.x < g.width / 2 + 150 && h >= 0 && h < items.length && state.hoverY !== K.mouse.y) { m.index = h; state.hoverY = K.mouse.y; } }
+        if (tap("Enter") || tap(" ")) items[Math.min(m.index, items.length - 1)].act();
+        if (tap("Escape") && m.kind === "pause") state.closeMenu();
+      };
+      function drawMenu(c) {
+        var m = state.menu, W = g.width, H = g.height; c.fillStyle = "rgba(0,0,0,0.72)"; c.fillRect(0, 0, W, H); c.textAlign = "center";
+        c.fillStyle = "#fff"; c.font = "bold 34px sans-serif"; c.fillText(m.kind === "main" ? (spec.title || "FPS Nişancı") : m.kind === "controls" ? "Kontroller" : "Duraklatıldı", W / 2, 70);
+        if (m.kind === "controls") { c.font = "14px sans-serif"; c.fillStyle = "#e0e0e0"; CONTROLS.forEach(function (t, i) { c.fillText(t, W / 2, 140 + i * 34); }); c.fillStyle = "#ffd54f"; c.fillText("Esc ya da tık: geri", W / 2, H - 40); c.textAlign = "left"; return; }
+        var items = state.menuItems();
+        items.forEach(function (it, i) { var y = menuRow(i, items.length) - 4, on = i === m.index; c.fillStyle = on ? "rgba(255,213,79,0.25)" : "rgba(255,255,255,0.08)"; c.fillRect(W / 2 - 150, y, 300, 38); c.strokeStyle = on ? "#ffd54f" : "rgba(255,255,255,0.2)"; c.strokeRect(W / 2 - 150, y, 300, 38); c.fillStyle = on ? "#ffd54f" : "#fff"; c.font = "bold 17px sans-serif"; c.fillText(it.label, W / 2, y + 25); });
+        c.font = "12px sans-serif"; c.fillStyle = "#b0bec5"; c.fillText("yukarı/aşağı seç   Enter ya da tık onayla", W / 2, H - 30); c.textAlign = "left";
       }
       g.background = "#000";
       g.layers = [{ speed: 0, draw: function (c) {
@@ -479,16 +517,16 @@
         if (!small) { small = document.createElement("canvas"); small.width = RW; small.height = RH; smallCtx = small.getContext("2d"); image = smallCtx.createImageData(RW, RH); }
         render(image.data); smallCtx.putImageData(image, 0, 0);
         c.imageSmoothingEnabled = false; c.drawImage(small, 0, 0, g.width, g.height);
-        drawHud(c);
+        drawHud(c); if (state.menu.open) drawMenu(c);
       } }];
 
       // ---- input from the mouse ----
       if (typeof document !== "undefined" && g.canvas && g.canvas.addEventListener) {
         var canvas = g.canvas;
-        canvas.addEventListener("click", function () { if (canvas.requestPointerLock && document.pointerLockElement !== canvas && !state.ended) { try { canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } });
-        document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && g.current === "play" && !state.ended) state.paused = true; });
+        canvas.addEventListener("click", function () { if (!state.menu.open && canvas.requestPointerLock && document.pointerLockElement !== canvas && !state.ended) { try { canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } });
+        document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && g.current === "play" && !state.ended && !state.menu.open) state.openMenu("pause"); });
         document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.paused && state.p && Math.abs(e.movementX) < 250 && Math.abs(e.movementY) < 250) { state.p.a += e.movementX * 0.0024; state.p.pitch = Math.max(-0.5, Math.min(0.5, state.p.pitch - e.movementY * 0.0024)); } });
-        canvas.addEventListener("mousedown", function (e) { if (e.button === 0) { if (state.paused) { state.paused = false; return; } state.firing = true; } });
+        canvas.addEventListener("mousedown", function (e) { if (e.button === 0) { if (state.menu.open) { state.menuClick(); return; } state.firing = true; } });
         document.addEventListener("mouseup", function (e) { if (e.button === 0) state.firing = false; });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
         canvas.addEventListener("wheel", function (e) { e.preventDefault(); if (state.p) state.selectWeapon((state.p.weapon + (e.deltaY > 0 ? 1 : weapons.length - 1)) % weapons.length); }, { passive: false });
@@ -497,13 +535,14 @@
       var escHeld = false;
       g.scene("play", {
         update: function (game, dt) {
-          var esc = K.key("Escape"); if (esc && !escHeld) { state.paused = !state.paused; if (state.paused && typeof document !== "undefined" && document.exitPointerLock) { try { document.exitPointerLock(); } catch (e) { /* not locked */ } } } escHeld = esc;
+          if (state.menu.open) { state.menuUpdate(); return; }
+          var esc = K.key("Escape"); if (esc && !escHeld && !state.ended) { tapped.Escape = true; state.openMenu("pause"); } escHeld = esc;
           state.step(dt);
         }
       });
       K.hud.screen(g, "over", { lines: ["ÖLDÜN", "R ile yeniden başla"], keys: { r: function () { state.reset(); K.music.play(tune); } } });
       K.hud.screen(g, "win", { lines: ["KAZANDIN!", "R ile yeniden oyna"], keys: { r: function () { state.reset(); K.music.play(tune); } } });
-      state.start = function () { state.reset(); if (tune) K.music.play(tune); };
+      state.start = function () { state.reset(); if (tune && state.musicOn) K.music.play(tune); };
       state.expose = { g: g, spec: spec, state: state, get p() { return state.p; } };
       return state;
     }
