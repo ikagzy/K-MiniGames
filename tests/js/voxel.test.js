@@ -1648,3 +1648,16 @@ test('a poured liquid is one source with a flow: scooping it (or any flowing cel
   let scooped = false; for (const pitch of [-0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.2]) { s.p.pitch = pitch; if (s.useBucket(163)) { scooped = true; break; } }
   assert.ok(scooped); assert.strictEqual(count(), 0, 'the whole flow is gone'); assert.strictEqual(s.inv.count[164], 1, 'one bucket of water');
 });
+
+test('the test yard: from the menu a flat yard is built beside you with a lava pool, a water pool, a ready kara kaya frame, hay, a table, a furnace, a chest and the things to try them with; swimming out of both pools works', () => {
+  const K = fresh(); const s = K.kit.run({ kit: 'sandbox', world: { seed: 134 }, size: 'small', trees: 0, time: 'day' }); run(s, 1.5);
+  s.buildTestBed(); run(s, 0.2);
+  const ox = Math.floor(s.p.x), oz = Math.floor(s.p.z), gy = Math.round(s.p.y - 1.01);
+  assert.strictEqual(s.get(ox + 6, gy, oz), 37); assert.strictEqual(s.get(ox + 13, gy, oz), 14); assert.strictEqual(s.get(ox + 10, gy + 1, oz - 6), 127); assert.strictEqual(s.get(ox + 4, gy + 1, oz + 6), 151);
+  assert.ok(s.inv.count[163] >= 3 && s.inv.count[152] === 1 && s.inv.count[151] >= 20, 'buckets, çakmak, kara kaya in the bag');
+  for (const cx of [ox + 6, ox + 13]) {
+    s.health = 20; stand(s, cx + 0.5, gy - 0.5, oz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1);
+    K.press('w'); K.press(' '); run(s, 3); K.press('w', false); K.press(' ', false); run(s, 0.2);
+    assert.ok(s.p.y > gy + 0.9 && s.health > 0, 'got out of the pool at ' + cx + ': y ' + s.p.y + ', health ' + s.health);
+  }
+});

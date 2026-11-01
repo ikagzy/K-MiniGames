@@ -674,6 +674,7 @@
         var t = target();
         if (!t || t.y < 1) return false;
         var tx = t.x, ty = t.y, tz = t.z, b = t.b;
+        if (b === OBSIDIAN && !state.creative && state.have("pickaxe") < 0) state.say("Kara kaya için kazma gerek: elle kırarsan düşmez.");
         if (b === BED) {   // both halves of a bed go together, and one bed comes back
           var bm = metaOf(tx, ty, tz), bd = [[0, -1], [1, 0], [0, 1], [-1, 0]][bm & 3], bhead = (bm & 4) !== 0, ox = bhead ? tx - bd[0] : tx + bd[0], oz = bhead ? tz - bd[1] : tz + bd[1];
           K.sfx("click"); set(tx, ty, tz, AIR, true);
@@ -707,14 +708,29 @@
         state.edits.length = 0; state.resetRequested = true;
         if (typeof location !== "undefined" && location.reload) location.reload();
       };
+      state.buildTestBed = function () {   // a flat test yard next to you: a lava pool, a water pool, a ready kara kaya frame, hay, a table, a furnace, a chest, and the things to try them with
+        var q = state.p, ox = Math.floor(q.x), oz = Math.floor(q.z), gy = w.heightAt(ox, oz), x, z, y, a, b;
+        for (x = ox - 2; x <= ox + 22; x++) for (z = oz - 8; z <= oz + 8; z++) { if (x < 1 || z < 1 || x >= S - 1 || z >= S - 1) continue; for (y = gy + 1; y <= gy + 8; y++) set(x, y, z, AIR, true); set(x, gy, z, STONE, true); }
+        var pool = function (px, kind) { for (x = px; x < px + 5; x++) for (z = oz - 2; z <= oz + 2; z++) { set(x, gy, z, kind, true); set(x, gy - 1, z, kind, true); set(x, gy - 2, z, STONE, true); } };
+        pool(ox + 4, LAVA); pool(ox + 11, WATER);
+        for (z = oz - 3; z <= oz + 3; z++) for (y = gy + 1; y <= gy + 4; y++) set(ox + 19, y, z, STONE, true);   // a wall to pour a stream down
+        for (a = -1; a <= 2; a++) for (b = -1; b <= 3; b++) { var corner = (a === -1 || a === 2) && (b === -1 || b === 3), inside = a >= 0 && a <= 1 && b >= 0 && b <= 2; if (!corner && !inside) set(ox + 5 + a, gy + 1 + b, oz + 6, OBSIDIAN, true); }   // a frame ready for the çakmak
+        for (a = 0; a < 3; a++) set(ox + 10 + a, gy + 1, oz - 6, HAY, true);
+        set(ox + 1, gy + 1, oz + 4, TABLE, true); set(ox + 2, gy + 1, oz + 4, FURNACE, true); set(ox + 3, gy + 1, oz + 4, CHEST, true); state.initChest(ox + 3, gy + 1, oz + 4);
+        var give = [[163, 3], [164, 1], [165, 1], [LIGHTER, 1], [D.toolId("pickaxe", 4), 1], [D.toolId("axe", 4), 1], [D.toolId("shovel", 4), 1], [D.toolId("sword", 4), 1], [D.hoeId(4), 1], [33, 16], [OBSIDIAN, 20], [GLASS, 20], [COBBLE, 64], [PLANKS, 64], [LOG, 16], [WHEAT, 9], [SEEDS, 8], [IRON_INGOT_ID, 9], [GOLD_INGOT_ID, 3], [41, 8], [BED, 1], [DOOR_ITEM, 2], [BREAD, 5], [HAY, 3]];
+        give.forEach(function (it) { if (it[0]) state.addItem(it[0], it[1]); });
+        state.reconcile(); q.x = ox + 0.5; q.z = oz + 0.5; q.y = gy + 1.01; q.vx = q.vy = q.vz = 0; q.yaw = Math.PI / 2; q.pitch = 0;
+        state.say("Deneme alanı: sağda lav havuzu, ileride su havuzu, arkanda hazır kara kaya çerçevesi (çakmakla yak), saman, masa, fırın, sandık. Eşyalar çantanda.");
+      };
       state.menuItems = function () {
         var m = state.menu, toggleCreative = { label: "Yaratıcı mod: " + (state.creative ? "açık" : "kapalı"), act: function () { state.setCreative(!state.creative); } };
         var music = { label: "Müzik: " + (state.musicOn ? "açık" : "kapalı"), act: state.toggleMusic };
         var controls = { label: "Kontroller", act: function () { m.kind = m.kind === "main" ? "controls-main" : "controls-pause"; m.index = 0; } };
         if (m.kind === "main") return [
           { label: state.edits.length || state.hud.broken || state.hud.placed ? "Devam et" : "Oyna", act: state.closeMenu }, controls, toggleCreative, music,
+          { label: "Deneme alanı kur", act: function () { state.buildTestBed(); state.closeMenu(); } },
           { label: m.confirm ? "Emin misin? Tekrar seç: dünya sıfırlanır" : "Dünyayı sıfırla (kaydı sil)", act: function () { if (m.confirm) state.resetWorld(); else m.confirm = true; } }];
-        return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
+        return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Deneme alanı kur", act: function () { state.buildTestBed(); state.closeMenu(); } }, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
       };
       var CONTROL_LINES = ["W A S D  yürü     Boşluk  zıpla     W'ya iki kez bas  koş     Shift  eğil", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
                            "Tekerlek, Q ya da 1-9  eşya seç       E  envanter ve üretim (2x2 ızgara)", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)", "Geçit: 4x5 kara kaya çerçeve (köşesiz), çakmakla içine bak ve sağ tık. Cam çerçeve = Gök Adaları"];
@@ -1489,7 +1505,7 @@
           p.vy -= (liquid ? 8 : 26) * dt;
           if (liquid) p.vy = Math.max(p.vy, inLavaStep ? -1.6 : -3);   // a liquid slows the fall
           if (liquid && sneak && !space) p.vy = Math.min(p.vy, inLavaStep ? -1.6 : -2.5);   // Shift dives
-          if (space && (p.onGround || liquid)) { p.vy = inLavaStep ? 2.6 : inWater ? 3.2 : 8.2; p.onGround = false; }   // swimming up, also out of lava
+          if (space && (p.onGround || liquid)) { p.vy = inLavaStep ? 2.6 : inWater ? 3.2 : 8.2; if (liquid && get(Math.floor(p.x), Math.floor(p.y + 1.4), Math.floor(p.z)) === AIR) p.vy = 6.5; p.onGround = false; }   // at the surface Space hops out   // swimming up, also out of lava
         }
         p.peak = (p.onGround || liquid || flying) ? p.y : Math.max(p.peak, p.y);
         var nx = p.x + p.vx * dt;   // a step of up to half a block is climbed without jumping (half blocks, stairs)
