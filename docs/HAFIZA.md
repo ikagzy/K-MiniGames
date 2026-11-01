@@ -39,3 +39,5 @@ Kullanıcının kendi bilgisayarında Ollama ile yerel yapay zekaya oyun yaptır
 ## Kullanıcıyla çalışma
 - Türkçe konuşulur. Soru başına tek soru, seçenekli.
 - Kullanıcı "senin kolayına ne gelirse" diyerek teknik seçimleri bana bırakabilir; yine de sonucu açıklarım.
+
+- Kod GitHub'da acik kaynak: https://github.com/ikagzy/K-MiniGames (public, MIT). gh kurulu ve giris yapildi; yeni isler commit sonrasi kullanici isterse 'git push' ile gonderilir.
