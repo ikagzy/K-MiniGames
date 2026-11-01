@@ -659,16 +659,22 @@
           var k, mixed = get(cx, cy + 1, cz) === other;
           for (k = 0; k < 4; k++) if (get(cx + near[k][0], cy, cz + near[k][1]) === other) mixed = true;
           if (mixed) { set(cx, cy, cz, OBSIDIAN, true); return; }
-          set(cx, cy, cz, f, true); if (track) state.flowOf[fkey(cx, cy, cz)] = fkey(x, y, z);
+          set(cx, cy, cz, f, true); if (track) state.flowOf[fkey(cx, cy, cz)] = typeof track === "string" ? track : fkey(x, y, z);
           if (get(cx, cy - 1, cz) === AIR) { spread(cx, cy - 1, cz, range); return; }
           if (r > 0) for (k = 0; k < 4; k++) spread(cx + near[k][0], cy, cz + near[k][1], r - 1);
         };
         spread(x, y, z, range); return (budget || 90) - left;
       };
-      state.flow = function (x, y, z) {   // a liquid runs into a hole you open
-        var f = 0, d = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]], i;
-        for (i = 0; i < 5; i++) { var nb = get(x + d[i][0], y + d[i][1], z + d[i][2]); if (nb === LAVA) f = LAVA; else if (nb === WATER && f !== LAVA) f = WATER; }
-        return f ? state.spreadFluid(x, y, z, f, f === LAVA ? 2 : 4) : 0;
+      state.flow = function (x, y, z) {   // a liquid runs into a hole you open; what it makes is a flow of the source it came from (and a flow does not spread on by itself, so nothing floods)
+        var f = 0, tag = null, wild = false, d = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]], i;
+        for (i = 0; i < 5; i++) {
+          var cx2 = x + d[i][0], cy2 = y + d[i][1], cz2 = z + d[i][2], nb = get(cx2, cy2, cz2);
+          if (nb !== LAVA && nb !== WATER) continue;
+          if (nb === LAVA) f = LAVA; else if (!f) f = WATER;
+          if (nb === f) { var k = fkey(cx2, cy2, cz2); if (state.flowOf[k]) tag = state.flowOf[k]; else { tag = k; wild = true; } }
+        }
+        if (!f) return 0;
+        return state.spreadFluid(x, y, z, f, wild ? (f === LAVA ? 2 : 3) : 0, 90, tag || true);
       };
       state.breakBlock = function () {
         var t = target();
@@ -717,10 +723,16 @@
         for (a = -1; a <= 2; a++) for (b = -1; b <= 3; b++) { var corner = (a === -1 || a === 2) && (b === -1 || b === 3), inside = a >= 0 && a <= 1 && b >= 0 && b <= 2; if (!corner && !inside) set(ox + 5 + a, gy + 1 + b, oz + 6, OBSIDIAN, true); }   // a frame ready for the çakmak
         for (a = 0; a < 3; a++) set(ox + 10 + a, gy + 1, oz - 6, HAY, true);
         set(ox + 1, gy + 1, oz + 4, TABLE, true); set(ox + 2, gy + 1, oz + 4, FURNACE, true); set(ox + 3, gy + 1, oz + 4, CHEST, true); state.initChest(ox + 3, gy + 1, oz + 4);
-        var give = [[163, 3], [164, 1], [165, 1], [LIGHTER, 1], [D.toolId("pickaxe", 4), 1], [D.toolId("axe", 4), 1], [D.toolId("shovel", 4), 1], [D.toolId("sword", 4), 1], [D.hoeId(4), 1], [33, 16], [OBSIDIAN, 20], [GLASS, 20], [COBBLE, 64], [PLANKS, 64], [LOG, 16], [WHEAT, 9], [SEEDS, 8], [IRON_INGOT_ID, 9], [GOLD_INGOT_ID, 3], [41, 8], [BED, 1], [DOOR_ITEM, 2], [BREAD, 5], [HAY, 3]];
+        var key = function (cxk) { return cxk + "," + (gy + 1) + "," + (oz + 4); }, all = chestAll(), kept = state.slots.filter(Boolean), part, ci = 0;   // your own bag is put away in two chests, the test things take its place
+        state.dropCursor(); set(ox + 4, gy + 1, oz + 4, CHEST, true); set(ox + 5, gy + 1, oz + 4, CHEST, true);
+        for (ci = 0; ci < 2; ci++) { part = emptySlots(); kept.slice(ci * 27, ci * 27 + 27).forEach(function (c, n) { part[n] = { id: c.id, n: c.n }; }); all[key(ox + 4 + ci)] = part; }
+        chestSave(all);
+        Object.keys(inv.count).forEach(function (k) { inv.count[k] = 0; }); state.slots.fill(null); inv.order = [];
+        var tagTop = fkey(ox + 18, gy + 4, oz); for (y = gy + 1; y <= gy + 4; y++) { set(ox + 18, y, oz, WATER, true); state.flowOf[fkey(ox + 18, y, oz)] = tagTop; }   // a stream down the wall: pour lava beside it
+        var give = [[LIGHTER, 1], [163, 3], [164, 1], [165, 1], [D.toolId("pickaxe", 4), 1], [D.toolId("axe", 4), 1], [D.toolId("shovel", 4), 1], [D.toolId("sword", 4), 1], [D.hoeId(4), 1], [33, 16], [OBSIDIAN, 20], [GLASS, 20], [COBBLE, 64], [PLANKS, 64], [LOG, 16], [WHEAT, 9], [SEEDS, 8], [IRON_INGOT_ID, 9], [GOLD_INGOT_ID, 3], [41, 8], [BED, 1], [DOOR_ITEM, 2], [BREAD, 5], [HAY, 3]];
         give.forEach(function (it) { if (it[0]) state.addItem(it[0], it[1]); });
         state.reconcile(); q.x = ox + 0.5; q.z = oz + 0.5; q.y = gy + 1.01; q.vx = q.vy = q.vz = 0; q.yaw = Math.PI / 2; q.pitch = 0;
-        state.say("Deneme alanı: sağda lav havuzu, ileride su havuzu, arkanda hazır kara kaya çerçevesi (çakmakla yak), saman, masa, fırın, sandık. Eşyalar çantanda.");
+        state.say("Deneme alanı: eski çantan sandıklarda (masanın yanı). Çantada deneme eşyaları var. Lav ve su havuzu, duvarda su akışı (yanına lav dök), kara kaya çerçevesi (çakmakla yak).");
       };
       state.menuItems = function () {
         var m = state.menu, toggleCreative = { label: "Yaratıcı mod: " + (state.creative ? "açık" : "kapalı"), act: function () { state.setCreative(!state.creative); } };
@@ -1154,7 +1166,7 @@
         }
         var cx = (hb === WATER || hb === LAVA) ? hx : hx + h.nx, cy = (hb === WATER || hb === LAVA) ? hy : hy + h.ny, cz = (hb === WATER || hb === LAVA) ? hz : hz + h.nz, cb = get(cx, cy, cz);
         if ((cb !== AIR && cb !== WATER && cb !== LAVA) || cy < 1) return false;
-        var near = function (what) { for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) if ((a || b || c) && get(cx + a, cy + b, cz + c) === what) return true; return false; };
+        var near = function (what) { for (var a = -2; a <= 2; a++) for (var b = -2; b <= 2; b++) for (var c = -2; c <= 2; c++) if ((a || b || c) && get(cx + a, cy + b, cz + c) === what) return true; return false; };
         if (id === 164) {
           if (cb === WATER) return false;
           for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) if (get(cx + a, cy + b, cz + c) === LAVA) set(cx + a, cy + b, cz + c, OBSIDIAN, true);

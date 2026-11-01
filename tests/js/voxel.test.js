@@ -1661,3 +1661,22 @@ test('the test yard: from the menu a flat yard is built beside you with a lava p
     assert.ok(s.p.y > gy + 0.9 && s.health > 0, 'got out of the pool at ' + cx + ': y ' + s.p.y + ', health ' + s.health);
   }
 });
+
+test('no flood: breaking blocks beside a poured flow only fills the hole; the test yard works with a full bag (the çakmak is there, the old bag is in chests) and the speedrun cast makes kara kaya beside the stream', () => {
+  const K = fresh(); const s = K.kit.run({ kit: 'sandbox', world: { seed: 135 }, size: 'small', trees: 0, time: 'day' }); run(s, 1.5);
+  for (let i = 40; i < 76; i++) { s.addItem(i, 3); } s.reconcile();   // a full bag, more kinds than places
+  s.buildTestBed(); run(s, 0.2);
+  const ox = Math.floor(s.p.x), oz = Math.floor(s.p.z), gy = Math.round(s.p.y - 1.01);
+  assert.ok(s.slots.some((c) => c && c.id === 152), 'the çakmak is in the bag'); assert.ok(s.slots.some((c) => c && c.id === 163));
+  const chest = s.chestContents(ox + 4, gy + 1, oz + 4); assert.ok(chest.some(Boolean), 'the old bag is kept in a chest');
+  // the cast: lava poured beside the stream turns to kara kaya
+  s.set(ox + 17, gy + 1, oz, 0, true); const cell = s.get(ox + 17, gy + 1, oz); assert.strictEqual(cell, 0);
+  stand(s, ox + 15.5, gy + 1.01, oz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0; run(s, 0.1); s.select(s.hotbar().indexOf(165));
+  let ok = false; for (const pitch of [-0.3, -0.2, -0.1, 0, 0.1, -0.4, -0.5]) { s.p.pitch = pitch; if (s.useBucket(165)) { ok = true; break; } }
+  assert.ok(ok, 'pours'); let kara = 0; for (let x = ox + 14; x <= ox + 18; x++) for (let y = gy + 1; y <= gy + 4; y++) for (let z = oz - 2; z <= oz + 2; z++) if (s.get(x, y, z) === 151) kara++; assert.ok(kara >= 1, 'kara kaya beside the water: ' + kara);
+  // no flood: break the floor beside a flow; it fills the hole and stops
+  const before = () => { let n = 0; for (let x = ox + 6; x <= ox + 22; x++) for (let z = oz - 8; z <= oz + 8; z++) for (let y = gy; y <= gy + 5; y++) if (s.get(x, y, z) === 14) n++; return n; };
+  s.spreadFluid(ox + 8, gy + 1, oz - 5, 14, 3, 90, true); const n0 = before();
+  for (let i = 0; i < 6; i++) { s.set(ox + 9 + i % 3, gy, oz - 6 + (i >> 1), 0, true); s.flow(ox + 9 + i % 3, gy, oz - 6 + (i >> 1)); }
+  assert.ok(before() - n0 < 30, 'no flood: ' + (before() - n0));
+});
