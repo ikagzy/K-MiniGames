@@ -337,3 +337,38 @@ def apply_football(spec: dict, description: str) -> dict:
     if difficulty:
         spec["difficulty"] = difficulty
     return spec
+
+
+PUZZLE_MODES = {"blocks": r"tetris|dusen blok|blok bulmaca|satir sil|satir doldur", "match": r"uclu esle|esle(s|ş)tir|match|sekerleme|seker bulmaca|taslari degistir|candy", "memory": r"hafiza|kart esle|kart cevir|memory|ayni kart"}
+PUZZLE_THEMES = {"candy": r"seker|candy|tatli|renkli", "neon": r"neon|parlak|siber", "forest": r"orman|dogal|yesil", "night": r"\bgece|karanlik"}
+
+
+def apply_puzzle(spec: dict, description: str) -> dict:
+    """The same kind of rules for the puzzle game: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    for field, table in (("mode", PUZZLE_MODES), ("theme", PUZZLE_THEMES)):
+        found = [name for name, rx in table.items() if re.search(rx, text)]
+        if len(found) == 1:
+            spec[field] = found[0]
+    goal = re.search(r"(\d{3,5})\s*(puan|skor)", text) or re.search(r"(puan|skor)\w*\s*(\d{3,5})", text)
+    if goal:
+        spec["goal"] = int([g for g in goal.groups() if g and g.isdigit()][0])
+    features = list(spec.get("features") or [])
+    for name, rx in (("ghost", r"golge|nereye dusecegi|dusecegi yer"), ("hold", r"sakla|\bhold|yedek parca"), ("hint", r"ipucu|\bhint|yardim goster")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    sizes = {"small": r"\bkucuk|\bminik", "large": r"\bbuyuk|\bdevasa|\bgenis"}
+    which = [n for n, rx in sizes.items() if re.search(rx, text)]
+    if len(which) == 1:
+        spec["size"] = which[0]
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

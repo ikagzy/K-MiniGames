@@ -27,7 +27,7 @@ def test_the_answers_are_small_valid_specs_with_no_seed(data):
     for e in train + held:
         spec = e["spec"]
         assert spec["kit"] == "fps" and "seed" not in json.dumps(spec)
-        assert set(spec) <= {"kit", "title", "theme", "musicStyle", "difficulty", "levels", "size", "mode", "ammo", "enemies", "weapons", "boss", "features"}
+        assert set(spec) <= {"kit", "title", "theme", "musicStyle", "difficulty", "levels", "size", "mode", "map", "rounds", "ammo", "enemies", "weapons", "boss", "features"}
         assert set(spec.get("features", [])) <= set(sd.FEATURES) and set(spec.get("enemies", [])) <= set(sd.ENEMIES) and set(spec.get("weapons", [])) <= set(sd.WEAPONS)
         assert json.loads(e["messages"][-1]["content"]) == spec
         assert kits.repair_spec(json.loads(json.dumps(spec)), "fps")["kit"] == "fps"

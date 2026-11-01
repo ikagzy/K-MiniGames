@@ -72,9 +72,15 @@ _CHECKS["football"] = [
     ("Saat işler.", "const s = game.state; const t = s.clock; await new Promise(r => setTimeout(r, 2500)); return s.clock < t;"),
 ]
 
+_CHECKS["puzzle"] = [
+    ("Oyun açılır ve bir oyun nesnesi vardır.", "return !!game.p && game.g.current === 'play' && !game.state.over;"),
+    ("Oyun zamanla ilerler.", "const t = game.state.time; await new Promise(r => setTimeout(r, 1500)); return game.state.time > t;"),
+    ("Tuşa basınca oyun tepki verir.", "const s = game.state; const before = JSON.stringify(s.game.board || s.game.grid || s.game.cards); K.press('ArrowLeft'); await new Promise(r => setTimeout(r, 300)); K.press('ArrowLeft', false); K.press(' '); await new Promise(r => setTimeout(r, 300)); K.press(' ', false); await new Promise(r => setTimeout(r, 900)); return JSON.stringify(s.game.board || s.game.grid || s.game.cards) !== before || (s.game.piece && s.game.piece.y > 0) || s.game.cx !== undefined;"),
+]
+
 # the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
 _PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
-for _kit in ("sandbox", "fps", "race", "football"):
+for _kit in ("sandbox", "fps", "race", "football", "puzzle"):
     _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
 
 _SYSTEM = (
@@ -189,7 +195,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit in ("sandbox", "fps", "race", "football") and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps", "race", "football", "puzzle") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -205,6 +211,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _race_variety(spec)
     elif kit == "football":
         _football_variety(spec)
+    elif kit == "puzzle":
+        _puzzle_variety(spec)
     return spec
 
 
@@ -301,6 +309,18 @@ def _football_variety(spec: dict) -> None:
     spec.setdefault("keeper", True)
     if not spec.get("features"):
         spec["features"] = random.choice((["powershot"], ["sprint"], ["powershot", "sprint"], []))
+
+
+def _puzzle_variety(spec: dict) -> None:
+    """The same for the puzzle game: the open parts are drawn."""
+    spec.setdefault("mode", random.choice(("blocks", "match", "match", "memory")))
+    spec.setdefault("theme", random.choice(("candy", "neon", "forest", "night")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["music"] = "puzzle"   # the tune written for the puzzle kit
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec.setdefault("size", random.choice(("small", "medium", "medium", "large")))
+    if not spec.get("features"):
+        spec["features"] = {"blocks": random.choice((["ghost"], ["ghost", "hold"], [])), "match": random.choice((["hint"], [])), "memory": []}[spec["mode"]]
 
 
 def keep_seeds(before: dict, after: dict) -> dict:

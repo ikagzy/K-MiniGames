@@ -1,0 +1,115 @@
+{
+  "type": "object",
+  "required": [
+    "kit"
+  ],
+  "properties": {
+    "kit": {
+      "type": "string",
+      "enum": [
+        "puzzle"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "blocks",
+        "match",
+        "memory"
+      ]
+    },
+    "theme": {
+      "type": "string",
+      "enum": [
+        "candy",
+        "neon",
+        "forest",
+        "night"
+      ]
+    },
+    "music": {
+      "type": "string",
+      "enum": [
+        "puzzle",
+        "overworld",
+        "underground",
+        "castle",
+        "boss",
+        "race",
+        "football"
+      ]
+    },
+    "musicStyle": {
+      "type": "object",
+      "properties": {
+        "mood": {
+          "type": "string",
+          "enum": [
+            "happy",
+            "calm",
+            "tense",
+            "epic",
+            "mystery",
+            "spooky"
+          ]
+        },
+        "tempo": {
+          "type": "string",
+          "enum": [
+            "slow",
+            "medium",
+            "fast"
+          ]
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        }
+      }
+    },
+    "difficulty": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "size": {
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    "goal": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50000
+    },
+    "world": {
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ghost",
+          "hold",
+          "hint"
+        ]
+      }
+    }
+  }
+}

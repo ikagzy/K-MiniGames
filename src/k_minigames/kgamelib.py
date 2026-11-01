@@ -66,6 +66,9 @@ MODULES["race"] = Module(
 MODULES["football"] = Module(
     "football", ("kgame.football.js",), "football.guide.md", ("core", "audio2", "kits"),
     "futbol KİTİ (yukarıdan görünümlü 2 boyutlu piksel maç): iki takım, kaleci, yapay zekâ, pas, şut, gol, altın gol hazır; model yalnızca özet yazar")
+MODULES["puzzle"] = Module(
+    "puzzle", ("kgame.puzzle.js",), "puzzle.guide.md", ("core", "audio2", "kits"),
+    "bulmaca KİTİ (2 boyutlu piksel: düşen bloklar, üçlü eşleştirme, hafıza kartları): tahta, puan, hedef, hamle sınırı hazır; model yalnızca özet yazar")
 _ORDER = list(MODULES)   # dependency order: a module comes after what it needs
 _TAG = re.compile(r"[ \t]*<script\b[^>]*\bsrc\s*=\s*[\"']?(?:\./)?kgame[\w.\-]*\.js[\"']?[^>]*>\s*</script>[ \t]*\r?\n?", re.I)
 _FIRST_SCRIPT = re.compile(r"<script\b", re.I)
