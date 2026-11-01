@@ -487,7 +487,7 @@
         var canvas = g.canvas;
         canvas.addEventListener("click", function () { if (canvas.requestPointerLock && document.pointerLockElement !== canvas && !state.ended) { try { canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } });
         document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && g.current === "play" && !state.ended) state.paused = true; });
-        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.paused && state.p) { state.p.a += e.movementX * 0.0024; state.p.pitch = Math.max(-0.5, Math.min(0.5, state.p.pitch - e.movementY * 0.0024)); } });
+        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.paused && state.p && Math.abs(e.movementX) < 250 && Math.abs(e.movementY) < 250) { state.p.a += e.movementX * 0.0024; state.p.pitch = Math.max(-0.5, Math.min(0.5, state.p.pitch - e.movementY * 0.0024)); } });
         canvas.addEventListener("mousedown", function (e) { if (e.button === 0) { if (state.paused) { state.paused = false; return; } state.firing = true; } });
         document.addEventListener("mouseup", function (e) { if (e.button === 0) state.firing = false; });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });

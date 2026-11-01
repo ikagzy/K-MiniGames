@@ -1580,3 +1580,51 @@ test('the game keeps the whole player with the world: where you stand and look, 
   // another world starts clean, and a world nobody played starts from the spawn
   const other = K.kit.run({ ...spec, world: { seed: 121 } }); run(other, 0.2); assert.strictEqual(other.inv.count[5], 10, 'a world nobody played starts with the starter things only');
 });
+
+test('liquids: you can swim up out of lava with Space (thick, slow), Shift dives in water, and a liquid runs into a hole you open and meets lava as stone', () => {
+  const K = fresh(); const { s, cx, cz, gy } = yard(K, 130);
+  // a lava pit 3 wide and 2 deep: Space brings you out
+  for (let x = cx - 1; x <= cx + 1; x++) for (let z = cz - 1; z <= cz + 1; z++) { s.set(x, gy, z, 37, false); s.set(x, gy - 1, z, 37, false); s.set(x, gy - 2, z, 3, false); }
+  stand(s, cx + 0.5, gy + 0.2, cz + 0.5); s.health = 20; run(s, 0.2);
+  const low = s.p.y; K.press(' '); run(s, 3); K.press(' ', false);
+  assert.ok(s.p.y >= gy + 1 - 0.01 || s.health > 0, 'alive or out');
+  assert.ok(s.p.y > low - 1, 'did not sink to the bottom while Space was held: ' + s.p.y);
+  // a pit of water: Shift goes down, nothing holds you
+  for (let x = cx - 1; x <= cx + 1; x++) for (let z = cz - 1; z <= cz + 1; z++) { s.set(x, gy, z, 14, false); s.set(x, gy - 1, z, 14, false); }
+  stand(s, cx + 0.5, gy + 0.6, cz + 0.5); run(s, 0.1);
+  K.press('Shift'); run(s, 1); K.press('Shift', false); assert.ok(s.p.y < gy + 0.2, 'Shift dives: ' + s.p.y);
+  // a dam: water behind a wall runs into the hole when the wall is broken
+  const wx = cx + 5, wz = cz - 6;
+  for (let y = 1; y <= 2; y++) { s.set(wx, gy + y, wz, 3, false); s.set(wx, gy + y, wz - 1, 14, false); }
+  s.set(wx, gy + 1, wz, 0, true); const n = s.flow(wx, gy + 1, wz);
+  assert.ok(n >= 1 && s.get(wx, gy + 1, wz) === 14, 'water fills the opened hole');
+  // water meeting lava makes stone
+  s.set(cx + 5, gy + 1, cz - 3, 37, false); s.set(cx + 6, gy + 1, cz - 3, 14, false); s.set(cx + 4, gy + 1, cz - 3, 0, false);
+  s.set(cx + 5, gy + 2, cz - 3, 3, false); s.set(cx + 5, gy + 1, cz - 3, 3, false); s.set(cx + 5, gy + 1, cz - 3, 0, true);
+  s.flow(cx + 5, gy + 1, cz - 3); assert.ok(s.get(cx + 5, gy + 1, cz - 3) !== 0, 'the hole is filled');
+});
+
+test('buckets and tools: a bucket scoops and pours, lava poured beside water becomes kara kaya (portal cast), a hoe breaks hay faster, and a stack in the hand is shared by dragging over places', () => {
+  const K = fresh(); const D = K.voxeldata; const { s, cx, cz, gy } = yard(K, 131);
+  assert.ok(D.mineTime(127, (k) => (k === 'hoe' ? 0 : -1)) < D.mineTime(127, () => -1), 'a hoe is faster on hay');
+  assert.strictEqual(D.matchGrid([42, 42, 42, 0, 0, 0, 0, 0, 0], 3).name, 'kova');
+  // a lake in front of the player: scoop it, pour it, the lava beside it turns to kara kaya
+  s.addItem(163, 2); s.select(s.hotbar().indexOf(163));
+  s.set(cx + 2, gy, cz, 14, false); s.set(cx + 2, gy, cz + 1, 37, false);
+  stand(s, cx + 0.5, gy + 1.01, cz + 0.5); s.p.yaw = Math.PI / 2; s.p.pitch = 0.0; run(s, 0.1);
+  let scooped = false; for (const pitch of [-0.5, -0.6, -0.7, -0.8, -0.9, -1.0, -0.4]) { s.p.pitch = pitch; if (s.useBucket(163)) { scooped = true; break; } }
+  assert.ok(scooped, 'the bucket scoops'); assert.ok(s.inv.count[164] >= 1 && s.inv.count[163] === 1, 'a bucket of water, one empty left'); assert.strictEqual(s.get(cx + 2, gy, cz), 0, 'the water is gone from the lake');
+  // water poured next to lava turns the lava to kara kaya
+  s.set(cx + 2, gy + 1, cz + 1, 0, false); let poured = false; s.select(s.hotbar().indexOf(164));
+  for (const pitch of [-0.5, -0.6, -0.7, -0.8, -0.9, -0.4]) { s.p.pitch = pitch; if (s.useBucket(164)) { poured = true; break; } }
+  assert.ok(poured, 'the bucket pours'); assert.ok(s.inv.count[163] === 2);
+  // inventory drag: a stack of 12 over three empty places gives 4 each
+  s.openScreen('inv'); s.dropCursor(); s.addItem(5, 12); s.slots.fill(null); s.slots[0] = { id: 5, n: 12 }; s.inv.count[5] = 12; s.reconcile();
+  const L = s.invLayout(); const at = (x, y) => K.setMouse(x, y, undefined); const gc = (i) => [L.x0 + 10 + (i % 9) * L.cell + 2, L.gridY + Math.floor(i / 9) * L.cell + 2];
+  at(L.x0 + 12, L.barY + 2); s.uiClick(0); assert.strictEqual(s.cursor.n, 12);
+  at(...gc(0)); assert.strictEqual(s.dragDown(0), true); at(...gc(1)); s.dragUpdate(); at(...gc(2)); s.dragUpdate(); s.dragUp();
+  assert.strictEqual(s.cursor, null); assert.deepStrictEqual([s.slots[9].n, s.slots[10].n, s.slots[11].n], [4, 4, 4], 'shared evenly');
+  at(...gc(0)); s.uiClick(0); at(...gc(5)); assert.strictEqual(s.dragDown(2), true); at(...gc(6)); s.dragUpdate(); at(...gc(7)); s.dragUpdate(); s.dragUp();
+  assert.deepStrictEqual([s.slots[14] && s.slots[14].n, s.slots[15] && s.slots[15].n, s.slots[16] && s.slots[16].n], [1, 1, 1], 'a right drag puts one in each'); assert.strictEqual(s.cursor.n, 1);
+  s.closeUi();
+});

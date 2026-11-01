@@ -649,6 +649,22 @@
         }
         return true;
       };
+      // a liquid runs into the hole you open: it falls down as far as it can and spreads 3 blocks sideways; water on lava makes stone
+      state.flow = function (x, y, z) {
+        var f = 0, d = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]], i;
+        for (i = 0; i < 5; i++) { var nb = get(x + d[i][0], y + d[i][1], z + d[i][2]); if (nb === LAVA) f = LAVA; else if (nb === WATER && f !== LAVA) f = WATER; }
+        if (!f) return 0;
+        var left = 90, spread = function (cx, cy, cz, range) {
+          if (left <= 0 || cy < 1 || get(cx, cy, cz) !== AIR) return; left--;
+          var near = [[1, 0], [-1, 0], [0, 1], [0, -1], [0, 0]], k, other = f === WATER ? LAVA : WATER, mixed = false;
+          for (k = 0; k < 5; k++) if (get(cx + near[k][0], cy, cz + near[k][1]) === other || (k === 4 && get(cx, cy + 1, cz) === other)) mixed = true;
+          if (mixed) { set(cx, cy, cz, OBSIDIAN, true); return; }
+          set(cx, cy, cz, f, true);
+          if (get(cx, cy - 1, cz) === AIR) { spread(cx, cy - 1, cz, 3); return; }
+          if (range > 0) for (k = 0; k < 4; k++) spread(cx + near[k][0], cy, cz + near[k][1], range - 1);
+        };
+        spread(x, y, z, 3); return 90 - left;
+      };
       state.breakBlock = function () {
         var t = target();
         if (!t || t.y < 1) return false;
@@ -660,7 +676,7 @@
           state.hud.broken++; state.addItem(BED, 1); return true;
         }
         K.sfx(b === DIRT || b === GRASS || b === SAND ? "click" : "hit");
-        set(tx, ty, tz, AIR, true); state.hud.broken++;   if (XP_FOR[b] && !state.creative) state.addXp(XP_FOR[b]);
+        set(tx, ty, tz, AIR, true); state.flow(tx, ty, tz); state.hud.broken++;   if (XP_FOR[b] && !state.creative) state.addXp(XP_FOR[b]);
         var kindUsed = D.rightTool(b); if (kindUsed) state.useTool(kindUsed);
         if (b === CHEST) state.spillChest(tx, ty, tz);
         if (b === HAY && state.mobs.some(function (m) { return m.type === "villager" && Math.abs(m.x - tx) < 14 && Math.abs(m.z - tz) < 14; })) state.say("Köylü: Samanlarıma dokunma!");
@@ -1095,7 +1111,33 @@
         if (!interact && D.FOOD[id] && state.food < 20 && (state.creative || inv.count[id] > 0)) { state.eating = { id: id, t: 0, bite: 0 }; return true; }
         var tool = D.toolOf(id);
         if (!interact && tool && tool.kind === "sword") { state.blocking = true; return true; }
+        if (id >= 163 && id <= 165 && !interact) return state.useBucket(id);
         return state.placeBlock();
+      };
+      state.useBucket = function (id) {   // an empty bucket scoops a liquid; a full one pours it. Lava poured with water near turns to kara kaya: the speedrun portal cast
+        var e = eye(), d = look();
+        if (!cast(e.x, e.y, e.z, d.x, d.y, d.z, REACH, false)) return false;
+        var h = hit, hx = h.x, hy = h.y, hz = h.z, hb = h.b;
+        var swap = function (to) {
+          K.sfx("click"); if (state.creative) return;
+          var sl = state.slots[state.slot];
+          if (sl && sl.id === id && sl.n === 1) { sl.id = to; inv.count[id]--; inv.count[to] = (inv.count[to] || 0) + 1; state.ever[to] = true; if (inv.order.indexOf(to) < 0) inv.order.push(to); }
+          else { inv.count[id]--; state.addItem(to, 1); }
+          state.reconcile();
+        };
+        if (id === 163) {
+          if (hb !== WATER && hb !== LAVA) return false;
+          set(hx, hy, hz, AIR, true); swap(hb === WATER ? 164 : 165); return true;
+        }
+        var cx = (hb === WATER || hb === LAVA) ? hx : hx + h.nx, cy = (hb === WATER || hb === LAVA) ? hy : hy + h.ny, cz = (hb === WATER || hb === LAVA) ? hz : hz + h.nz, cb = get(cx, cy, cz);
+        if ((cb !== AIR && cb !== WATER && cb !== LAVA) || cy < 1) return false;
+        var near = function (what) { for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) if ((a || b || c) && get(cx + a, cy + b, cz + c) === what) return true; return false; };
+        if (id === 164) {
+          set(cx, cy, cz, WATER, true);
+          for (var q = 1; q <= 6 && get(cx, cy - q, cz) === AIR; q++) set(cx, cy - q, cz, WATER, true);   // a poured stream falls
+          for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) if (get(cx + a, cy + b, cz + c) === LAVA) set(cx + a, cy + b, cz + c, OBSIDIAN, true);
+        } else set(cx, cy, cz, near(WATER) ? OBSIDIAN : LAVA, true);
+        swap(163); return true;
       };
       state.rightUp = function () { state.eating = null; state.blocking = false; };
       state.useUpdate = function (dt) {
@@ -1309,7 +1351,33 @@
         var a = state.slots[hit.index]; state.slots[hit.index] = state.slots[num - 1]; state.slots[num - 1] = a; return true;   // the place under the mouse and the place of the number change contents
       };
       state.openScreen = function (kind) { state.returnItems(); state.screen = kind; state.showInv = true; };
-      state.invUpdate = function () { state.furnaceUpdate(1 / 60); };
+      // dragging with a stack in the hand: hold the button and run over places; left shares the stack evenly, right puts one in each
+      var dragKinds = { slot: 1, cell: 1, chest: 1 };
+      var dragGet = function (h) { return h.kind === "slot" ? state.slots[h.index] : h.kind === "cell" ? state.cells[h.index] : state.chestOpen.slots[h.index]; };
+      var dragPut = function (h, v) { if (h.kind === "slot") setSlot(h.index, v); else if (h.kind === "cell") state.cells[h.index] = v; else state.chestOpen.slots[h.index] = v; };
+      state.dragDown = function (button) {   // true when a drag began (the click itself waits for the button to be let go)
+        if (!state.showInv || !state.cursor) return false;
+        var hit = state.invHit(K.mouse.x, K.mouse.y); if (!hit || !dragKinds[hit.kind]) return false;
+        state.drag = { button: button, list: [hit], x: K.mouse.x, y: K.mouse.y }; return true;
+      };
+      state.dragUpdate = function () {
+        var d = state.drag; if (!d || !state.cursor) return;
+        var hit = state.invHit(K.mouse.x, K.mouse.y); if (!hit || !dragKinds[hit.kind]) return;
+        for (var i = 0; i < d.list.length; i++) if (d.list[i].kind === hit.kind && d.list[i].index === hit.index) return;
+        var c = dragGet(hit); if (c && (c.id !== state.cursor.id || c.n >= 64)) return;
+        d.list.push(hit);
+      };
+      state.dragUp = function () {
+        var d = state.drag; state.drag = null; if (!d) return false;
+        if (d.list.length < 2 || !state.cursor) { var mx = K.mouse.x, my = K.mouse.y; K.mouse.x = d.x; K.mouse.y = d.y; state.uiClick(d.button); K.mouse.x = mx; K.mouse.y = my; return true; }
+        var cur = state.cursor, left = cur.n, k = d.list.length, each = d.button === 2 ? 1 : Math.max(1, Math.floor(cur.n / k));
+        for (var i = 0; i < k && left > 0; i++) {
+          var h = d.list[i], c = dragGet(h), room = 64 - (c ? c.n : 0), put = Math.min(each, left, room); if (put <= 0) continue;
+          dragPut(h, { id: cur.id, n: (c ? c.n : 0) + put }); left -= put;
+        }
+        state.cursor = left > 0 ? { id: cur.id, n: left, free: cur.free } : null; if (state.chestOpen) state.saveChest(); state.reconcile(); K.sfx("click"); return true;
+      };
+      state.invUpdate = function () { state.furnaceUpdate(1 / 60); state.dragUpdate(); };
       state.uiOpen = function () { return !!(state.showInv || state.showCraft || state.showAch || state.showHelp || state.trade || state.enchanting); };
       state.closeUi = function () { state.returnItems(); state.saveChest(); state.chestOpen = null; state.showInv = state.showCraft = state.showAch = state.showHelp = false; state.trade = null; state.enchanting = false; state.screen = "inv"; };
       // ---- the player ----
@@ -1398,8 +1466,8 @@
         var sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
         var wx = (sin * f + cos * r) / len * speed, wz = (-cos * f + sin * r) / len * speed;
         var inWater = get(Math.floor(p.x), Math.floor(p.y + 0.5), Math.floor(p.z)) === WATER;
-        var inLavaStep = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA;
-        if (inWater || inLavaStep) { wx *= 0.5; wz *= 0.5; }
+        var inLavaStep = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA || get(Math.floor(p.x), Math.floor(p.y + 1), Math.floor(p.z)) === LAVA, liquid = inWater || inLavaStep;
+        if (inLavaStep) { wx *= 0.35; wz *= 0.35; } else if (inWater) { wx *= 0.5; wz *= 0.5; }   // lava is thick
         p.vx = wx; p.vz = wz;
         var space = K.key(" ");
         if (space && !spaceHeld) { if (state.canFly && state.time0 - lastSpace < 0.3) state.flying = !state.flying; lastSpace = state.time0; }   // twice quickly: fly on / off
@@ -1409,16 +1477,17 @@
         if (flying) { p.vy = ((space ? 1 : 0) - (K.key("Shift") ? 1 : 0)) * 6; }
         else if (ladderHere) { p.vy = ((space || K.key("w") ? 1 : 0) - (K.key("Shift") || K.key("s") ? 1 : 0)) * 3; p.peak = p.y; }   // a ladder is climbed, not fallen
         else {
-          p.vy -= (inWater ? 8 : 26) * dt;
-          if (inWater) p.vy = Math.max(p.vy, -3);
-          if (space && (p.onGround || inWater)) { p.vy = inWater ? 3.2 : 8.2; p.onGround = false; }
+          p.vy -= (liquid ? 8 : 26) * dt;
+          if (liquid) p.vy = Math.max(p.vy, inLavaStep ? -1.6 : -3);   // a liquid slows the fall
+          if (liquid && sneak && !space) p.vy = Math.min(p.vy, inLavaStep ? -1.6 : -2.5);   // Shift dives
+          if (space && (p.onGround || liquid)) { p.vy = inLavaStep ? 2.6 : inWater ? 3.2 : 8.2; p.onGround = false; }   // swimming up, also out of lava
         }
-        p.peak = (p.onGround || inWater || flying) ? p.y : Math.max(p.peak, p.y);
+        p.peak = (p.onGround || liquid || flying) ? p.y : Math.max(p.peak, p.y);
         var nx = p.x + p.vx * dt;   // a step of up to half a block is climbed without jumping (half blocks, stairs)
         var edge = function (x, z) { return sneak && p.onGround && !collides(x, p.y - 0.3, z); };
-        if (!collides(nx, p.y, p.z)) { if (!edge(nx, p.z)) p.x = nx; } else if (p.onGround && !flying && !collides(nx, p.y + 0.55, p.z) && !collides(p.x, p.y + 0.55, p.z)) { p.x = nx; p.y += 0.55; } else if (inWater && !flying && !collides(nx, p.y + 1.6, p.z)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);   // swimming into a bank: climb out
+        if (!collides(nx, p.y, p.z)) { if (!edge(nx, p.z)) p.x = nx; } else if (p.onGround && !flying && !collides(nx, p.y + 0.55, p.z) && !collides(p.x, p.y + 0.55, p.z)) { p.x = nx; p.y += 0.55; } else if (liquid && !flying && !collides(nx, p.y + 1.6, p.z)) p.vy = Math.max(p.vy, inLavaStep ? 6.5 : 9.5); else if (liquid && !flying) p.vy = Math.max(p.vy, inLavaStep ? 2.6 : 3.2);   // swimming into a bank: climb out
         var nz = p.z + p.vz * dt;
-        if (!collides(p.x, p.y, nz)) { if (!edge(p.x, nz)) p.z = nz; } else if (p.onGround && !flying && !collides(p.x, p.y + 0.55, nz) && !collides(p.x, p.y + 0.55, p.z)) { p.z = nz; p.y += 0.55; } else if (inWater && !flying && !collides(p.x, p.y + 1.6, nz)) p.vy = Math.max(p.vy, 9.5); else if (inWater && !flying) p.vy = Math.max(p.vy, 3.2);
+        if (!collides(p.x, p.y, nz)) { if (!edge(p.x, nz)) p.z = nz; } else if (p.onGround && !flying && !collides(p.x, p.y + 0.55, nz) && !collides(p.x, p.y + 0.55, p.z)) { p.z = nz; p.y += 0.55; } else if (liquid && !flying && !collides(p.x, p.y + 1.6, nz)) p.vy = Math.max(p.vy, inLavaStep ? 6.5 : 9.5); else if (liquid && !flying) p.vy = Math.max(p.vy, inLavaStep ? 2.6 : 3.2);
         var ny = p.y + p.vy * dt;
         if (!collides(p.x, ny, p.z)) { p.y = ny; p.onGround = false; }
         else { if (p.vy < 0) { p.onGround = true; if (flying && !space) state.flying = false; state.landed(p); } p.vy = 0; }
@@ -1734,13 +1803,13 @@
         var canvas = g.canvas;
         canvas.addEventListener("click", function () { if (!state.menu.open && !state.uiOpen() && canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (e) { /* no lock: keys still work */ } } });
         document.addEventListener("pointerlockchange", function () { if (document.pointerLockElement !== canvas && !state.menu.open && !state.uiOpen() && g.current === "play" && state.menuStarted) state.openMenu("pause"); });   // Esc gives the mouse back: the pause menu opens
-        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.menu.open) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });
+        document.addEventListener("mousemove", function (e) { if (document.pointerLockElement === canvas && !state.menu.open) if (Math.abs(e.movementX) < 250 && Math.abs(e.movementY) < 250) state.look(e.movementX * 0.0025, e.movementY * 0.0025); });   // a browser now and then reports a huge jump: ignored
         canvas.addEventListener("mousedown", function (e) {
           if (state.menu.open) return;
-          if (state.uiOpen()) { if (state.showInv) state.uiClick(e.button === 2 ? 2 : 0); return; }
+          if (state.uiOpen()) { if (state.showInv) { var bt = e.button === 2 ? 2 : 0; if (!state.dragDown(bt)) state.uiClick(bt); } return; }
           if (e.button === 0) mouseLeft = true; else if (e.button === 2) state.rightDown();
         });
-        document.addEventListener("mouseup", function (e) { if (e.button === 0) mouseLeft = false; else if (e.button === 2) state.rightUp(); });
+        document.addEventListener("mouseup", function (e) { if (state.drag) state.dragUp(); if (e.button === 0) mouseLeft = false; else if (e.button === 2) state.rightUp(); });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
         var flush = function () { if (state.savePlayer) state.savePlayer(); };   // leaving the page keeps the game
         document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
