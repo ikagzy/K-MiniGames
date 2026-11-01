@@ -740,9 +740,8 @@
         var controls = { label: "Kontroller", act: function () { m.kind = m.kind === "main" ? "controls-main" : "controls-pause"; m.index = 0; } };
         if (m.kind === "main") return [
           { label: state.edits.length || state.hud.broken || state.hud.placed ? "Devam et" : "Oyna", act: state.closeMenu }, controls, toggleCreative, music,
-          { label: "Deneme alanı kur", act: function () { state.buildTestBed(); state.closeMenu(); } },
           { label: m.confirm ? "Emin misin? Tekrar seç: dünya sıfırlanır" : "Dünyayı sıfırla (kaydı sil)", act: function () { if (m.confirm) state.resetWorld(); else m.confirm = true; } }];
-        return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Deneme alanı kur", act: function () { state.buildTestBed(); state.closeMenu(); } }, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
+        return [{ label: "Devam et", act: state.closeMenu }, controls, toggleCreative, music, { label: "Ana menü", act: function () { state.openMenu("main"); } }];
       };
       var CONTROL_LINES = ["W A S D  yürü     Boşluk  zıpla     W'ya iki kez bas  koş     Shift  eğil", "Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık (basılı)  kır ya da vur       Sağ tık  koy / ye / kapıyı aç / uyu",
                            "Tekerlek, Q ya da 1-9  eşya seç       E  envanter ve üretim (2x2 ızgara)", "B  başarımlar       C  yaratıcı mod       H  yardım       Esc  menü", "Uçmak: G ya da Boşluk'a iki kez (uçma özelliğiyle)", "Geçit: 4x5 kara kaya çerçeve (köşesiz), çakmakla içine bak ve sağ tık. Cam çerçeve = Gök Adaları"];
@@ -1289,7 +1288,7 @@
       var FUEL = { 41: 8, 5: 2, 7: 1.5, 40: 0.5 };
       state.gridSize = function () { return state.screen === "table" ? 3 : 2; };
       function invLayout() {
-        var size = state.screen === "table" ? 3 : state.screen === "furnace" || state.screen === "chest" ? 0 : 2, cell = 40, x0 = Math.floor(g.width / 2 - 190), y0 = 26, topH = size === 3 ? 128 : 92;
+        var size = state.screen === "table" ? 3 : state.screen === "furnace" || state.screen === "chest" ? 0 : 2, cell = 40, x0 = Math.floor(g.width / 2 - 190), y0 = 26, topH = size === 3 || state.screen === "chest" ? 128 : 92;   // (a chest has three rows of its own above your bag)
         var L = { x0: x0, y0: y0, cell: cell, rows: 3, w: 380, size: size, chest: state.screen === "chest" };
         L.gridY = y0 + 30 + topH + 8; L.barY = L.gridY + 3 * cell + 12; L.h = L.barY + cell + 22 - y0;
         L.cellX = size === 3 ? x0 + 70 : x0 + 190; L.cellY = y0 + 34;

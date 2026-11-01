@@ -1690,3 +1690,14 @@ test('golden tools never break, and every kind of tool hits with its own damage 
   const mob = () => { const m = { type: 'zombie', x: s.p.x + 1, y: s.p.y, z: s.p.z, vx: 0, vy: 0, vz: 0, hp: 100, kx: 0, kz: 0, flash: 0 }; return m; };
   for (const [id, want] of [[D.toolId('axe', 4), 6], [D.hoeId(4), 3]]) { s.select(s.hotbar().indexOf(id)); s.attackCd = 0; const m = mob(); s.attackMob(m); assert.strictEqual(100 - m.hp, want, 'held tool ' + id); }
 });
+
+test('the chest screen: the 27 chest places lie clear above your bag, no place of the two overlaps, and the screen fits the window', () => {
+  const K = fresh(); const { s, cx, cz, gy } = yard(K, 137);
+  s.set(cx + 1, gy + 1, cz, 26, false); s.initChest(cx + 1, gy + 1, cz); s.openChestAt(cx + 1, gy + 1, cz);
+  const L = s.invLayout(); assert.ok(L.chest); const chestBottom = L.cellY + 3 * L.cell - 4;
+  assert.ok(L.gridY >= chestBottom, 'the bag starts below the chest: ' + L.gridY + ' vs ' + chestBottom);
+  assert.ok(L.y0 + L.h < 400, 'fits the window: ' + (L.y0 + L.h));
+  for (let i = 0; i < 27; i++) { const h = s.invHit(L.x0 + 10 + (i % 9) * L.cell + 2, L.cellY + Math.floor(i / 9) * L.cell + 2); assert.ok(h && h.kind === 'chest' && h.index === i, 'chest place ' + i); }
+  for (let i = 0; i < 27; i++) { const h = s.invHit(L.x0 + 10 + (i % 9) * L.cell + 2, L.gridY + Math.floor(i / 9) * L.cell + 2); assert.ok(h && h.kind === 'slot' && h.index === 9 + i, 'bag place ' + i); }
+  s.closeUi();
+});
