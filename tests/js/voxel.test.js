@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { load } = require('./helpers');
 
 const FILES = ['kgame.js', 'kgame.audio2.js', 'kgame.kits.js', 'kgame.voxeldata.js', 'kgame.voxelmobs.js', 'kgame.voxel.js'];
-const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true; K.voxel.keyActions = true; K.voxel.structures = false; return K; };   // the tests play without the main menu
+const fresh = () => { const K = load(...FILES); K.voxel.menuAtStart = false; K.voxel.starter = true; K.voxel.keyActions = true; K.voxel.structures = false; K.voxel.persistPlayer = false; return K; };   // the tests play without the main menu
 function run(state, seconds, each) { for (let i = 0; i < Math.round(seconds * 60); i++) { if (each) each(i); state.g.step(1 / 60); } }
 const ids = { grass: 1, dirt: 2, stone: 3, sand: 4, log: 5, leaves: 6, planks: 7, glass: 8, coal: 9, iron: 10, gold: 11, diamond: 12, snow: 13, water: 14, cactus: 15 };
 const world = (K, o = {}) => K.voxel.makeWorld({ seed: 3, biome: 'forest', size: 'medium', caves: 1, ores: 1, lakes: true, trees: 3, ...o });
@@ -170,7 +170,7 @@ test('the inventory: what you break is yours, placing uses it up, you cannot pla
   assert.ok(!s.hotbar().includes(3), 'an empty kind leaves the bar');
   s.select(0);
   const stand = s.selectedBlock();
-  s.select(s.hotbar().length - 1); s.select(s.slot + 1); assert.strictEqual(s.slot, 0, 'the wheel goes round');
+  s.select(8); s.cycle(1); assert.strictEqual(s.slot, 0, 'the wheel goes round'); s.cycle(-1); assert.strictEqual(s.slot, 8);
   s.inv.count[stand] = 0; s.inv.count[2] = 0; s.inv.count[7] = 0; s.inv.count[8] = 0; s.inv.count[5] = 0;
   assert.strictEqual(s.placeBlock(), false, 'nothing to place');
   K.press('c'); run(s, 0.1); K.press('c', false);
@@ -473,19 +473,18 @@ test('the best tool in the inventory is used by itself, and a torch can be put d
   assert.ok(s.p.x > px + 1.2, 'a torch does not block the way');
 });
 
-test('the hotbar is a window over everything you hold, so new tools show up, and the number keys follow the window', () => {
+test('the inventory has 36 places: the first nine are the bar, new things go to the first free place, a stack holds 64, a number key chooses a place, and an item from below comes to the chosen place', () => {
   const K = fresh();
   const s = K.kit.run({ kit: 'sandbox', world: { seed: 2 }, size: 'small' });
   run(s, 1);
   for (const id of [40, 41, 42, 43, 44, 50, 51]) s.addItem(id, 1);
-  const all = s.hotbar();
-  assert.ok(all.length > 9);
-  s.select(all.length - 1);
-  assert.ok(s.windowStart() > 0 && s.windowStart() + 9 === all.length, 'the window slid to show the last one');
-  const start = s.windowStart();
-  K.press('1'); run(s, 0.1); K.press('1', false);
-  assert.strictEqual(s.selectedBlock(), all[start], 'key 1 is the first slot shown');
-  s.select(0); assert.strictEqual(s.windowStart(), 0);
+  const all = s.hotbar(); assert.strictEqual(all.length, 36);
+  assert.ok(all.slice(0, 9).every(Boolean), 'the bar is full first'); assert.ok(all.slice(9).filter(Boolean).length >= 5, 'the rest lies below');
+  s.addItem(3, 200); s.reconcile(); assert.ok(s.slots.filter((c) => c && c.id === 3).every((c) => c.n <= 64), 'no stack above 64'); assert.strictEqual(s.slots.filter((c) => c && c.id === 3).reduce((a, c) => a + c.n, 0), s.inv.count[3]);
+  K.press('1'); run(s, 0.1); K.press('1', false); assert.strictEqual(s.slot, 0); assert.strictEqual(s.selectedBlock(), s.slots[0].id, 'key 1 chooses the first place');
+  K.press('5'); run(s, 0.1); K.press('5', false); assert.strictEqual(s.slot, 4);
+  const below = s.hotbar().indexOf(51); assert.ok(below >= 0); s.select(below); assert.strictEqual(s.selectedBlock(), 51, 'an item from below comes to the chosen place');
+  s.select(-1); assert.strictEqual(s.slot, 8, 'the wheel goes round');
 });
 
 test('every thing you can hold has a picture: a cube from its textures for a block, pixel art in 16 rows of 16 for the rest', () => {
@@ -1183,7 +1182,7 @@ test('a real game starts with empty hands, the recipe list follows the table and
   const s = K.kit.run({ kit: 'sandbox', world: { seed: 5 }, size: 'small', trees: 0, time: 'day' });
   run(s, 1);
   assert.deepStrictEqual(s.inv.order.filter((id) => s.inv.count[id] > 0), [], 'no starter things');
-  assert.strictEqual(s.hotbar().length, 0);
+  assert.strictEqual(s.hotbar().filter(Boolean).length, 0);
   assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255, 'an empty hotbar is drawn without trouble');
   const by = (r) => s.craftList().filter((x) => x.where === r).length;
   assert.ok(by('hand') > 0 && by('table') === 0 && by('furnace') === 0, 'only the hand recipes at first');
@@ -1229,8 +1228,8 @@ test('the inventory opens with E, shows what you hold in a grid, a click moves a
   s.showInv = false; s.p.pitch = -0.6; run(s, 0.1); const broken = s.hud.broken; K.press('f'); run(s, 2); K.press('f', false); assert.strictEqual(s.hud.broken, broken, 'F does not dig');
   // moving an item: the one at slot 3 goes to slot 0
   s.showInv = true; run(s, 0.05);
-  const all = s.hotbar(); const third = all[3]; s.select(0);
-  assert.strictEqual(s.moveItem(third), true); assert.strictEqual(s.hotbar()[0], third); assert.strictEqual(s.selectedBlock(), third);
+  const all = s.hotbar(); const third = all[3]; s.select(0); const LL = s.invLayout();
+  K.setMouse(LL.x0 + 10 + 3 * LL.cell + 2, LL.barY + 2, undefined); assert.strictEqual(s.hoverSlot(1), true); assert.strictEqual(s.hotbar()[0], third); assert.strictEqual(s.selectedBlock(), third);
   // clicks: the layout is found by position
   const hit = s.invHit(190 + 0 + 10 + 5 + 0, 0); assert.ok(hit === null || typeof hit === 'object');
   s.closeUi(); assert.strictEqual(s.uiOpen(), false);
@@ -1302,7 +1301,7 @@ test('ores lie in veins at the depths of the 1.8.9 game: coal and iron are commo
 });
 
 test('experience comes from ores, creatures and furnaces; the büyü masası spends lapis and levels on a spell that really changes the tool, sword or armour, and it is kept', () => {
-  const K = fresh(); const D = K.voxeldata; const M = K.voxelmobs;
+  const K = fresh(); K.voxel.persistPlayer = true; const D = K.voxeldata; const M = K.voxelmobs;
   const { s, cx, cz, gy } = yard(K, 99);
   assert.strictEqual(s.levelInfo().level, 0);
   s.addXp(30); assert.ok(s.levelInfo().level >= 3, 'levels: ' + s.levelInfo().level);
@@ -1430,7 +1429,7 @@ test('the inventory screen: pick a stack up with the mouse, put it on the grid, 
   const L = s.invLayout();
   const at = (x, y) => { K.setMouse(x, y, undefined); };
   const find = (pred) => { for (let x = 0; x < 640; x += 8) for (let y = 0; y < 400; y += 8) { const h = s.invHit(x, y); if (h && pred(h)) return { x: x + 2, y: y + 2, h }; } return null; };
-  const logs = find((h) => h.kind === 'grid' && h.id === 5); assert.ok(logs, 'the logs are found in the grid');
+  const logs = find((h) => h.kind === 'slot' && h.id === 5); assert.ok(logs, 'the logs are found in the grid');
   at(logs.x, logs.y); assert.strictEqual(s.uiClick(0), true); assert.deepStrictEqual({ ...s.cursor }, { id: 5, n: 3 }); assert.strictEqual(s.inv.count[5], 0);
   const cx = L.cellX + 2, cy = L.cellY + 2; at(cx, cy); s.uiClick(0);
   assert.strictEqual(s.cells[0].id, 5); assert.strictEqual(s.cells[0].n, 3); assert.strictEqual(s.cursor, null);
@@ -1457,28 +1456,29 @@ test('the inventory screen: pick a stack up with the mouse, put it on the grid, 
   assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
 });
 
-test('the inventory: a stack in the hand goes back with a click on nothing, goes to the place you click on the bar or the grid, and a number key over an item puts it in that slot', () => {
+test('the inventory places: a stack in the hand goes back with a click on nothing, goes to the place you click, the same kind adds up to 64, another kind swaps, and a number key over a place swaps it with that place of the bar', () => {
   const K = fresh(); const { s } = yard(K, 110);
-  for (const id of [5, 7, 27, 41, 42, 40, 3, 21, 4, 2, 1, 8]) s.inv.count[id] = 0;
-  s.inv.order = []; s.addItem(5, 3); s.addItem(7, 4); s.addItem(27, 5); s.addItem(41, 2); s.addItem(42, 1);
+  for (const id of [5, 7, 27, 41, 42, 40, 3, 21, 4, 2, 1, 8, 6, 9, 10, 11, 12, 34, 24]) s.inv.count[id] = 0;
+  s.inv.order = []; s.slots.fill(null); s.addItem(5, 3); s.addItem(7, 4); s.addItem(27, 5); s.addItem(41, 2); s.addItem(42, 1);
   s.openScreen('inv'); const L = s.invLayout(); const at = (x, y) => K.setMouse(x, y, undefined);
   const barCell = (i) => [L.x0 + 10 + i * L.cell + 2, L.barY + 2], gridCell = (i) => [L.x0 + 10 + (i % 9) * L.cell + 2, L.gridY + Math.floor(i / 9) * L.cell + 2];
+  const cellOf = (i) => (i < 9 ? barCell(i) : gridCell(i - 9));
   assert.deepStrictEqual(s.hotbar().slice(0, 5), [5, 7, 27, 41, 42]);
-  at(...barCell(3)); s.uiClick(0); assert.deepStrictEqual({ ...s.cursor }, { id: 41, n: 2 }); assert.ok(!s.hotbar().includes(41), 'in the hand, not in the bar');
-  at(5, 380); s.uiClick(0); assert.strictEqual(s.cursor, null, 'a click on nothing puts it back'); assert.strictEqual(s.inv.count[41], 2); assert.ok(s.hotbar().includes(41));
-  // to a place on the bar: the coal goes to slot 1, the one that was there changes places with it
-  at(...barCell(3)); s.uiClick(0); at(...barCell(0)); s.uiClick(0);
-  assert.strictEqual(s.cursor, null); assert.strictEqual(s.hotbar()[0], 41, 'the coal is in the first slot'); assert.ok(s.hotbar().includes(5));
-  // an empty place after the last one: it goes to the end
-  at(...barCell(0)); s.uiClick(0); at(...barCell(8)); s.uiClick(0); assert.strictEqual(s.hotbar()[s.hotbar().length - 1], 41, 'to the end');
-  // a place of the grid
-  at(...gridCell(0)); s.uiClick(0); const picked = s.cursor.id; at(...gridCell(2)); s.uiClick(0); assert.strictEqual(s.hotbar()[2], picked);
-  // a right click picks half
-  s.addItem(3, 10); at(...gridCell(s.hotbar().indexOf(3))); s.uiClick(2); assert.strictEqual(s.cursor.n, 5); assert.strictEqual(s.inv.count[3], 5); s.dropCursor(); assert.strictEqual(s.inv.count[3], 10);
-  // a number key over an item
-  const target = s.hotbar()[4]; const id0 = s.hotbar()[0]; at(...gridCell(0)); K.press('3'); run(s, 0.1); K.press('3', false); run(s, 0.1);
-  assert.strictEqual(s.hotbar()[2], id0, 'key 3 over the first item puts it in slot 3'); assert.ok(s.hotbar().includes(target));
-  assert.ok(/geri koy/.test('sol tık: al/koy   sağ tık: yarısı/bir tane   boş yere tık: geri koy'));
+  at(...barCell(3)); s.uiClick(0); assert.strictEqual(s.cursor.id, 41); assert.strictEqual(s.cursor.n, 2); assert.strictEqual(s.slots[3], null, 'the place is empty now'); assert.strictEqual(s.inv.count[41], 0);
+  at(5, 380); s.uiClick(0); assert.strictEqual(s.cursor, null, 'a click on nothing puts it back'); assert.strictEqual(s.inv.count[41], 2); assert.strictEqual(s.slots[3].id, 41, 'to the first free place, here the one it came from');
+  at(...barCell(3)); s.uiClick(0); at(...barCell(7)); s.uiClick(0);
+  assert.strictEqual(s.cursor, null); assert.strictEqual(s.slots[7].id, 41); assert.strictEqual(s.slots[3], null, 'the old place stays empty: gaps are allowed'); assert.strictEqual(s.hotbar()[7], 41, 'it is where you put it');
+  at(...barCell(7)); s.uiClick(0); at(...gridCell(4)); s.uiClick(0); assert.strictEqual(s.slots[9 + 4].id, 41); assert.strictEqual(s.slots[7], null);
+  at(...barCell(0)); s.uiClick(0); at(...barCell(1)); s.uiClick(0); assert.strictEqual(s.slots[1].id, 5); assert.strictEqual(s.cursor.id, 5 === 5 ? s.cursor.id : 0, 'a swap');
+  const inHand = s.cursor.id; assert.notStrictEqual(inHand, 5, 'the logs stay in the place, the other kind is in the hand'); at(...barCell(0)); s.uiClick(0);
+  s.dropCursor(); s.addItem(7, 70); s.reconcile(); const sevens = s.slots.map((c, i) => [c, i]).filter(([c]) => c && c.id === 7);
+  assert.ok(sevens.length >= 2 && sevens.every(([c]) => c.n <= 64), 'stacks of 64: ' + JSON.stringify(sevens.map(([c]) => c.n)));
+  const total = s.inv.count[7]; const [first, second] = sevens; at(...cellOf(first[1])); s.uiClick(0); at(...cellOf(second[1])); s.uiClick(0);
+  assert.ok(s.slots[second[1]].n <= 64); assert.strictEqual(s.slots.filter((c) => c && c.id === 7).reduce((a, c) => a + c.n, 0) + (s.cursor ? s.cursor.n : 0), total, 'nothing is lost');
+  s.dropCursor(); assert.strictEqual(s.inv.count[7], total);
+  at(...barCell(2)); const n2 = s.slots[2].n; s.uiClick(2); assert.strictEqual(s.cursor.n, Math.ceil(n2 / 2)); s.dropCursor();
+  const a2 = s.slots[9 + 4]; at(...gridCell(4)); K.press('3'); run(s, 0.1); K.press('3', false); run(s, 0.1);
+  assert.strictEqual(s.slots[2].id, a2.id, 'key 3 over the place puts it in place 3');
   s.closeUi();
 });
 
@@ -1541,7 +1541,7 @@ test('a chest opens with a right click and keeps what you put in it (saved with 
   assert.ok(t, 'the chest is under the crosshair'); assert.strictEqual(s.placeBlock(), true); assert.strictEqual(s.showInv, true); assert.strictEqual(s.screen, 'chest'); assert.ok(s.uiOpen());
   const L = s.invLayout(); const at = (x, y) => K.setMouse(x, y, undefined);
   const find = (kind, pred) => { for (let x = 0; x < 640; x += 4) for (let y = 0; y < 400; y += 4) { const h = s.invHit(x, y); if (h && h.kind === kind && (!pred || pred(h))) return { x: x + 1, y: y + 1, h }; } return null; };
-  const planks = find('grid', (h) => h.id === 7); at(planks.x, planks.y); s.uiClick(0); assert.strictEqual(s.cursor.id, 7); assert.strictEqual(s.cursor.n, 20);
+  const planks = find('slot', (h) => h.id === 7); at(planks.x, planks.y); s.uiClick(0); assert.strictEqual(s.cursor.id, 7); assert.strictEqual(s.cursor.n, 20);
   const slot = find('chest', (h) => h.index === 4); at(slot.x, slot.y); s.uiClick(0);
   assert.strictEqual(s.chestOpen.slots[4].id, 7); assert.strictEqual(s.chestOpen.slots[4].n, 20); assert.strictEqual(s.cursor, null); assert.strictEqual(s.inv.count[7], 0);
   assert.ok(s.render(new Uint8ClampedArray(256 * 160 * 4))[3] === 255);
@@ -1556,4 +1556,27 @@ test('a chest opens with a right click and keeps what you put in it (saved with 
   s.set(cx + 5, gy + 1, cz + 3, 26, false); const before = Object.values(s.inv.count).reduce((a, b) => a + b, 0);
   const got = s.spillChest(cx + 5, gy + 1, cz + 3); assert.ok(got.length >= 1); assert.ok(Object.values(s.inv.count).reduce((a, b) => a + b, 0) > before);
   const planksBack = s.spillChest(cx + 2, gy + 1, cz); assert.ok(planksBack.some((x) => /tahta/.test(x)), 'the planks come back when the chest is broken');
+});
+
+test('the game keeps the whole player with the world: where you stand and look, the places of the inventory, the chosen place, health, hunger, the time of day, the bed, the experience; and the blocks you changed', () => {
+  const K = fresh(); K.voxel.persistPlayer = true;
+  const spec = { kit: 'sandbox', world: { seed: 120 }, size: 'small', trees: 0, time: 'cycle' };
+  const s = K.kit.run(spec); run(s, 1);
+  s.addItem(5, 12); s.addItem(42, 3); s.addItem(7, 70);
+  s.slots[20] = { id: 42, n: 3 }; s.inv.count[42] = 3; for (let i = 0; i < 36; i++) if (i !== 20 && s.slots[i] && s.slots[i].id === 42) s.slots[i] = null;   // the iron is put far down on purpose
+  s.reconcile(); s.slot = 5; s.health = 11; s.food = 7; s.time = 0.37; s.respawn = { x: 40.5, y: 14, z: 41.5 }; s.addXp(30);
+  s.p.x = s.p.x + 3.25; s.p.z = s.p.z + 2.5; s.p.yaw = 1.2; s.p.pitch = -0.3;
+  const ix = Math.floor(s.p.x) + 2, iz = Math.floor(s.p.z), iy = s.world.heightAt(ix, iz) + 1; s.set(ix, iy, iz, 7, true);
+  const saved = { x: s.p.x, z: s.p.z, slots: JSON.stringify(s.slots), count: JSON.stringify(s.inv.count) };
+  s.savePlayer();
+  const again = K.kit.run(spec); run(again, 0.2);
+  assert.ok(Math.abs(again.p.x - saved.x) < 0.5 && Math.abs(again.p.z - saved.z) < 0.5, 'you stand where you stood: ' + again.p.x + ' against ' + saved.x);
+  assert.ok(Math.abs(again.p.yaw - 1.2) < 0.3, 'and look the same way');
+  assert.strictEqual(JSON.stringify(again.slots), saved.slots, 'the places of the inventory are as they were (the iron far down)'); assert.strictEqual(again.slots[20].id, 42);
+  assert.strictEqual(again.slot, 5); assert.strictEqual(again.health <= 20 && again.health >= 10, true, 'health: ' + again.health); assert.ok(again.food <= 7.1, 'hunger is kept: ' + again.food);
+  assert.ok(again.xp >= 30 && again.respawn && again.respawn.x === 40.5, 'experience and the bed');
+  assert.ok(Math.abs(again.time - 0.37) < 0.05, 'the time of day: ' + again.time); assert.strictEqual(again.get(ix, iy, iz), 7, 'the block you put is there');
+  assert.strictEqual(again.inv.count[5], JSON.parse(saved.count)[5], 'the counts are kept');
+  // another world starts clean, and a world nobody played starts from the spawn
+  const other = K.kit.run({ ...spec, world: { seed: 121 } }); run(other, 0.2); assert.strictEqual(other.inv.count[5], 10, 'a world nobody played starts with the starter things only');
 });

@@ -370,7 +370,18 @@
         if (!frame && id === 141) { var panel = u > 2 && u < 13 && ((v > 1 && v < 7) || (v > 8 && v < 14)); if (panel) { c = [176, 128, 70]; if (u === 3 || u === 12 || v === 2 || v === 6 || v === 9 || v === 13) k *= 0.68; } if (u >= 11 && u <= 12 && v >= 6 && v <= 7) { c = [240, 210, 90]; k = 1.1; } }
         if (!frame && id === 142) { if (u > 3 && u < 12 && v > 2 && v < 9) { c = (u === 7 || u === 8 || v === 5 || v === 6) ? [88, 60, 32] : [176, 216, 236]; k = 1; } else if (v > 10) { c = [176, 128, 70]; if (v === 11 || u === 3 || u === 12) k *= 0.68; } }
       }
-      if (id === 24 && face === 0 && (u % 5 === 0 || v % 5 === 0)) k *= 0.8;   // the table top
+      if (id === 24) {   // a crafting table: a grid on top, a hammer and a saw on the sides, dark boards under it
+        c = face === 2 ? [96, 68, 38] : [176, 140, 84];
+        if (face === 0) { if (u === 0 || v === 0 || u === 15 || v === 15) { c = [96, 68, 38]; } else if (u === 5 || u === 10 || v === 5 || v === 10) { c = [118, 84, 46]; } }
+        else if (face === 1) {
+          if (v % 4 === 3) k *= 0.8;
+          if (u === 0 || u === 15) k *= 0.72;
+          if (u >= 2 && u <= 6 && v >= 3 && v <= 4) c = [150, 150, 158];   // the head of a hammer
+          if (u === 4 && v >= 5 && v <= 12) c = [100, 66, 34];   // its handle
+          if (u >= 9 && u <= 13 && v >= 4 && v <= 9) c = (u + v) % 2 === 0 ? [214, 214, 222] : [180, 180, 190];   // the blade of a saw
+          if (u >= 9 && u <= 13 && v === 10) c = [120, 84, 46];
+        }
+      }
       if (id === 25 && face === 1 && u > 3 && u < 12 && v > 6 && v < 13) k *= 0.35;   // the furnace mouth
       if (id === 26 && face === 1 && (v === 7 || v === 8)) k *= 0.7;   // the chest band
       px[(v * 16 + u) * 3] = Math.min(255, c[0] * k); px[(v * 16 + u) * 3 + 1] = Math.min(255, c[1] * k); px[(v * 16 + u) * 3 + 2] = Math.min(255, c[2] * k);
@@ -403,7 +414,7 @@
     return hdCache[key] = out;
   }
 
-  K.voxel = { res: { w: RW, h: RH }, structures: true, keyActions: false, starter: false, menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
+  K.voxel = { persistPlayer: true, res: { w: RW, h: RH }, structures: true, keyActions: false, starter: false, menuAtStart: true, cropSeconds: CROP_SECONDS, treeSeconds: TREE_SECONDS, names: NAMES, biomes: Object.keys(BIOMES), sizes: Object.keys(SIZES), makeWorld: makeWorld };
 
   K.kit.define("sandbox", {
     defaults: {
@@ -445,7 +456,7 @@
         if (b === CHEST && remember && state.initChest) state.initChest(x, y, z);
         if (remember) {
           state.edits.push(meta !== undefined ? [x, y, z, b, meta] : [x, y, z, b]);
-          if (state.edits.length > 3000) state.edits.shift();
+          if (state.edits.length > 30000) state.edits.shift();
           try { K.save.set(saveKey, state.edits); } catch (e) { /* no storage: the world is just not kept */ }
         }
         return true;
@@ -467,10 +478,30 @@
         if (!inv.count[id]) { inv.count[id] = 0; if (inv.order.indexOf(id) < 0) inv.order.push(id); }
         inv.count[id] += n || 1;
       };
-      state.hotbar = function () { return inv.order.filter(function (id) { return inv.count[id] > 0; }); };   // every kind you hold, in the order you got them
-      state.selectedBlock = function () { var bar = state.hotbar(); return bar.length ? bar[Math.min(state.slot, bar.length - 1)] : (state.creative ? STONE : 0); };
-      state.select = function (i) { var n = Math.max(1, state.hotbar().length); state.slot = ((i % n) + n) % n; };
-      state.windowStart = function () { var n = state.hotbar().length; return Math.max(0, Math.min(state.slot - 4, n - 9)); };   // the nine slots shown
+      state.slots = []; for (var si = 0; si < 36; si++) state.slots.push(null);   // the 36 places of the inventory: 0-8 are the bar, 9-35 lie below it; a place holds one kind, up to 64
+      state.reconcile = function () {   // the counts say what you hold, the places say where: too many in the places are taken away (the chosen place first), new things go to the first free places (the bar first) and fill stacks up to 64
+        var slots = state.slots, sum = {}, i, id, key;
+        for (i = 0; i < 36; i++) if (slots[i]) sum[slots[i].id] = (sum[slots[i].id] || 0) + slots[i].n;
+        for (key in sum) {
+          var extra = sum[key] - (inv.count[key] || 0); if (extra <= 0) continue;
+          var order = [state.slot]; for (i = 35; i >= 0; i--) if (i !== state.slot) order.push(i);
+          for (var oi = 0; oi < order.length && extra > 0; oi++) { var s0 = slots[order[oi]]; if (s0 && s0.id === +key) { var take = Math.min(extra, s0.n); s0.n -= take; extra -= take; if (s0.n <= 0) slots[order[oi]] = null; } }
+        }
+        var keys = inv.order.slice(); for (key in inv.count) if (keys.indexOf(+key) < 0) keys.push(+key);   // in the order you got them
+        for (var ki = 0; ki < keys.length; ki++) {
+          key = keys[ki]; var want = (inv.count[key] || 0) - (sum[key] || 0); id = +key; if (want <= 0) continue;
+          for (i = 0; i < 36 && want > 0; i++) if (slots[i] && slots[i].id === id && slots[i].n < 64) { var add = Math.min(want, 64 - slots[i].n); slots[i].n += add; want -= add; }
+          for (i = 0; i < 36 && want > 0; i++) if (!slots[i]) { var put = Math.min(want, 64); slots[i] = { id: id, n: put }; want -= put; }
+        }
+      };
+      state.hotbar = function () { state.reconcile(); return state.slots.map(function (c) { return c ? c.id : 0; }); };   // the kind in each of the 36 places (0: empty); the first nine are the bar
+      state.selectedBlock = function () { state.reconcile(); var c = state.slots[state.slot]; return c ? c.id : (state.creative ? STONE : 0); };
+      state.select = function (i) {
+        if (i >= 9 && i < 36) { state.reconcile(); var a = state.slots[i]; state.slots[i] = state.slots[state.slot]; state.slots[state.slot] = a; return; }   // something from below: it comes to the chosen place of the bar
+        state.slot = ((i % 9) + 9) % 9;
+      };
+      state.cycle = function (d) { state.slot = (((state.slot + d) % 9) + 9) % 9; };   // the wheel and Q go round the nine places of the bar
+      state.windowStart = function () { return 0; };
       state.setCreative = function (on) {
         state.creative = on;
         if (on) [GRASS, DIRT, STONE, SAND, LOG, LEAVES, PLANKS, GLASS, SNOW, COAL, IRON, GOLD, DIAMOND, CACTUS].forEach(function (id) { if (inv.order.indexOf(id) < 0) inv.order.push(id); if (!inv.count[id]) inv.count[id] = 1; });
@@ -1084,7 +1115,29 @@
       var ENCH_NAMES = { eff: "Verimlilik", unb: "Dayanıklılık", sharp: "Keskinlik", prot: "Koruma" }, ROMAN = ["", "I", "II", "III"], XP_FOR = { 9: 1, 10: 1, 11: 2, 12: 4, 156: 3, 157: 2, 158: 5 };
       var playerKey = baseKey + ".player", savedPlayer; try { savedPlayer = K.save.get(playerKey, null); } catch (e) { savedPlayer = null; }
       state.xp = (savedPlayer && savedPlayer.xp) || 0; state.ench = (savedPlayer && savedPlayer.ench) || {}; state.enchCursor = 0;
-      state.savePlayer = function () { try { K.save.set(playerKey, { xp: state.xp, ench: state.ench }); } catch (e) { /* not kept */ } };
+      state.savePlayer = function () {   // what you carry, where you stand, how you are: kept with the world (every few seconds, and when the page is left)
+        if (K.voxel.persistPlayer === false) return;
+        var q = state.p, home = state.dim === "over" ? { x: q.x, y: q.y, z: q.z } : (state.homes && state.homes.over) || null;
+        var data = { xp: state.xp, ench: state.ench, inv: inv.count, slots: state.slots, slot: state.slot, health: state.health, food: state.food, air: state.air, time: state.time, creative: state.creative,
+                     respawn: state.respawn, wear: state.wear, stats: state.stats, hud: state.hud, ever: state.ever, kills: state.kills, deaths: state.deaths, fuel: state.fuel };
+        if (home) data.p = { x: home.x, y: home.y, z: home.z, yaw: q.yaw, pitch: q.pitch };
+        try { K.save.set(playerKey, data); } catch (e) { /* not kept */ }
+      };
+      if (savedPlayer && K.voxel.persistPlayer !== false) {   // the last visit comes back
+        var sp = savedPlayer, k2;
+        if (sp.inv) { for (k2 in inv.count) delete inv.count[k2]; for (k2 in sp.inv) inv.count[k2] = sp.inv[k2]; }
+        if (sp.slots instanceof Array) { for (var li = 0; li < 36; li++) { var sc = sp.slots[li]; state.slots[li] = sc && sc.id ? { id: +sc.id, n: sc.n | 0 } : null; } }
+        if (typeof sp.slot === "number") state.slot = ((sp.slot % 9) + 9) % 9;
+        ["health", "food", "air", "time", "kills", "deaths", "fuel"].forEach(function (f) { if (typeof sp[f] === "number") state[f] = sp[f]; });
+        if (sp.creative) state.setCreative(true);
+        if (sp.respawn && typeof sp.respawn.x === "number") state.respawn = sp.respawn;
+        if (sp.wear && typeof sp.wear === "object") state.wear = sp.wear;
+        if (sp.stats && typeof sp.stats === "object") { state.stats = Object.assign(state.stats, sp.stats); }
+        if (sp.hud && typeof sp.hud === "object") state.hud = Object.assign(state.hud, sp.hud);
+        if (sp.ever && typeof sp.ever === "object") state.ever = sp.ever;
+        if (sp.p && typeof sp.p.x === "number") { w.ensureAround(sp.p.x | 0, sp.p.z | 0, LOAD); state.p.x = sp.p.x; state.p.y = sp.p.y; state.p.z = sp.p.z; state.p.yaw = sp.p.yaw || 0; state.p.pitch = sp.p.pitch || 0; state.p.vy = 0; state.p.peak = state.p.y; }
+        if (state.health <= 0) state.health = 20;
+      }
       state.levelInfo = function (xp) { var level = 0, need = 5, left = xp === undefined ? state.xp : xp; while (left >= need) { left -= need; level++; need = 5 + level * 3; } return { level: level, into: left, need: need }; };
       state.xpAt = function (level) { var t = 0; for (var i = 0; i < level; i++) t += 5 + i * 3; return t; };
       state.addXp = function (n) { var before = state.levelInfo().level; state.xp += n; if (state.levelInfo().level > before) K.sfx("coin"); state.savePlayer(); };
@@ -1163,7 +1216,8 @@
       }
       state.invLayout = invLayout;
       state.invHit = function (mx, my) {
-        var L = invLayout(), all = state.hotbar(), cell = L.cell, i;
+        state.reconcile();
+        var L = invLayout(), cell = L.cell, i;
         var inside = function (x, y) { return mx >= x && mx < x + cell - 4 && my >= y && my < y + cell - 4; };
         if (L.size) {
           for (i = 0; i < L.size * L.size; i++) if (inside(L.cellX + (i % L.size) * cell, L.cellY + Math.floor(i / L.size) * cell)) return { kind: "cell", index: i };
@@ -1176,18 +1230,16 @@
         var col = Math.floor((mx - (L.x0 + 10)) / cell);
         if (col < 0 || col > 8) return null;
         var row = Math.floor((my - L.gridY) / cell);
-        if (row >= 0 && row < L.rows) { var gi = state.invScroll * 9 + row * 9 + col; return { kind: "grid", index: gi, id: all[gi] }; }   // an empty cell is a place too
-        if (my >= L.barY && my < L.barY + cell) { var at = state.windowStart() + col; return { kind: "hotbar", index: at, id: all[at] }; }
+        if (row >= 0 && row < L.rows) { var gi = 9 + row * 9 + col; return { kind: "slot", index: gi, id: state.slots[gi] && state.slots[gi].id }; }   // an empty place is a place too
+        if (my >= L.barY && my < L.barY + cell) return { kind: "slot", index: col, id: state.slots[col] && state.slots[col].id };
         return null;
       };
-      state.moveItem = function (id) {   // the item goes to the chosen slot and the one that was there takes its place
-        var all = state.hotbar(), from = all.indexOf(id);
-        if (from < 0) return false;
-        var to = Math.min(state.slot, all.length - 1), other = all[to];
-        all[to] = id; all[from] = other;
-        inv.order = all.concat(inv.order.filter(function (i) { return all.indexOf(i) < 0; }));
-        state.select(to); return true;
-      };
+      function setSlot(i, v) {   // a place gets new content, the counts follow
+        var old = state.slots[i];
+        if (old) inv.count[old.id] = (inv.count[old.id] || 0) - old.n;
+        if (v) { inv.count[v.id] = (inv.count[v.id] || 0) + v.n; state.ever[v.id] = true; }
+        state.slots[i] = v;
+      }
       function slotClick(slot, button, canPlace) {   // what a click does to one slot with the stack in the hand: the new content of the slot
         var c = state.cursor;
         if (!c) {
@@ -1198,26 +1250,19 @@
         if (canPlace && !canPlace(c.id)) return slot;
         var put = button === 2 ? 1 : c.n, rest = c.n - put;
         if (!slot) { state.cursor = rest > 0 ? { id: c.id, n: rest, free: c.free } : null; return { id: c.id, n: put }; }
-        if (slot.id === c.id) { state.cursor = rest > 0 ? { id: c.id, n: rest, free: c.free } : null; return { id: slot.id, n: Math.min(64, slot.n + put) }; }
+        if (slot.id === c.id) {   // the same kind: it adds up to a full stack of 64, the rest stays in the hand
+          var room = 64 - slot.n, add = Math.min(put, room); if (add <= 0) return slot;
+          state.cursor = c.n - add > 0 ? { id: c.id, n: c.n - add, free: c.free } : null; return { id: slot.id, n: slot.n + add };
+        }
         state.cursor = { id: slot.id, n: slot.n }; return { id: c.id, n: c.n };   // another kind: they swap
       }
-      state.pickFromInventory = function (id, half) {
+      state.pickFromInventory = function (id, half) {   // the first stack of this kind comes into the hand
         if (state.cursor) return false;
-        if (state.creative) { state.cursor = { id: id, n: half ? 1 : 64, free: true }; return true; }
-        var have = inv.count[id] || 0, n = half ? Math.ceil(have / 2) : have; if (n <= 0) return false;
-        inv.count[id] -= n; state.cursor = { id: id, n: n };
-        if (state.slot >= state.hotbar().length) state.slot = Math.max(0, state.hotbar().length - 1);
-        return true;
+        state.reconcile();
+        for (var i = 0; i < 36; i++) if (state.slots[i] && state.slots[i].id === id) { setSlot(i, slotClick(state.slots[i], half ? 2 : 0)); return true; }
+        return false;
       };
-      state.placeAt = function (id, index) {   // the kind goes to this place of the bar or the grid (the one that was there changes places with it, an empty place after the last one means the end)
-        var all = state.hotbar(), from = all.indexOf(id); if (!id || from < 0) return false;
-        var to = Math.max(0, Math.min(index, all.length - 1));
-        if (index >= all.length) { all.splice(from, 1); all.push(id); to = all.length - 1; } else { var other = all[to]; all[to] = id; all[from] = other; }
-        inv.order = all.concat(inv.order.filter(function (i) { return all.indexOf(i) < 0; }));
-        if (index >= state.windowStart() && index < state.windowStart() + 9) state.select(to);
-        return true;
-      };
-      state.dropCursor = function () { var c = state.cursor; if (!c) return; if (!c.free) state.addItem(c.id, c.n); state.cursor = null; };
+      state.dropCursor = function () { var c = state.cursor; if (!c) return; if (!c.free) state.addItem(c.id, c.n); state.cursor = null; state.reconcile(); };
       state.returnItems = function () {   // closing the screen: everything in the hand, on the grid and in the furnace goes back to the inventory
         state.dropCursor();
         for (var i = 0; i < 9; i++) if (state.cells[i]) { state.addItem(state.cells[i].id, state.cells[i].n); state.cells[i] = null; }
@@ -1255,17 +1300,13 @@
         else if (hit.kind === "fin") state.furn.input = slotClick(state.furn.input, button, function (id) { return !!state.smeltOf(id); });
         else if (hit.kind === "ffuel") state.furn.fuel = slotClick(state.furn.fuel, button, function (id) { return !!FUEL[id]; });
         else if (hit.kind === "fout") state.furn.out = slotClick(state.furn.out, button, function () { return false; });
-        else if (state.cursor) { var cid = state.cursor.id; state.dropCursor(); state.placeAt(cid, hit.index); }   // a stack put on a place of the bar or the grid goes back into the inventory and takes that place
-        else if (hit.id) state.pickFromInventory(hit.id, button === 2);
-        return true;
+        else if (hit.kind === "slot") setSlot(hit.index, slotClick(state.slots[hit.index], button));   // a place of the inventory: take, put, swap, half, one
+        state.reconcile(); return true;
       };
       state.hoverSlot = function (num) {   // a number key with the mouse over an item: the item goes to that slot of the bar
         if (!state.showInv || state.cursor) return false;
-        var hit = state.invHit(K.mouse.x, K.mouse.y), id = hit && (hit.kind === "grid" || hit.kind === "hotbar") ? hit.id : 0; if (!id) return false;
-        var all = state.hotbar(), from = all.indexOf(id), to = Math.min(state.windowStart() + num - 1, all.length - 1);
-        if (from < 0 || to < 0) return false;
-        var other = all[to]; all[to] = id; all[from] = other;
-        inv.order = all.concat(inv.order.filter(function (i) { return all.indexOf(i) < 0; })); state.select(to); return true;
+        var hit = state.invHit(K.mouse.x, K.mouse.y); if (!hit || hit.kind !== "slot" || hit.index === num - 1) return false;
+        var a = state.slots[hit.index]; state.slots[hit.index] = state.slots[num - 1]; state.slots[num - 1] = a; return true;   // the place under the mouse and the place of the number change contents
       };
       state.openScreen = function (kind) { state.returnItems(); state.screen = kind; state.showInv = true; };
       state.invUpdate = function () { state.furnaceUpdate(1 / 60); };
@@ -1320,6 +1361,7 @@
       };
       state.vitals = function (dt) {
         var p = state.p;
+        state.saveT = (state.saveT || 0) + dt; if (state.saveT >= 4) { state.saveT = 0; state.savePlayer(); }
         state.achT += dt; if (state.achT >= 0.5) { state.achT = 0; state.checkAch(); }
         state.hinted = state.hinted || {};   // the way to another world is told once, when the first piece is in your hands
         if (state.ever[151] && !state.hinted.frame) { state.hinted.frame = true; state.say("Geçit: kara kayadan 4 geniş 5 yüksek çerçeve yap (köşeler boş), içi boş kalsın. Cam çerçeve = Gök Adaları."); }
@@ -1538,7 +1580,7 @@
           } else if (heldId) drawIcon(c, heldId, hx, hy, hs);
           else { c.fillStyle = "#d9a27a"; c.fillRect(hx + 40, hy + 30, 44, 84); c.fillStyle = "#b8835e"; c.fillRect(hx + 40, hy + 96, 44, 18); }   // an empty hand
         }
-        var all = state.hotbar(), start = state.windowStart(), bar = all.slice(start, start + 9), slot = 38, x0 = g.width / 2 - 9 * slot / 2, y0 = g.height - slot - 8;
+        var bar = state.hotbar().slice(0, 9), slot = 38, x0 = g.width / 2 - 9 * slot / 2, y0 = g.height - slot - 8;
         var lv = state.levelInfo();   // the experience bar over the hotbar
         c.fillStyle = "rgba(0,0,0,0.55)"; c.fillRect(x0, y0 - 6, 9 * slot, 4); c.fillStyle = "#8bc34a"; c.fillRect(x0, y0 - 6, 9 * slot * lv.into / lv.need, 4);
         if (lv.level > 0) { c.fillStyle = "#c5e1a5"; c.font = "bold 12px sans-serif"; c.textAlign = "center"; c.fillText(String(lv.level), g.width / 2, y0 - 9); c.textAlign = "left"; }
@@ -1548,11 +1590,11 @@
         }
         for (var i = 0; i < 9; i++) {
           c.fillStyle = "rgba(0,0,0,0.55)"; c.fillRect(x0 + i * slot, y0, slot - 3, slot - 3);
-          c.strokeStyle = start + i === Math.min(state.slot, Math.max(0, all.length - 1)) && all.length ? "#fff" : "rgba(255,255,255,0.3)"; c.lineWidth = start + i === state.slot ? 3 : 1;
+          c.strokeStyle = i === state.slot ? "#fff" : "rgba(255,255,255,0.3)"; c.lineWidth = i === state.slot ? 3 : 1;
           c.strokeRect(x0 + i * slot, y0, slot - 3, slot - 3);
           if (bar[i]) {
             drawIcon(c, bar[i], x0 + i * slot + 4, y0 + 2, slot - 9);
-            c.fillStyle = "#fff"; c.font = "12px sans-serif"; c.fillText(state.creative ? "∞" : String(inv.count[bar[i]]), x0 + i * slot + 4, y0 + slot - 7);
+            c.fillStyle = "#fff"; c.font = "12px sans-serif"; c.fillText(state.creative ? "∞" : (state.slots[i].n > 1 ? String(state.slots[i].n) : ""), x0 + i * slot + 4, y0 + slot - 7);
           }
           c.fillStyle = "rgba(255,255,255,0.7)"; c.font = "10px sans-serif"; c.fillText(String(i + 1), x0 + i * slot + 3, y0 + 11);
         }
@@ -1578,8 +1620,7 @@
         for (var kk in state.visited) { var vz = Math.floor(kk / N), vx = kk % N; c.fillStyle = "#6fbf73"; c.fillRect(mx + vx * cell, my + vz * cell, cell - 1, cell - 1); }
         if (state.chunk) { c.fillStyle = "#fff"; c.fillRect(mx + state.chunk.x * cell, my + state.chunk.z * cell, cell - 1, cell - 1); }
         if (state.showInv) {   // the inventory screen: the pockets' grid or the table's or the furnace's on top, what you hold below, the bar at the bottom
-          var L = invLayout(), allInv = state.hotbar(), startInv = state.windowStart(), maxScroll = Math.max(0, Math.ceil(allInv.length / 9) - L.rows), cellPx = L.cell - 4;
-          state.invScroll = Math.max(0, Math.min(maxScroll, state.invScroll));
+          var L = invLayout(), cellPx = L.cell - 4; state.reconcile();
           c.fillStyle = "rgba(20,20,24,0.95)"; c.fillRect(L.x0, L.y0, L.w, L.h); c.strokeStyle = "#8a8a92"; c.lineWidth = 2; c.strokeRect(L.x0, L.y0, L.w, L.h);
           c.fillStyle = "#fff"; c.font = "bold 15px sans-serif"; c.fillText(state.screen === "table" ? "Üretim masası" : state.screen === "furnace" ? "Fırın" : state.screen === "chest" ? "Sandık" : "Envanter" + (state.creative ? "  (yaratıcı mod)" : ""), L.x0 + 12, L.y0 + 22);
           var slotBox = function (x, y, on) { c.fillStyle = on ? "rgba(255,224,130,0.30)" : "rgba(90,90,98,0.55)"; c.fillRect(x, y, cellPx, cellPx); c.strokeStyle = on ? "#ffe082" : "#2c2c32"; c.lineWidth = on ? 2 : 1; c.strokeRect(x, y, cellPx, cellPx); };
@@ -1600,12 +1641,12 @@
             c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText("eritilecek", L.fin.x + 44, L.fin.y + 22); c.fillText("yakıt (kömür...)", L.ffuel.x + 44, L.ffuel.y + 22);
             c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(L.fin.x + 56, L.fin.y + 44, 90, 6); c.fillStyle = "#ffab40"; c.fillRect(L.fin.x + 56, L.fin.y + 44, 90 * Math.min(1, fs.progress / 1.6), 6); arrow(L.fout.x - 38, L.fout.y + 26);
           }
-          for (var gi = 0; gi < L.rows * 9; gi++) { var gid = allInv[state.invScroll * 9 + gi]; stack(L.x0 + 10 + (gi % 9) * L.cell, L.gridY + Math.floor(gi / 9) * L.cell, gid, gid && inv.count[gid], gid && gid === state.selectedBlock()); }
-          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText(allInv.length > L.rows * 9 ? "tekerlek: kaydır   " : "Çubuk (1-9)   ", L.x0 + 12, L.barY - 3); c.fillStyle = "#7d7d86"; c.fillText("sol tık: al/koy   sağ tık: yarısı/bir tane   boş yere tık: geri koy   üstündeyken 1-9: çubuğa koy", L.x0 + 12, L.barY + L.cell + 16);
-          for (var bi = 0; bi < 9; bi++) { var bid = allInv[startInv + bi]; stack(L.x0 + 10 + bi * L.cell, L.barY, bid, bid && inv.count[bid], startInv + bi === state.slot); }
+          for (var gi = 0; gi < 27; gi++) { var gs = state.slots[9 + gi]; stack(L.x0 + 10 + (gi % 9) * L.cell, L.gridY + Math.floor(gi / 9) * L.cell, gs && gs.id, gs && gs.n); }
+          c.fillStyle = "#9a9aa2"; c.font = "11px sans-serif"; c.fillText("Çubuk (1-9)   ", L.x0 + 12, L.barY - 3); c.fillStyle = "#7d7d86"; c.fillText("sol tık: al/koy   sağ tık: yarısı/bir tane   boş yere tık: geri koy   üstündeyken 1-9: çubuğa koy", L.x0 + 12, L.barY + L.cell + 16);
+          for (var bi = 0; bi < 9; bi++) { var bs = state.slots[bi]; stack(L.x0 + 10 + bi * L.cell, L.barY, bs && bs.id, bs && bs.n, bi === state.slot); }
           var over = state.invHit(K.mouse.x, K.mouse.y), tipId = 0, tipExtra = "";
           if (over) {
-            if (over.kind === "grid" || over.kind === "hotbar") { tipId = over.id; tipExtra = state.creative ? "" : "  x" + inv.count[over.id]; }
+            if (over.kind === "slot" && over.id) { tipId = over.id; tipExtra = state.creative ? "" : "  x" + state.slots[over.index].n; }
             else if (over.kind === "cell" && state.cells[over.index]) tipId = state.cells[over.index].id;
             else if (over.kind === "chest" && state.chestOpen && state.chestOpen.slots[over.index]) tipId = state.chestOpen.slots[over.index].id;
             else if (over.kind === "result") { var rm = state.matchResult(); if (rm) tipId = rm.give[0]; }
@@ -1701,7 +1742,10 @@
         });
         document.addEventListener("mouseup", function (e) { if (e.button === 0) mouseLeft = false; else if (e.button === 2) state.rightUp(); });
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
-        canvas.addEventListener("wheel", function (e) { e.preventDefault(); if (state.showCraft) state.menuMove(e.deltaY > 0 ? 1 : -1); else if (state.showInv) state.invScroll = Math.max(0, state.invScroll + (e.deltaY > 0 ? 1 : -1)); else state.select(state.slot + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+        var flush = function () { if (state.savePlayer) state.savePlayer(); };   // leaving the page keeps the game
+        document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
+        if (root.addEventListener) { root.addEventListener("pagehide", flush); root.addEventListener("beforeunload", flush); }
+        canvas.addEventListener("wheel", function (e) { e.preventDefault(); if (state.showCraft) state.menuMove(e.deltaY > 0 ? 1 : -1); else if (state.showInv) state.invScroll = Math.max(0, state.invScroll + (e.deltaY > 0 ? 1 : -1)); else state.cycle(e.deltaY > 0 ? 1 : -1); }, { passive: false });
       }
 
       var held = {};
@@ -1714,7 +1758,7 @@
           once("Escape", function () { if (state.uiOpen()) state.closeUi(); else state.openMenu("pause"); });
           state.step(dt);
           if (K.voxel.keyActions) once("e", state.placeBlock); else once("e", function () { if (state.showInv) state.closeUi(); else state.openScreen("inv"); });   // E opens the inventory (F and E as keys for digging and placing are only for the tests)
-          once("q", function () { state.select(state.slot + 1); });
+          once("q", function () { state.cycle(1); });
           once("i", function () { if (state.showInv) state.closeUi(); else state.openScreen("inv"); }); once("Tab", function () { if (state.showInv) state.closeUi(); else state.openScreen("inv"); });
           once("c", function () { state.setCreative(!state.creative); }); once("h", function () { state.showHelp = !state.showHelp; });
           once("g", function () { if (state.canFly) state.flying = !state.flying; });
