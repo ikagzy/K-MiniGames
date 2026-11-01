@@ -43,3 +43,8 @@ Dosyalar `src/k_minigames/assets/lib/` içindedir ve oyun oluşturulurken oyunun
 ## Atıflar
 
 - Yazı tipi: The FontStruction “Determination” (https://fontstruct.com/fontstructions/show/2368299) by “anonymous-1438277”. Lisansı o sayfada yazılıdır; atıf burada (README) verilir ve yazı tipiyle birlikte `src/k_minigames/assets/fonts/LICENSE.txt` içinde durur. Uygulamanın penceresinde gösterilmez.
+
+## Lisans
+
+GPL-3.0. Ayrintilar icin [LICENSE](LICENSE) dosyasina bak.
+
