@@ -372,3 +372,46 @@ def apply_puzzle(spec: dict, description: str) -> dict:
     if difficulty:
         spec["difficulty"] = difficulty
     return spec
+
+
+ADV_THEMES = {"dungeon": r"zindan|magara|yeralti", "forest": r"orman|agac", "desert": r"\bcol\b|\bcolde|kum", "castle": r"\bkale|saray"}
+ADV_HEROES = {"knight": r"sovalye|kilic", "ranger": r"okcu|\bokla|yay\b", "mage": r"buyucu|buyu\b|asa\b"}
+ADV_ENEMIES = {"slime": r"balcik|\bslime|jole", "bat": r"yarasa", "skeleton": r"iskelet", "goblin": r"goblin|cuce", "ghost": r"hayalet|\bhortlak"}
+
+
+def apply_adventure(spec: dict, description: str) -> dict:
+    """The same kind of rules for the adventure game: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    for field, table in (("theme", ADV_THEMES), ("hero", ADV_HEROES)):
+        found = [name for name, rx in table.items() if re.search(rx, text)]
+        if len(found) == 1:
+            spec[field] = found[0]
+    names = [n for n, rx in ADV_ENEMIES.items() if re.search(rx, text) and not _negated(text, re.search(rx, text).end())]
+    if names:
+        spec["enemies"] = list(dict.fromkeys(list(spec.get("enemies") or []) + names))
+    if re.search(r"patronsuz|patron olmasin|patron yok", text):
+        spec["boss"] = False
+    elif re.search(r"\bpatron|\bboss|son canavar", text):
+        spec["boss"] = True
+    count = re.search(rf"\b({_NUMBER})\s+(kat|katli|katlik|bolum|bolumluk|seviye)\b", text)
+    if count and 1 <= _number(count.group(1)) <= 6:
+        spec["levels"] = _number(count.group(1))
+    sizes = {"small": r"\bkucuk|\bminik", "large": r"\bbuyuk|\bdevasa|\bgenis"}
+    which = [n for n, rx in sizes.items() if re.search(rx, text)]
+    if len(which) == 1:
+        spec["size"] = which[0]
+    features = list(spec.get("features") or [])
+    for name, rx in (("dash", r"atilma|\bdash|firla|seri hareket"), ("regen", r"can yenilen|can dolsun|iyilesen|\bregen"), ("loot", r"bol ganimet|cok ganimet|ganimet bol|\bloot")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

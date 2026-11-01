@@ -1,0 +1,134 @@
+{
+  "type": "object",
+  "required": [
+    "kit"
+  ],
+  "properties": {
+    "kit": {
+      "type": "string",
+      "enum": [
+        "adventure"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "theme": {
+      "type": "string",
+      "enum": [
+        "dungeon",
+        "forest",
+        "desert",
+        "castle"
+      ]
+    },
+    "hero": {
+      "type": "string",
+      "enum": [
+        "knight",
+        "ranger",
+        "mage"
+      ]
+    },
+    "music": {
+      "type": "string",
+      "enum": [
+        "adventure",
+        "overworld",
+        "underground",
+        "castle",
+        "boss",
+        "race",
+        "football",
+        "puzzle"
+      ]
+    },
+    "musicStyle": {
+      "type": "object",
+      "properties": {
+        "mood": {
+          "type": "string",
+          "enum": [
+            "happy",
+            "calm",
+            "tense",
+            "epic",
+            "mystery",
+            "spooky"
+          ]
+        },
+        "tempo": {
+          "type": "string",
+          "enum": [
+            "slow",
+            "medium",
+            "fast"
+          ]
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        }
+      }
+    },
+    "difficulty": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "levels": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6
+    },
+    "size": {
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    "enemies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "slime",
+          "bat",
+          "skeleton",
+          "goblin",
+          "ghost"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "boss": {
+      "type": "boolean"
+    },
+    "world": {
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "dash",
+          "regen",
+          "loot"
+        ]
+      }
+    }
+  }
+}

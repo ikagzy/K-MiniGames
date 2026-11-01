@@ -78,9 +78,17 @@ _CHECKS["puzzle"] = [
     ("Tuşa basınca oyun tepki verir.", "const s = game.state; const before = JSON.stringify(s.game.board || s.game.grid || s.game.cards); K.press('ArrowLeft'); await new Promise(r => setTimeout(r, 300)); K.press('ArrowLeft', false); K.press(' '); await new Promise(r => setTimeout(r, 300)); K.press(' ', false); await new Promise(r => setTimeout(r, 900)); return JSON.stringify(s.game.board || s.game.grid || s.game.cards) !== before || (s.game.piece && s.game.piece.y > 0) || s.game.cx !== undefined;"),
 ]
 
+_CHECKS["adventure"] = [
+    ("Oyun açılır ve kahraman zindandadır.", "return !!game.p && Number.isFinite(game.p.x) && game.g.current === 'play' && game.state.tileAt(game.p.x, game.p.y) !== 1;"),
+    ("Kahraman yürüyebilir.", "await new Promise(r => setTimeout(r, 400)); const x = game.p.x, y = game.p.y; K.press('d'); K.press('s'); await new Promise(r => setTimeout(r, 900)); K.press('d', false); K.press('s', false); return Math.hypot(game.p.x - x, game.p.y - y) > 4;"),
+    ("Katta canavar vardır.", "return game.state.enemies.length > 0;"),
+    ("Kahraman saldırabilir.", "const s = game.state; s.p.atkT = 0; return s.attack() === true;"),
+    ("Katta anahtar ve kilitli kapı vardır.", "return game.state.pickups.some(q => q.kind === 'key') && !!game.state.level.door;"),
+]
+
 # the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
 _PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
-for _kit in ("sandbox", "fps", "race", "football", "puzzle"):
+for _kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure"):
     _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
 
 _SYSTEM = (
@@ -195,7 +203,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit in ("sandbox", "fps", "race", "football", "puzzle") and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -213,6 +221,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _football_variety(spec)
     elif kit == "puzzle":
         _puzzle_variety(spec)
+    elif kit == "adventure":
+        _adventure_variety(spec)
     return spec
 
 
@@ -321,6 +331,22 @@ def _puzzle_variety(spec: dict) -> None:
     spec.setdefault("size", random.choice(("small", "medium", "medium", "large")))
     if not spec.get("features"):
         spec["features"] = {"blocks": random.choice((["ghost"], ["ghost", "hold"], [])), "match": random.choice((["hint"], [])), "memory": []}[spec["mode"]]
+
+
+def _adventure_variety(spec: dict) -> None:
+    """The same for the adventure game: the open parts are drawn."""
+    spec.setdefault("theme", random.choice(("dungeon", "dungeon", "forest", "desert", "castle")))
+    spec.setdefault("hero", random.choice(("knight", "knight", "ranger", "mage")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["music"] = "adventure"   # the tune written for the adventure kit
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec.setdefault("levels", random.choice((2, 3, 3, 4)))
+    spec.setdefault("size", random.choice(("small", "medium", "medium", "large")))
+    if not spec.get("enemies"):
+        spec["enemies"] = random.sample(["slime", "bat", "skeleton", "goblin", "ghost"], random.choice((2, 3, 3, 4)))
+    spec.setdefault("boss", random.random() < 0.7)
+    if not spec.get("features"):
+        spec["features"] = random.choice((["dash"], ["dash"], ["regen"], ["loot"], ["dash", "loot"], []))
 
 
 def keep_seeds(before: dict, after: dict) -> dict:

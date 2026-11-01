@@ -22,7 +22,7 @@ def test_a_football_spec_is_repaired_and_filled_in():
     assert spec.get("teamSize", 8) <= 8 and spec.get("duration", 30) >= 30 and spec.get("home") != "pink" and "x" not in spec.get("features", [])
 
 
-def test_the_advisor_hears_a_football_game_and_not_an_adventure():
+def test_the_advisor_hears_a_football_game_and_an_adventure_is_a_different_kit():
     assert [k for k, rx in KITS if rx.search("futbol maçı yapalım")][0] == "football"
-    assert not [k for k, rx in KITS if rx.search("macera oyunu")]
+    assert [k for k, rx in KITS if rx.search("macera oyunu")][0] == "adventure"
     assert [k for k, rx in KITS if rx.search("araba yarışı")][0] == "race"

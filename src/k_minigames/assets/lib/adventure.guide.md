@@ -1,0 +1,10 @@
+# kgame.adventure.js: yukarıdan görünümlü 2 boyutlu piksel macera (zindan) kiti (adventure)
+Oyunu KOD olarak değil ÖZET olarak yaz: tek çağrı `K.kit.run({...})`; kütüphane dosyaları için `<script src>` yazma. Kit kat kat zindanları (odalar, koridorlar, anahtar ve kilitli kapı, sandıklar, merdiven), canavarları, patronu, kahramanın saldırısını, canı, altını, iksiri, anahtarı, deneyimi ve seviye atlamayı, küçük haritayı, sesi ve ekranları kendisi kurar; piksel sanatı kodla çizilir ve keskin görünür. Sen yalnızca özeti yaz.
+Özet alanları (hepsi isteğe bağlı, yazmazsan varsayılan): `title`, `theme` (dungeon zindan, forest orman, desert çöl, castle kale), `hero` (knight şövalye: kılıçla yakın dövüş, ranger okçu: uzaktan ok, mage büyücü: yavaş ama alan hasarlı büyü), `music` (adventure: maceraya özel parça, varsayılan; overworld, underground, castle, boss, race, football, puzzle), `difficulty` (1-5: canavarların sayısı, canı ve hızı), `levels` (1-6 kat sayısı), `size` (small, medium, large: katın büyüklüğü), `enemies` (slime balçık yavaş, bat yarasa düzensiz uçar, skeleton iskelet uzaktan atar, goblin hızlı ve sert, ghost hayalet duvardan geçer; en az biri), `boss` (true: son katta patron var, merdiven ancak patron ölünce açılır), `features` (dash Shift ile atılma, regen can yavaşça dolar, loot canavarlar daha çok ganimet bırakır).
+`musicStyle` (isteğe bağlı, `music` yerine geçer): özgün müziği KENDİ BESTELER: `{mood: happy | calm | tense | epic | mystery | spooky, tempo: slow | medium | fast}`.
+Sayıları (seed gibi) yazma, kit kendisi koyar. Katları kit üretir, sen çizmezsin.
+Oynanış: W A S D ya da oklar yürür, Boşluk ya da J saldırır, Shift atılır (dash özelliğiyle), Q iksir içer, R yeniden başlatır, Esc menü açar. Anahtarı bul, kilitli kapıyı aç, merdivene in; canavarlar deneyim verir, deneyim seviye atlatır ve canı artırır.
+Örnek:
+```js
+K.kit.run({ kit: 'adventure', title: 'Kayıp Kale', theme: 'dungeon', hero: 'knight', difficulty: 3, levels: 3, size: 'medium', enemies: ['slime', 'bat', 'skeleton'], boss: true, music: 'adventure', features: ['dash'] });
+```
