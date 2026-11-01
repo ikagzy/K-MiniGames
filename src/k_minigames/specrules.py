@@ -254,3 +254,45 @@ def apply_fps(spec: dict, description: str) -> dict:
     if difficulty:
         spec["difficulty"] = difficulty
     return spec
+
+
+RACE_THEMES = {"city": r"sehir|sokak|\bkent\b|asfalt", "desert": r"\bcol(de|un|u|ler|lerde)?\b|\bkum\b|\bkumda", "forest": r"orman|dag yolu|\bagac", "night": r"\bgece|karanlik"}
+RACE_CARS = {"muscle": r"kas araba|muscle|\bv8\b|guclu araba", "rally": r"ralli|rally|toprak yolu", "sport": r"spor araba|sport|formula"}
+RACE_COLORS = {"red": r"kirmizi", "blue": r"\bmavi", "yellow": r"\bsari", "green": r"\byesil"}
+
+
+def apply_race(spec: dict, description: str) -> dict:
+    """The same kind of rules for the racing game: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    for field, table in (("theme", RACE_THEMES), ("car", RACE_CARS)):
+        found = [name for name, rx in table.items() if re.search(rx, text)]
+        if len(found) == 1:
+            spec[field] = found[0]
+    colors = [name for name, rx in RACE_COLORS.items() if re.search(rx + r"\s+(araba|arac|otomobil)", text)]
+    if len(colors) == 1:
+        spec["color"] = colors[0]
+    laps = re.search(rf"\b({_NUMBER})\s+tur\b", text)
+    if laps and 1 <= _number(laps.group(1)) <= 9:
+        spec["laps"] = _number(laps.group(1))
+    rivals = re.search(rf"\b({_NUMBER})\s+(rakip|rakipli|arabaya karsi|yarismaci)", text)
+    if rivals and 1 <= _number(rivals.group(1)) <= 7:
+        spec["rivals"] = _number(rivals.group(1))
+    if re.search(r"kisa pist|kucuk pist|minik pist", text):
+        spec["length"] = "small"
+    elif re.search(r"uzun pist|buyuk pist|genis pist", text):
+        spec["length"] = "large"
+    features = list(spec.get("features") or [])
+    for name, rx in (("nitro", r"nitro|turbo|hiz patlamasi"), ("grip", r"iyi yol tutus|kaymasin|yol tutsun")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

@@ -1,6 +1,6 @@
 /* kgame.audio2.js: chiptune müzik dizicisi ve oyun sesleri. K.music.play('overworld'), K.music.stop(). Yeni parça:
    K.music.define(ad, {bpm, wave, notes:'C4:1 E4:1 R:1 G4:2', loop:true}) (nota:vuruş sayısı, R sessizlik). Hazır parçalar: overworld,
-   underground, castle, boss, victory, gameover. Ses paketi K.sfx(ad)'a şunları ekler: stomp, powerup, death, oneup, kick, break,
+   underground, castle, boss, race (yarış), victory, gameover. Ses paketi K.sfx(ad)'a şunları ekler: stomp, powerup, death, oneup, kick, break,
    fire, flag, bump. Önce kgame.js yüklenmiş olmalı. */
 (function (root) {
   var K = root.K;
@@ -30,6 +30,7 @@
   M.define("boss", { bpm: 168, wave: "sawtooth", notes: "E3:0.25 E3:0.25 G3:0.25 E3:0.25 B3:0.5 A3:0.5 G3:0.5 F#3:0.5 E3:0.25 E3:0.25 G3:0.25 E3:0.25 D4:0.5 C4:0.5 B3:1 R:0.5" });
   M.define("victory", { bpm: 132, loop: false, notes: "D5:0.5 F#5:0.5 A5:0.5 D6:1.5 A5:0.5 F#5:0.5 D6:2.5" });
   M.define("gameover", { bpm: 84, loop: false, wave: "triangle", notes: "A4:1 F4:1 D4:1 E4:0.5 D4:0.5 C#4:0.5 D4:2.5" });
+  M.define("race", { bpm: 168, wave: "square", bassWave: "sawtooth", notes: "A4:0.5 C5:0.5 E5:0.5 A5:0.5 E5:0.5 C5:0.5 E5:0.5 A5:0.5 F4:0.5 A4:0.5 C5:0.5 F5:0.5 C5:0.5 A4:0.5 C5:0.5 F5:0.5 G4:0.5 C5:0.5 E5:0.5 G5:0.5 E5:0.5 C5:0.5 E5:0.5 G5:0.5 G4:0.5 B4:0.5 D5:0.5 G5:0.5 D5:0.5 B4:0.5 D5:0.5 B4:0.5 A5:1 G5:0.5 E5:0.5 A5:1 C6:1 A5:1 G5:0.5 F5:0.5 C5:1 F5:1 G5:1 E5:0.5 G5:0.5 C6:1 B5:0.5 G5:0.5 D6:1 B5:0.5 G5:0.5 D5:0.5 G5:0.5 B5:1", bass: "A2:0.5 A3:0.5 A2:0.5 A3:0.5 A2:0.5 A3:0.5 A2:0.5 A3:0.5 F2:0.5 F3:0.5 F2:0.5 F3:0.5 F2:0.5 F3:0.5 F2:0.5 F3:0.5 C3:0.5 C4:0.5 C3:0.5 C4:0.5 C3:0.5 C4:0.5 C3:0.5 C4:0.5 G2:0.5 G3:0.5 G2:0.5 G3:0.5 G2:0.5 G3:0.5 G2:0.5 G3:0.5 A2:0.5 A3:0.5 A2:0.5 A3:0.5 A2:0.5 A3:0.5 A2:0.5 A3:0.5 F2:0.5 F3:0.5 F2:0.5 F3:0.5 F2:0.5 F3:0.5 F2:0.5 F3:0.5 C3:0.5 C4:0.5 C3:0.5 C4:0.5 C3:0.5 C4:0.5 C3:0.5 C4:0.5 G2:0.5 G3:0.5 G2:0.5 G3:0.5 G2:0.5 G3:0.5 G2:0.5 G3:0.5" });   // an energetic driving tune for the racing kit
 
   // ---- a composer: the model picks a mood, a tempo and a seed; this writes an original tune from scale and chord rules ----
   // K.music.compose({mood, tempo, seed}) -> a track definition (lead + bass) for K.music.define. The same numbers always give the

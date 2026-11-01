@@ -5,9 +5,11 @@ import re
 DECIDED = re.compile(r"sen (karar|se[cç]|nas[iı]l istersen|yap)|fark etmez|bilmiyorum|[oö]nemli de[gğ]il|you decide|surprise me|don'?t mind|whatever", re.I)
 KITS = (("fps", re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pompal[iı]|silahla|tabanca|t[uü]fek|s[iı][gğ][iı]nak|bunker", re.I)),
         ("sandbox", re.compile(r"minecraft|k[uü]p d[uü]nya|blok|maden|in[sş]aat|cube world|mining|voxel", re.I)),
+        ("race", re.compile(r"yar[iı][sş]|araba|pist|formula|race|racing|rally|ralli|drift", re.I)),
         ("shooter", re.compile(r"uzay|ni[sş]anc[iı]|gemi|shoot|space|shooter", re.I)),
         ("platformer", re.compile(r"platform|z[iı]pla|mario|jump|run", re.I)))
 QUESTIONS = {
+    "race": "Güzel! Hangi ortamda yarışsın: şehir, çöl, orman ya da gece? Kaç tur ve kaç rakip olsun, nitro istiyor musun?",
     "fps": "Güzel! Hangi ortamda geçsin: sığınak, uzay istasyonu, harabe, laboratuvar ya da fabrika? Hangi silahlar ve düşmanlar olsun, sonunda patron var mı?",
     "sandbox": "Güzel fikir! Hangi bölgede geçsin (orman, çöl ya da ova) ve dünya ne kadar büyük olsun? Mağara, maden ve göller olsun mu?",
     "shooter": "Süper! Hangi tür düşmanlar çıksın, sonunda patron olsun mu? Gemi tek mi çift mi ateş etsin?",
@@ -15,6 +17,7 @@ QUESTIONS = {
     None: "Olur! Nasıl bir oyun düşünüyorsun: koşup zıplamalı bir platform oyunu, uzay nişancısı ya da madencilik ve inşaat olan bir küp dünya?",
 }
 QUESTIONS_EN = {
+    "race": "Nice! Which setting: city, desert, forest or night? How many laps and rivals, and do you want nitro?",
     "fps": "Nice! Which setting: bunker, space station, ruins, lab or factory? Which weapons and enemies, and a boss at the end?",
     "sandbox": "Nice! Which region (forest, desert or plains), and how big should the world be? Do you want caves, ores and lakes?",
     "shooter": "Great! Which enemies should show up, and should there be a boss at the end? Single or double fire?",
@@ -22,7 +25,7 @@ QUESTIONS_EN = {
     None: "Sounds fun! What kind of game: a run-and-jump platformer, a space shooter or a cube world for mining and building?",
 }
 STRONG_FPS = re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pompal[iı]", re.I)   # words that mean a first person shooter and nothing else
-KIT_MODULES = ("platformer", "shooter", "sandbox", "fps")
+KIT_MODULES = ("platformer", "shooter", "sandbox", "fps", "race")
 
 
 def fix_modules(history: list, names: list) -> list:

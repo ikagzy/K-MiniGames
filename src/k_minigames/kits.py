@@ -56,9 +56,17 @@ _CHECKS["fps"] = [
     ("Oyuncu duvarların içine girmez.", "return !game.state.solid(Math.floor(game.p.x), Math.floor(game.p.y));"),
 ]
 
+_CHECKS["race"] = [
+    ("Oyun açılır ve oyuncu pistte durur.", "return !!game.p && Number.isFinite(game.p.x) && game.g.current === 'play' && game.state.tileAt(game.p.x, game.p.y) !== 0;"),
+    ("Gaza basınca araba ilerler.",
+     "await new Promise(r => setTimeout(r, 3600)); const x = game.p.x, y = game.p.y; K.press('w'); await new Promise(r => setTimeout(r, 1200)); K.press('w', false); return Math.hypot(game.p.x - x, game.p.y - y) > 10;"),
+    ("Rakip arabalar vardır ve ilerler.", "const r = game.state.racers[0]; const x = r.x, y = r.y; await new Promise(r2 => setTimeout(r2, 1500)); return game.state.racers.length > 0 && Math.hypot(r.x - x, r.y - y) > 5;"),
+    ("Yolda en az otuz yol noktası vardır.", "return game.state.track.M >= 30;"),
+]
+
 # the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
 _PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
-for _kit in ("sandbox", "fps"):
+for _kit in ("sandbox", "fps", "race"):
     _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
 
 _SYSTEM = (
@@ -173,7 +181,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit in ("sandbox", "fps") and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps", "race") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -185,6 +193,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _sandbox_variety(spec)
     elif kit == "fps":
         _fps_variety(spec)
+    elif kit == "race":
+        _race_variety(spec)
     return spec
 
 
@@ -250,6 +260,21 @@ def _fps_variety(spec: dict) -> None:
     if not spec.get("weapons"):
         spec["weapons"] = random.choice((["pistol", "shotgun"], ["pistol", "shotgun", "rifle"], ["pistol", "rifle", "magnum"]))
     spec.setdefault("boss", random.random() < 0.6)
+
+
+def _race_variety(spec: dict) -> None:
+    """The same for the racing game: the open parts of the race are drawn."""
+    spec.setdefault("theme", random.choice(("city", "desert", "forest", "night")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["music"] = "race"   # the tune written for the racing kit
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec.setdefault("laps", random.choice((2, 3, 3, 4)))
+    spec.setdefault("rivals", random.choice((3, 4, 5, 6)))
+    spec.setdefault("length", random.choice(("small", "medium", "medium", "large")))
+    spec.setdefault("car", random.choice(("sport", "sport", "muscle", "rally")))
+    spec.setdefault("color", random.choice(("red", "blue", "yellow", "green")))
+    if not spec.get("features"):
+        spec["features"] = random.choice((["nitro"], ["nitro"], ["grip"], []))
 
 
 def keep_seeds(before: dict, after: dict) -> dict:
