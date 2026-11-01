@@ -296,3 +296,44 @@ def apply_race(spec: dict, description: str) -> dict:
     if difficulty:
         spec["difficulty"] = difficulty
     return spec
+
+
+FOOT_THEMES = {"grass": r"cim saha|stadyum|halisaha|hali saha|gunduz", "night": r"\bgece|isiklar altinda", "indoor": r"\bsalon|kapali saha|futsal", "street": r"sokak|mahalle|asfalt"}
+FOOT_COLORS = {"red": r"kirmizi", "blue": r"\bmavi", "yellow": r"\bsari", "green": r"\byesil", "white": r"\bbeyaz", "black": r"\bsiyah", "orange": r"turuncu", "purple": r"\bmor\b"}
+
+
+def apply_football(spec: dict, description: str) -> dict:
+    """The same kind of rules for the football match: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    found = [name for name, rx in FOOT_THEMES.items() if re.search(rx, text)]
+    if len(found) == 1:
+        spec["theme"] = found[0]
+    team = re.search(rf"\b({_NUMBER})\s*(?:kisilik|oyunculu|kisi)", text) or re.search(rf"\b({_NUMBER})\s*(?:'e|e|vs|v)\s*(?:{_NUMBER})\b", text)
+    if team and 2 <= _number(team.group(1)) <= 8:
+        spec["teamSize"] = _number(team.group(1))
+    minutes = re.search(rf"\b({_NUMBER})\s*(dakika|dk)\b", text)
+    if minutes and 1 <= _number(minutes.group(1)) <= 10:
+        spec["duration"] = _number(minutes.group(1)) * 60
+    for side, pattern in (("home", r"({c})\s+(?:formali\s+)?(?:takimi|takim|forma)\s+(?:ile|oyna|olsun|benim)"), ("away", r"(?:rakip|karsi takim|karsimdaki)\w*\s+({c})")):
+        for name, rx in FOOT_COLORS.items():
+            if re.search(pattern.replace("{c}", rx), text):
+                spec[side] = name
+    if re.search(r"kalecisiz|kaleci yok|kaleci olmasin", text):
+        spec["keeper"] = False
+    elif re.search(r"\bkaleci", text):
+        spec["keeper"] = True
+    features = list(spec.get("features") or [])
+    for name, rx in (("powershot", r"guclu sut|sut gucu|basili tutarak sut"), ("sprint", r"uzun kos|surekli kos|hizli kos")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

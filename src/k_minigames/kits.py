@@ -64,9 +64,17 @@ _CHECKS["race"] = [
     ("Yolda en az otuz yol noktası vardır.", "return game.state.track.M >= 30;"),
 ]
 
+_CHECKS["football"] = [
+    ("Oyun açılır ve oyuncu sahadadır.", "return !!game.p && Number.isFinite(game.p.x) && game.g.current === 'play';"),
+    ("Sahada iki takımın oyuncuları ve top vardır.", "const s = game.state; return s.players.filter(p => p.team === 0).length >= 2 && s.players.filter(p => p.team === 1).length >= 2 && Number.isFinite(s.ball.x);"),
+    ("Oyuncu koşabilir.", "await new Promise(r => setTimeout(r, 1800)); const x = game.p.x; K.press('d'); await new Promise(r => setTimeout(r, 700)); K.press('d', false); return Math.abs(game.p.x - x) > 6 || game.state.me !== game.p;"),
+    ("Şut atınca top hızlanır.", "const s = game.state, p = s.me; s.holder = p; s.ball.x = p.x + 7; s.ball.y = p.y; p.cd = 0; s.shoot(p, 1); return Math.hypot(s.ball.vx, s.ball.vy) > 150;"),
+    ("Saat işler.", "const s = game.state; const t = s.clock; await new Promise(r => setTimeout(r, 2500)); return s.clock < t;"),
+]
+
 # the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
 _PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
-for _kit in ("sandbox", "fps", "race"):
+for _kit in ("sandbox", "fps", "race", "football"):
     _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
 
 _SYSTEM = (
@@ -181,7 +189,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit in ("sandbox", "fps", "race") and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps", "race", "football") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -195,6 +203,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _fps_variety(spec)
     elif kit == "race":
         _race_variety(spec)
+    elif kit == "football":
+        _football_variety(spec)
     return spec
 
 
@@ -275,6 +285,22 @@ def _race_variety(spec: dict) -> None:
     spec.setdefault("color", random.choice(("red", "blue", "yellow", "green")))
     if not spec.get("features"):
         spec["features"] = random.choice((["nitro"], ["nitro"], ["grip"], []))
+
+
+def _football_variety(spec: dict) -> None:
+    """The same for the football match: the open parts of the match are drawn."""
+    spec.setdefault("theme", random.choice(("grass", "grass", "night", "indoor", "street")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["musicStyle"] = {"mood": random.choice(("happy", "epic", "tense")), "tempo": random.choice(("medium", "fast")), "seed": random.randint(0, 9999)}
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec.setdefault("teamSize", random.choice((4, 5, 5, 6)))
+    spec.setdefault("duration", random.choice((90, 120, 120, 180)))
+    colors = ["red", "blue", "yellow", "green", "white", "orange", "purple"]
+    spec.setdefault("home", random.choice(colors))
+    spec.setdefault("away", random.choice([c for c in colors if c != spec["home"]]))
+    spec.setdefault("keeper", True)
+    if not spec.get("features"):
+        spec["features"] = random.choice((["powershot"], ["sprint"], ["powershot", "sprint"], []))
 
 
 def keep_seeds(before: dict, after: dict) -> dict:
