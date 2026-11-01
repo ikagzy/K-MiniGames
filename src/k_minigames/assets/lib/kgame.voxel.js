@@ -1435,7 +1435,7 @@
         if (state.ever[151] && !state.hinted.frame) { state.hinted.frame = true; state.say("Geçit: kara kayadan 4 geniş 5 yüksek çerçeve yap (köşeler boş), içi boş kalsın. Cam çerçeve = Gök Adaları."); }
         else if (state.ever[152] && !state.hinted.lighter) { state.hinted.lighter = true; state.say("Çakmak: çerçeveye bakıp sağ tıkla, geçit açılır. İçine girip bekle."); }
         var inLava = get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)) === LAVA || get(Math.floor(p.x), Math.floor(p.y + 1), Math.floor(p.z)) === LAVA;
-        if (inLava) { state.lavaT = (state.lavaT || 0) + dt; if (state.lavaT >= 0.5) { state.lavaT = 0; state.hurt(4, "lav"); } } else state.lavaT = 0;
+        if (inLava) { state.lavaT = (state.lavaT || 0) + dt; if (state.lavaT >= 0.5) { state.lavaT = 0; state.hurt(2, "lav"); } } else state.lavaT = 0;
         state.hungerT += dt * (state.running ? 1.8 : 1);
         if (state.hungerT >= 45) { state.hungerT = 0; if (!state.creative) state.food = Math.max(0, state.food - 1); }
         if (state.food >= 18 && state.health < 20) { state.regenT += dt; if (state.regenT >= 4) { state.regenT = 0; state.health++; } } else state.regenT = 0;
