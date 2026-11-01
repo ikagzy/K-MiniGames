@@ -650,14 +650,16 @@
         return true;
       };
       // a liquid runs into the hole you open: it falls down as far as it can and spreads 3 blocks sideways; water on lava makes stone
-      state.spreadFluid = function (x, y, z, f, range, budget) {   // a liquid fills the cell, falls down as far as it can, and runs over the floor `range` blocks; water meeting lava makes kara kaya
+      state.flowOf = {};   // a poured liquid is one source and a flow: every flowing cell remembers its source, so taking the source back drains the flow
+      var fkey = function (x, y, z) { return state.dim + ":" + x + "," + y + "," + z; };
+      state.spreadFluid = function (x, y, z, f, range, budget, track) {   // a liquid fills the cell, falls down as far as it can, and runs over the floor `range` blocks; water meeting lava makes kara kaya
         var left = budget || 90, near = [[1, 0], [-1, 0], [0, 1], [0, -1]], other = f === WATER ? LAVA : WATER;
         var spread = function (cx, cy, cz, r) {
           if (left <= 0 || cy < 1 || get(cx, cy, cz) !== AIR) return; left--;
           var k, mixed = get(cx, cy + 1, cz) === other;
           for (k = 0; k < 4; k++) if (get(cx + near[k][0], cy, cz + near[k][1]) === other) mixed = true;
           if (mixed) { set(cx, cy, cz, OBSIDIAN, true); return; }
-          set(cx, cy, cz, f, true);
+          set(cx, cy, cz, f, true); if (track) state.flowOf[fkey(cx, cy, cz)] = fkey(x, y, z);
           if (get(cx, cy - 1, cz) === AIR) { spread(cx, cy - 1, cz, range); return; }
           if (r > 0) for (k = 0; k < 4; k++) spread(cx + near[k][0], cy, cz + near[k][1], r - 1);
         };
@@ -1130,6 +1132,8 @@
         };
         if (id === 163) {
           if (hb !== WATER && hb !== LAVA) return false;
+          var src = state.flowOf[fkey(hx, hy, hz)];
+          if (src) { var drained = 0; Object.keys(state.flowOf).forEach(function (k) { if (state.flowOf[k] === src) { var m = /^(\w+):(-?\d+),(-?\d+),(-?\d+)$/.exec(k); if (m && m[1] === state.dim && get(+m[2], +m[3], +m[4]) === hb) { set(+m[2], +m[3], +m[4], AIR, true); drained++; } delete state.flowOf[k]; } }); if (drained) { swap(hb === WATER ? 164 : 165); return true; } }
           set(hx, hy, hz, AIR, true); swap(hb === WATER ? 164 : 165); return true;
         }
         var cx = (hb === WATER || hb === LAVA) ? hx : hx + h.nx, cy = (hb === WATER || hb === LAVA) ? hy : hy + h.ny, cz = (hb === WATER || hb === LAVA) ? hz : hz + h.nz, cb = get(cx, cy, cz);
@@ -1138,9 +1142,9 @@
         if (id === 164) {
           if (cb === WATER) return false;
           for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) if (get(cx + a, cy + b, cz + c) === LAVA) set(cx + a, cy + b, cz + c, OBSIDIAN, true);
-          set(cx, cy, cz, AIR, true); state.spreadFluid(cx, cy, cz, WATER, 4);   // the poured water runs: down, and over the floor
+          set(cx, cy, cz, AIR, true); state.spreadFluid(cx, cy, cz, WATER, 4, 90, true);   // the poured water runs: down, and over the floor
         } else if (near(WATER)) set(cx, cy, cz, OBSIDIAN, true);
-        else { set(cx, cy, cz, AIR, true); state.spreadFluid(cx, cy, cz, LAVA, 2); }
+        else { set(cx, cy, cz, AIR, true); state.spreadFluid(cx, cy, cz, LAVA, 2, 90, true); }
         swap(163); return true;
       };
       state.rightUp = function () { state.eating = null; state.blocking = false; };
@@ -1165,7 +1169,7 @@
         if (K.voxel.persistPlayer === false) return;
         var q = state.p, home = state.dim === "over" ? { x: q.x, y: q.y, z: q.z } : (state.homes && state.homes.over) || null;
         var data = { xp: state.xp, ench: state.ench, inv: inv.count, slots: state.slots, slot: state.slot, health: state.health, food: state.food, air: state.air, time: state.time, creative: state.creative,
-                     respawn: state.respawn, wear: state.wear, stats: state.stats, hud: state.hud, ever: state.ever, kills: state.kills, deaths: state.deaths, fuel: state.fuel };
+                     respawn: state.respawn, wear: state.wear, stats: state.stats, hud: state.hud, ever: state.ever, kills: state.kills, deaths: state.deaths, fuel: state.fuel, flows: state.flowOf };
         if (home) data.p = { x: home.x, y: home.y, z: home.z, yaw: q.yaw, pitch: q.pitch };
         try { K.save.set(playerKey, data); } catch (e) { /* not kept */ }
       };
@@ -1176,6 +1180,7 @@
         if (typeof sp.slot === "number") state.slot = ((sp.slot % 9) + 9) % 9;
         ["health", "food", "air", "time", "kills", "deaths", "fuel"].forEach(function (f) { if (typeof sp[f] === "number") state[f] = sp[f]; });
         if (sp.creative) state.setCreative(true);
+        if (sp.flows && typeof sp.flows === "object") state.flowOf = sp.flows;
         if (sp.respawn && typeof sp.respawn.x === "number") state.respawn = sp.respawn;
         if (sp.wear && typeof sp.wear === "object") state.wear = sp.wear;
         if (sp.stats && typeof sp.stats === "object") { state.stats = Object.assign(state.stats, sp.stats); }

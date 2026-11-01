@@ -1637,3 +1637,14 @@ test('poured liquids run: water spreads over a flat floor and falls into a hole,
   const l = s.spreadFluid(cx - 6, gy + 1, cz + 6, 37, 2); assert.ok(l >= 5 && l < w, 'lava runs less: ' + l);
   s.spreadFluid(cx - 3, gy + 1, cz + 6, 14, 2); assert.ok([s.get(cx - 3, gy + 1, cz + 6), s.get(cx - 4, gy + 1, cz + 6)].includes(151), 'where they meet it is kara kaya');
 });
+
+test('a poured liquid is one source with a flow: scooping it (or any flowing cell) takes the whole flow back and one bucket comes full', () => {
+  const K = fresh(); const { s, cx, cz, gy } = yard(K, 133);
+  const n = s.spreadFluid(cx, gy + 1, cz, 14, 4, 90, true); assert.ok(n > 10);
+  const count = () => { let c = 0; for (let x = cx - 6; x <= cx + 6; x++) for (let z = cz - 6; z <= cz + 6; z++) if (s.get(x, gy + 1, z) === 14) c++; return c; };
+  assert.strictEqual(count(), n);
+  s.addItem(163, 1); s.select(s.hotbar().indexOf(163));
+  stand(s, cx + 0.5, gy + 2.01, cz + 3.5); s.p.yaw = Math.PI; s.p.pitch = -0.4; run(s, 0.1);   // looks to the edge of the flow
+  let scooped = false; for (const pitch of [-0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.2]) { s.p.pitch = pitch; if (s.useBucket(163)) { scooped = true; break; } }
+  assert.ok(scooped); assert.strictEqual(count(), 0, 'the whole flow is gone'); assert.strictEqual(s.inv.count[164], 1, 'one bucket of water');
+});
