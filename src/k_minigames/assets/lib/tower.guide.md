@@ -1,0 +1,10 @@
+# kgame.tower.js: 2 boyutlu piksel kule savunması kiti (tower)
+Oyunu KOD olarak değil ÖZET olarak yaz: tek çağrı `K.kit.run({...})`; kütüphane dosyaları için `<script src>` yazma. Kit tohumdan kıvrımlı bir yol çizer, düşman dalgalarını gönderir, kule kurma ve yükseltmeyi, altını, canı, kaleyi, sesi ve ekranları kendisi kurar; piksel sanatı kodla çizilir ve keskin görünür. Sen yalnızca özeti yaz.
+Özet alanları (hepsi isteğe bağlı, yazmazsan varsayılan): `title`, `theme` (grass çim, desert çöl, night gece, lava lav), `music` (tower: kule savunmasına özel parça, varsayılan; overworld, underground, castle, boss, race, football, puzzle, adventure), `difficulty` (1-5: düşman canı, başlangıç altını ve kale canı), `size` (small, medium, large: yolun kıvrım sayısı), `waves` (1-30 dalga sayısı), `enemies` (soldier asker, runner hızlı koşucu, tank zırhlı ve yavaş, swarm kalabalık küçük sürü; en az biri), `towers` (arrow ok kulesi ucuz ve hızlı, cannon top alan hasarı verir, frost buz kulesi yavaşlatır, sniper keskin nişancı çok uzaktan sert vurur; en az biri), `boss` (true: son dalgada patron gelir), `features` (speed F ile iki kat hız, bonus daha çok başlangıç altını, freeze G ile düşmanları 3 saniye dondurur).
+`musicStyle` (isteğe bağlı, `music` yerine geçer): özgün müziği KENDİ BESTELER: `{mood: happy | calm | tense | epic | mystery | spooky, tempo: slow | medium | fast}`.
+Sayıları (seed gibi) yazma, kit kendisi koyar. Haritayı kit üretir, sen çizmezsin.
+Oynanış: fare ile boş çim karoya tıkla, kule kurulur; kuleye tıkla, seçilir, tekrar tıkla ya da YÜKSELT, yükselir (3 seviye); SAT altının çoğunu geri verir. Alttaki şeritten kule türü seçilir (ya da 1-4). Oklar imleci kaydırır, Boşluk ya da Enter kurar/yükseltir, X satar, N sonraki dalgayı hemen başlatır, R yeniden, Esc menü. Düşmanlar yolu izleyip kaleye varırsa can gider; tüm dalgaları can bitmeden geçersen kazanırsın.
+Örnek:
+```js
+K.kit.run({ kit: 'tower', title: 'Orman Savunması', theme: 'grass', difficulty: 3, size: 'medium', waves: 10, enemies: ['soldier', 'runner', 'tank', 'swarm'], towers: ['arrow', 'cannon', 'frost', 'sniper'], boss: true, music: 'tower', features: ['speed'] });
+```

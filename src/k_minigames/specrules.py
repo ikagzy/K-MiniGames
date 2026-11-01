@@ -415,3 +415,46 @@ def apply_adventure(spec: dict, description: str) -> dict:
     if difficulty:
         spec["difficulty"] = difficulty
     return spec
+
+
+TOWER_THEMES = {"grass": r"orman|cim|cayir|dogal", "desert": r"\bcol\b|\bcolde|kum", "night": r"\bgece|karanlik", "lava": r"\blav\b|volkan|ates"}
+TOWER_ENEMIES = {"soldier": r"asker", "runner": r"kosucu|hizli dusman", "tank": r"zirhli|\btank|agir dusman", "swarm": r"\bsuru|kalabalik|minik dusman"}
+TOWER_TOWERS = {"arrow": r"ok kule|okcu kule|\bok atan", "cannon": r"\btop\b|\btoplu|cannon|alan hasar", "frost": r"\bbuz|yavaslat|donduran kule", "sniper": r"keskin nisanci|sniper|uzaktan vuran"}
+
+
+def apply_tower(spec: dict, description: str) -> dict:
+    """The same kind of rules for the tower defence game: only unmistakable words, and what the model wrote is only ever added to or set by them."""
+    text = _fold(_without_titles(description or ""))
+    found = [name for name, rx in TOWER_THEMES.items() if re.search(rx, text)]
+    if len(found) == 1:
+        spec["theme"] = found[0]
+    for field, table in (("enemies", TOWER_ENEMIES), ("towers", TOWER_TOWERS)):
+        names = [n for n, rx in table.items() if re.search(rx, text) and not _negated(text, re.search(rx, text).end())]
+        if names:
+            spec[field] = list(dict.fromkeys(list(spec.get(field) or []) + names))
+    if re.search(r"patronsuz|patron olmasin|patron yok", text):
+        spec["boss"] = False
+    elif re.search(r"\bpatron|\bboss", text):
+        spec["boss"] = True
+    count = re.search(rf"\b({_NUMBER})\s+(dalga|dalgali|dalgalik)\b", text)
+    if count and 1 <= _number(count.group(1)) <= 30:
+        spec["waves"] = _number(count.group(1))
+    sizes = {"small": r"\bkisa yol|\bkucuk harita|\bminik", "large": r"\buzun yol|\bbuyuk harita|\bdevasa|kivrimli"}
+    which = [n for n, rx in sizes.items() if re.search(rx, text)]
+    if len(which) == 1:
+        spec["size"] = which[0]
+    features = list(spec.get("features") or [])
+    for name, rx in (("speed", r"hizlandir|iki kat hiz|\bhizli oyun|speed"), ("bonus", r"bol altin|cok altin|altinla basla|zengin basla"), ("freeze", r"dondur|\bfreeze|buzla")):
+        match = re.search(rx, text)
+        if match and not _negated(text, match.end()) and name not in features:
+            features.append(name)
+    if features:
+        spec["features"] = features
+    if re.search(r"muzik|melodi", text):
+        moods = [name for name, rx in MOODS.items() if re.search(rx, text)]
+        if len(moods) == 1:
+            spec["musicStyle"] = {**(spec.get("musicStyle") or {}), "mood": moods[0]}
+    difficulty = _difficulty(text)
+    if difficulty:
+        spec["difficulty"] = difficulty
+    return spec

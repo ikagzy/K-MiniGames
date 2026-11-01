@@ -19,6 +19,7 @@ import specdata_puzzle
 import specdata_race
 import specdata_sandbox
 import specdata_shooter
+import specdata_tower
 
 OUT = Path(__file__).resolve().parent / "data"
 
@@ -42,6 +43,8 @@ def main(argv=None) -> int:
     parser.add_argument("--puzzle-eval", type=int, default=0)
     parser.add_argument("--adventure", type=int, default=0, help="also this many adventure (adventure kit) training examples")
     parser.add_argument("--adventure-eval", type=int, default=0)
+    parser.add_argument("--tower", type=int, default=0, help="also this many tower defence (tower kit) training examples")
+    parser.add_argument("--tower-eval", type=int, default=0)
     args = parser.parse_args(argv)
     train, held = specdata.build_examples(args.train, args.eval, args.seed)
     for e in train + held:
@@ -67,6 +70,9 @@ def main(argv=None) -> int:
     if args.adventure or args.adventure_eval:
         a_train, a_held = specdata_adventure.build_adventure_examples(args.adventure, args.adventure_eval, args.seed)
         train, held = train + a_train, held + a_held
+    if args.tower or args.tower_eval:
+        w_train, w_held = specdata_tower.build_tower_examples(args.tower, args.tower_eval, args.seed)
+        train, held = train + w_train, held + w_held
     random.Random(args.seed).shuffle(train)
     OUT.mkdir(parents=True, exist_ok=True)
     with (OUT / "train.jsonl").open("w", encoding="utf-8") as f:
@@ -75,7 +81,7 @@ def main(argv=None) -> int:
     with (OUT / "eval.jsonl").open("w", encoding="utf-8") as f:
         for example in held:
             f.write(json.dumps(example, ensure_ascii=False) + "\n")
-    (OUT / "hand_eval.json").write_text(json.dumps(specdata.HAND_EVAL + (specdata_shooter.HAND_EVAL_SHOOTER if args.shooter_eval else []) + (specdata_sandbox.HAND_EVAL_SANDBOX if args.sandbox_eval else []) + (specdata_fps.HAND_EVAL_FPS if args.fps_eval else []) + (specdata_race.HAND_EVAL_RACE if args.race_eval else []) + (specdata_football.HAND_EVAL_FOOTBALL if args.football_eval else []) + (specdata_puzzle.HAND_EVAL_PUZZLE if args.puzzle_eval else []) + (specdata_adventure.HAND_EVAL_ADVENTURE if args.adventure_eval else []), ensure_ascii=False, indent=1), encoding="utf-8")
+    (OUT / "hand_eval.json").write_text(json.dumps(specdata.HAND_EVAL + (specdata_shooter.HAND_EVAL_SHOOTER if args.shooter_eval else []) + (specdata_sandbox.HAND_EVAL_SANDBOX if args.sandbox_eval else []) + (specdata_fps.HAND_EVAL_FPS if args.fps_eval else []) + (specdata_race.HAND_EVAL_RACE if args.race_eval else []) + (specdata_football.HAND_EVAL_FOOTBALL if args.football_eval else []) + (specdata_puzzle.HAND_EVAL_PUZZLE if args.puzzle_eval else []) + (specdata_adventure.HAND_EVAL_ADVENTURE if args.adventure_eval else []) + (specdata_tower.HAND_EVAL_TOWER if args.tower_eval else []), ensure_ascii=False, indent=1), encoding="utf-8")
     stats = {
         "train": len(train), "eval": len(held), "seed": args.seed,
         "kinds": dict(Counter(e["kind"] for e in train)), "languages": dict(Counter(e["lang"] for e in train)), "kits": dict(Counter(e["kit"] for e in train)),

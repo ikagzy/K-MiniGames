@@ -86,9 +86,16 @@ _CHECKS["adventure"] = [
     ("Katta anahtar ve kilitli kapı vardır.", "return game.state.pickups.some(q => q.kind === 'key') && !!game.state.level.door;"),
 ]
 
+_CHECKS["tower"] = [
+    ("Oyun açılır ve yol vardır.", "return game.g.current === 'play' && game.state.map.cells.length >= 24;"),
+    ("Kule kurulabilir.", "const s = game.state; s.gold = 999; for (let y = 0; y < s.map.H; y++) for (let x = 0; x < s.map.W; x++) if (s.canBuild(x, y)) return s.build(x, y, s.spec.towers[0]) && s.towers.length === 1; return false;"),
+    ("Dalga başlar ve düşman yolda yürür.", "const s = game.state; s.startWave(); await new Promise(r => setTimeout(r, 2500)); const e = s.enemies[0]; return !!e && e.dist > 0;"),
+    ("Kule düşmana ateş eder.", "const s = game.state; s.gold = 9999; const c = s.map.cells[Math.floor(s.map.cells.length / 3)]; for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1]]) if (s.canBuild(c[0] + dx, c[1] + dy)) s.build(c[0] + dx, c[1] + dy, 'arrow'); await new Promise(r => setTimeout(r, 14000)); return s.kills > 0 || s.shots.length > 0 || s.gold > 9000 + 5;"),
+]
+
 # the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
 _PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
-for _kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure"):
+for _kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower"):
     _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
 
 _SYSTEM = (
@@ -203,7 +210,7 @@ def repair_spec(spec: dict, kit: str) -> dict:
     for part in ("campaign", "musicStyle", "waves", "world"):
         if isinstance(spec.get(part), dict):
             spec[part]["seed"] = random.randint(0, 9999)
-    if kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure") and not isinstance(spec.get("world"), dict):
+    if kit in ("sandbox", "fps", "race", "football", "puzzle", "adventure", "tower") and not isinstance(spec.get("world"), dict):
         spec["world"] = {"seed": random.randint(0, 9999)}
     if kit == "shooter" and not isinstance(spec.get("waves"), dict):
         spec["waves"] = {"seed": random.randint(0, 9999)}
@@ -223,6 +230,8 @@ def repair_spec(spec: dict, kit: str) -> dict:
         _puzzle_variety(spec)
     elif kit == "adventure":
         _adventure_variety(spec)
+    elif kit == "tower":
+        _tower_variety(spec)
     return spec
 
 
@@ -347,6 +356,23 @@ def _adventure_variety(spec: dict) -> None:
     spec.setdefault("boss", random.random() < 0.7)
     if not spec.get("features"):
         spec["features"] = random.choice((["dash"], ["dash"], ["regen"], ["loot"], ["dash", "loot"], []))
+
+
+def _tower_variety(spec: dict) -> None:
+    """The same for the tower defence game: the open parts are drawn."""
+    spec.setdefault("theme", random.choice(("grass", "grass", "desert", "night", "lava")))
+    if not spec.get("music") and not spec.get("musicStyle"):
+        spec["music"] = "tower"   # the tune written for the tower kit
+    spec.setdefault("difficulty", random.choice((2, 3, 3, 4)))
+    spec.setdefault("size", random.choice(("small", "medium", "medium", "large")))
+    spec.setdefault("waves", random.choice((8, 10, 10, 12, 15)))
+    if not spec.get("enemies"):
+        spec["enemies"] = random.sample(["soldier", "runner", "tank", "swarm"], random.choice((2, 3, 4)))
+    if not spec.get("towers"):
+        spec["towers"] = random.sample(["arrow", "cannon", "frost", "sniper"], random.choice((3, 4, 4)))
+    spec.setdefault("boss", random.random() < 0.7)
+    if not spec.get("features"):
+        spec["features"] = random.choice((["speed"], ["speed"], ["freeze"], ["bonus"], ["speed", "freeze"], []))
 
 
 def keep_seeds(before: dict, after: dict) -> dict:

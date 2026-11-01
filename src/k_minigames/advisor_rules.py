@@ -8,6 +8,7 @@ KITS = (("fps", re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pomp
         ("football", re.compile(r"futbol|\bma[cç]\b|halisaha|football|soccer|kaleci|\bgol\b", re.I)),
         ("puzzle", re.compile(r"bulmaca|tetris|puzzle|eşleştir|eslestir|hafıza|hafiza|\bkart|match|candy|şeker", re.I)),
         ("adventure", re.compile(r"macera|zindan|rpg|kaşif|canavar|hazine|dungeon|zelda|diablo", re.I)),
+        ("tower", re.compile(r"kule|savunma|tower|defen[cs]e|dalga dalga d[uü][sş]man|kale\w* koru", re.I)),
         ("race", re.compile(r"yar[iı][sş]|araba|pist|formula|race|racing|rally|ralli|drift", re.I)),
         ("shooter", re.compile(r"uzay|ni[sş]anc[iı]|gemi|shoot|space|shooter", re.I)),
         ("platformer", re.compile(r"platform|z[iı]pla|mario|jump|run", re.I)))
@@ -15,6 +16,7 @@ QUESTIONS = {
     "football": "Güzel! Kaç kişilik takımlar olsun, hangi renk formalar? Maç kaç dakika sürsün, kaleci olsun mu, saha çim mi salon mu gece mi?",
     "puzzle": "Güzel! Hangi bulmaca olsun: düşen bloklar, üçlü eşleştirme ya da hafıza kartları? Tema (şeker, neon, orman, gece) ve zorluk nasıl olsun?",
     "adventure": "Güzel! Kahraman kim olsun: şövalye, okçu ya da büyücü? Zindan mı, orman, çöl ya da kale mi? Hangi canavarlar çıksın, sonunda patron olsun mu?",
+    "tower": "Güzel! Hangi ortamda geçsin: çim, çöl, gece ya da lav? Kaç dalga olsun, hangi düşmanlar (asker, koşucu, zırhlı, sürü) ve hangi kuleler (ok, top, buz, keskin nişancı)?",
     "race": "Güzel! Hangi ortamda yarışsın: şehir, çöl, orman ya da gece? Kaç tur ve kaç rakip olsun, nitro istiyor musun?",
     "fps": "Güzel! Hangi ortamda geçsin: sığınak, uzay istasyonu, harabe, laboratuvar ya da fabrika? Hangi silahlar ve düşmanlar olsun, sonunda patron var mı?",
     "sandbox": "Güzel fikir! Hangi bölgede geçsin (orman, çöl ya da ova) ve dünya ne kadar büyük olsun? Mağara, maden ve göller olsun mu?",
@@ -26,6 +28,7 @@ QUESTIONS_EN = {
     "football": "Nice! How many players per team and which shirt colours? How long is the match, a keeper, and which pitch: grass, indoor, night?",
     "puzzle": "Nice! Which puzzle: falling blocks, match-three or memory cards? Which theme (candy, neon, forest, night) and how hard?",
     "adventure": "Nice! Which hero: knight, ranger or mage? Which setting (dungeon, forest, desert, castle), which monsters, and a boss at the end?",
+    "tower": "Nice! Which setting: grass, desert, night or lava? How many waves, which enemies and which towers (arrow, cannon, frost, sniper)?",
     "race": "Nice! Which setting: city, desert, forest or night? How many laps and rivals, and do you want nitro?",
     "fps": "Nice! Which setting: bunker, space station, ruins, lab or factory? Which weapons and enemies, and a boss at the end?",
     "sandbox": "Nice! Which region (forest, desert or plains), and how big should the world be? Do you want caves, ores and lakes?",
@@ -34,7 +37,7 @@ QUESTIONS_EN = {
     None: "Sounds fun! What kind of game: a run-and-jump platformer, a space shooter or a cube world for mining and building?",
 }
 STRONG_FPS = re.compile(r"fps|birinci [sş]ah[iı]s|first[- ]person|doom|pompal[iı]", re.I)   # words that mean a first person shooter and nothing else
-KIT_MODULES = ("platformer", "shooter", "sandbox", "fps", "race", "football", "puzzle", "adventure")
+KIT_MODULES = ("platformer", "shooter", "sandbox", "fps", "race", "football", "puzzle", "adventure", "tower")
 
 
 def fix_modules(history: list, names: list) -> list:

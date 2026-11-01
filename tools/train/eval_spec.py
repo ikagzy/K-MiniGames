@@ -19,12 +19,14 @@ import specdata_adventure
 import specdata_puzzle
 import specdata_race
 import specdata_shooter
+import specdata_tower
 
 KITS = {   # per kit: how the app's messages are made for it, how a generated example is scored, how a hand-written expectation is checked
     "platformer": (specdata._messages, specdata.score, specdata.expect_ok),
     "shooter": (specdata_shooter.messages, specdata_shooter.score_shooter, specdata_shooter.expect_ok_shooter),
     "sandbox": (specdata_sandbox.messages, specdata_sandbox.score_sandbox, specdata_sandbox.expect_ok_sandbox),
     "fps": (specdata_fps.messages, specdata_fps.score_fps, specdata_fps.expect_ok_fps),
+    "tower": (specdata_tower.messages, specdata_tower.score_tower, specdata_tower.expect_ok_tower),
     "adventure": (specdata_adventure.messages, specdata_adventure.score_adventure, specdata_adventure.expect_ok_adventure),
     "puzzle": (specdata_puzzle.messages, specdata_puzzle.score_puzzle, specdata_puzzle.expect_ok_puzzle),
     "race": (specdata_race.messages, specdata_race.score_race, specdata_race.expect_ok_race),
