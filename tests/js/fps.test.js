@@ -190,3 +190,55 @@ test('the game opens on a main menu (the world stands still), Enter starts it, E
   const c = { fillStyle: '', strokeStyle: '', font: '', textAlign: '', fillRect() {}, strokeRect() {}, fillText() {}, save() {}, restore() {}, translate() {}, beginPath() {}, arc() {}, fill() {} };
   s.openMenu('main'); g.layers[0].draw && assert.doesNotThrow(() => g.layers[0].draw(c));
 });
+
+test('the hand made maps: every map has a start, both sites and defender spots, all reachable from the start without a door, and arena waves use a map', () => {
+  const K = fresh(); assert.ok(K.fps.maps.length >= 4, 'at least four maps');
+  for (const name of K.fps.maps) {
+    const rows = K.fps.mapRows[name]; const H = rows.length, W = rows[0].length;
+    assert.ok(rows.every((r) => r.length === W), name + ': equal rows');
+    const cells = new Uint8Array(W * H); const pos = { A: null, B: null, S: null }; const need = [];
+    rows.forEach((r, y) => [...r].forEach((c, x) => { cells[y * W + x] = '#%='.includes(c) ? 1 : 0; if (c in pos) pos[c] = [x, y]; if ('eha'.includes(c)) need.push([x, y]); }));
+    assert.ok(pos.A && pos.B && pos.S, name + ': start and both sites');
+    const dist = K.fps.bfs(cells, W, H, pos.S[0], pos.S[1], (c) => c === 0);
+    for (const [x, y] of [pos.A, pos.B, ...need]) assert.ok(dist[y * W + x] >= 0, name + ': ' + x + ',' + y + ' reachable');
+    assert.ok(need.filter(([x, y]) => rows[y][x] === 'e').length >= 4, name + ': four or more defender spots');
+  }
+  const s = K.kit.run(spec({ mode: 'arena', map: 'liman' })); s.start(); run(s, 0.2);
+  assert.strictEqual(s.level.map, 'liman'); run(s, 6); assert.ok(s.enemies.length > 0, 'the first wave came');
+  assert.ok(s.enemies.every((e) => !s.solid(Math.floor(e.x), Math.floor(e.y))), 'every wave enemy stands on open floor');
+  assert.ok(K.kit.check({ kit: 'fps', map: 'yok' })[0].includes('bilinmeyen harita'));
+});
+
+test('the tactical mode: a buy phase with credits, defenders on the map, a spike planted by holding E on a site, round wins and losses, and the match ends at the round count', () => {
+  const K = fresh(); const s = K.kit.run(spec({ mode: 'tactical', map: 'depo', rounds: 2, difficulty: 2, weapons: ['pistol', 'shotgun', 'rifle'] })); s.start(); run(s, 0.1);
+  const T = s.tac; assert.ok(T && T.phase === 'buy' && T.credits === 800 && T.round === 1);
+  assert.strictEqual(s.enemies.length, 4, 'two plus the difficulty defenders'); assert.ok(s.enemies.every((e) => e.state === 'idle'));
+  const t0 = s.enemies[0].x; run(s, 1); assert.strictEqual(s.enemies[0].x, t0, 'the defenders wait in the buy phase');
+  assert.strictEqual(s.fire(), false, 'no shooting in the buy phase');
+  assert.strictEqual(s.buy(2), false, 'the rifle costs too much'); assert.strictEqual(T.owned.rifle, undefined);
+  assert.strictEqual(s.buy(1), false, 'the shotgun costs 900, you have 800');
+  T.credits = 5000; assert.ok(s.buy(1) && T.owned.shotgun && T.credits === 4100); assert.ok(s.buy(4) && s.p.armor === 100 && T.credits === 3450);
+  K.press('Enter'); run(s, 0.1); K.press('Enter', false); run(s, 0.1); assert.strictEqual(T.phase, 'live');
+  // the plant: walk onto site A and hold E for three seconds
+  const A = s.level.sites.find((x) => x.name === 'A'); s.p.x = A.x; s.p.y = A.y; s.enemies.forEach((e) => { e.state = 'idle'; e.x = 1.5; e.y = 1.5; });
+  s.enemies.forEach((e) => { e.hp = 9999; });
+  K.press('e'); run(s, 3.3); K.press('e', false);
+  assert.strictEqual(T.phase, 'planted', 'the spike is planted'); assert.strictEqual(T.plant.site, 'A');
+  const credits = T.credits; s.enemies.forEach((e) => { e.dead = true; }); run(s, 0.1);
+  assert.strictEqual(T.phase, 'end'); assert.strictEqual(T.wins, 1); assert.ok(T.credits >= credits + 3000, 'a round win pays');
+  run(s, 4); assert.strictEqual(T.round, 2); assert.strictEqual(T.phase, 'buy'); assert.strictEqual(s.enemies.filter((e) => !e.dead).length, 4, 'a new round, new defenders'); assert.ok(T.owned.shotgun, 'you keep what you bought'); assert.strictEqual(s.p.hp, 100);
+  // a lost round: death ends the round, not the match; the second loss ends it
+  K.press('Enter'); run(s, 0.1); K.press('Enter', false); run(s, 0.1); assert.strictEqual(T.phase, 'live');
+  s.hurt(500, 'test'); assert.strictEqual(T.phase, 'end'); assert.strictEqual(T.losses, 1); assert.strictEqual(s.ended, false);
+  run(s, 4); assert.strictEqual(T.round, 3); K.press('Enter'); run(s, 0.1); K.press('Enter', false); run(s, 0.1);
+  T.wins = 1; s.hurt(500, 'test'); run(s, 4); assert.strictEqual(s.ended, true, 'two lost rounds end the match'); assert.strictEqual(s.g.current, 'over');
+  // time runs out without a plant: a lost round; the match is won at the round count
+  const w = K.kit.run(spec({ mode: 'tactical', rounds: 1 })); w.start(); run(w, 0.1); w.tac.t = 0.1; run(w, 0.3); assert.strictEqual(w.tac.phase, 'live'); w.tac.roundT = 0.2; run(w, 0.5); assert.strictEqual(w.tac.phase, 'end'); assert.strictEqual(w.tac.win, false);
+  const v = K.kit.run(spec({ mode: 'tactical', rounds: 1 })); v.start(); run(v, 0.1); v.tac.t = 0.1; run(v, 0.3); v.enemies.forEach((e) => { e.dead = true; }); run(v, 0.2); assert.strictEqual(v.tac.win, true); run(v, 4); assert.strictEqual(v.won, true); assert.strictEqual(v.g.current, 'win');
+});
+
+test('the tactical screens draw without throwing in every phase', () => {
+  const K = fresh(); const s = K.kit.run(spec({ mode: 'tactical', map: 'kale' })); s.start(); run(s, 0.1);
+  const c = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
+  for (const phase of ['buy', 'live', 'planted', 'end']) { s.tac.phase = phase; s.tac.plant = { site: 'A', t: 10 }; s.tac.hold = 1; s.menu.open = false; s.paused = false; assert.doesNotThrow(() => s.g.layers[0].draw(c), phase); }
+});

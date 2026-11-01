@@ -17,7 +17,22 @@
   };
   var SIZES = { small: 24, medium: 32, large: 44 };
   var AMMO = { scarce: 0.6, normal: 1, plenty: 1.7 };
-  var MODES = ["campaign", "arena"];
+  var MODES = ["campaign", "arena", "tactical"];
+  // ---- hand made maps for the arena and the tactical mode: # wall, % panel, = stripe, . floor, S your start, A and B the sites, e a defender, h health, a ammo ----
+  var MAPS = {"depo": ["############################", "#S.....#.........#.........#", "#......#..%%..%%..#....B...#", "#......#..%%..%%..#........#", "#..h...#..........#..e.....#", "#......#.....e....#........#", "#......##.######.##...######", "#............#.#...........#", "#............#.#.....e.....#", "######..%%...#.#...........#", "#...........#.##########.###", "#.e.....%%...#............a#", "#............#.....e.......#", "#..%%........###.###....####", "#..%%....e.......#.#.....#.#", "#........%%......#.#....#.h#", "#..A.....%%......#.#....e#.#", "#.....h..........#.#.....#.#", "#................#.#.......#", "############################"], "liman": ["############################", "#S.........=.........=.....#", "#..........=....e....=..B..#", "#..%%......=.........=.....#", "#..%%......=====.=====..e..#", "#..........................#", "#....h.....................#", "#.......%%.......%%.....a..#", "#.......%%...e...%%........#", "#..........................#", "#=====.=====....=====.=====#", "#..........................#", "#..A....e..........e.......#", "#..........................#", "#...%%....h....%%......%%..#", "#...%%..........%%.....%%..#", "#..........................#", "#.....a....................#", "#..........................#", "############################"], "kale": ["############################", "#S...#.........#...........#", "#....#.........#....e......#", "#....#...e.....#...........#", "#....#.........#.....B.....#", "#....#####.#####...........#", "#..........................#", "#..h.......................#", "###.######..........#####.##", "#.....#...%%.....%%.#......#", "#..e..#...%%..e..%%.#...a..#", "#.....#.............#......#", "#.....#.............#....e.#", "#.A...#####.###.#####......#", "#.....e..................h.#", "#..........................#", "#...%%.........%%....%%....#", "#...%%.........%%....%%....#", "#..........................#", "############################"], "tunel": ["############################", "#S.....#...........#.......#", "#......#.====.====.#...B...#", "#..h...#.=..........#..e...#", "#......#.=..e.......#......#", "#......#.=..........#......#", "#......#.====.====.#....e..#", "#..........................#", "######.##########.##########", "#..........................#", "#...e..%%........%%...e....#", "#......%%...h....%%........#", "#..........................#", "#.A........................#", "#..........e...............#", "#...%%.........%%........a.#", "#...%%.........%%..........#", "#..........................#", "#..........................#", "############################"]};
+  var BUY = { pistol: 0, shotgun: 900, rifle: 2900, magnum: 1600 }, ARMOR_COST = 650;   // the prices of the buy phase (credits)
+  function mapLevel(name, spec) {
+    var rows = MAPS[name], H = rows.length, W = rows[0].length, cells = new Uint8Array(W * H), start = { x: 1.5, y: 1.5 }, sites = [], spawns = [], pickups = [], x, y, types = AMMO_TYPES_OF(spec.weapons), scale = AMMO[spec.ammo] || 1;
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      var c = rows[y].charAt(x); cells[y * W + x] = c === "#" ? 1 : c === "%" ? 2 : c === "=" ? 3 : 0;
+      if (c === "S") start = { x: x + 0.5, y: y + 0.5 };
+      else if (c === "A" || c === "B") sites.push({ name: c, x: x + 0.5, y: y + 0.5 });
+      else if (c === "e") spawns.push({ x: x + 0.5, y: y + 0.5 });
+      else if (c === "h") pickups.push({ kind: "health", x: x + 0.5, y: y + 0.5, n: 25 });
+      else if (c === "a") pickups.push({ kind: "ammo", ammo: types[0], x: x + 0.5, y: y + 0.5, n: Math.round(AMMO_PACK[types[0]] * scale) });
+    }
+    return { W: W, H: H, cells: cells, rooms: [{ x: 1, y: 1, w: W - 2, h: H - 2, cx: W >> 1, cy: H >> 1 }], start: start, exit: null, locked: null, doors: [], enemies: [], pickups: pickups, theme: spec.theme, arena: true, map: name, sites: sites, spawns: spawns };
+  }
   var KINDS = {
     guard: { name: "nöbetçi", hp: 30, speed: 1.3, range: 11, dmg: 7, cd: 1.4, acc: 0.45, size: 1, pal: { h: [150, 170, 120], b: [70, 100, 70], l: [50, 60, 50], g: [30, 30, 30], s: [220, 180, 140] } },
     runner: { name: "koşucu", hp: 22, speed: 2.7, range: 0, dmg: 9, cd: 0.7, acc: 1, size: 0.95, melee: true, pal: { h: [210, 120, 110], b: [170, 50, 50], l: [90, 30, 30], g: [60, 20, 20], s: [230, 170, 150] } },
@@ -151,15 +166,16 @@
     armor: { rows: ["..bbbb..", ".bccccb.", "bcccccb.", "bccccccb", "bccccccb", ".bccccb.", "..bccb..", "...bb..."], pal: { b: [40, 70, 160], c: [100, 150, 240] } },
     ammo: { rows: ["........", ".yyyyyy.", ".yooooy.", ".yooooy.", ".yyyyyy.", ".yooooy.", ".yyyyyy.", "........"], pal: { y: [90, 80, 50], o: [220, 180, 60] } },
     key: { rows: ["..kkkk..", ".kyyyyk.", ".kyyyyk.", "..kkkk..", "...kk...", "...kyk..", "...kk...", "...kyk.."], pal: { k: [120, 90, 20], y: [255, 220, 60] } },
+    site: { rows: ["...yy...", "..yyyy..", ".yy..yy.", "yy.yy.yy", "yy.yy.yy", ".yy..yy.", "..yyyy..", "...yy..."], pal: { y: [255, 200, 40] } },
     exit: { rows: ["..gggg..", ".gGGGGg.", "gGggggGg", "gGgGGgGg", "gGgGGgGg", "gGggggGg", ".gGGGGg.", "..gggg.."], pal: { g: [30, 140, 70], G: [120, 255, 160] } }
   };
 
-  K.fps = { themes: Object.keys(THEMES), kinds: Object.keys(KINDS), weapons: WEAPON_ORDER, sizes: Object.keys(SIZES), modes: MODES, genLevel: genLevel, genArena: genArena, bfs: bfs, menuAtStart: true };
+  K.fps = { maps: Object.keys(MAPS), mapRows: MAPS, buyPrices: BUY, themes: Object.keys(THEMES), kinds: Object.keys(KINDS), weapons: WEAPON_ORDER, sizes: Object.keys(SIZES), modes: MODES, genLevel: genLevel, genArena: genArena, bfs: bfs, menuAtStart: true };
 
   K.kit.define("fps", {
     defaults: {
       title: "Birinci Şahıs", theme: "bunker", difficulty: 3, levels: 3, size: "medium", enemies: ["guard", "runner", "sniper"], weapons: ["pistol", "shotgun", "rifle"],
-      boss: true, ammo: "normal", mode: "campaign", music: "boss", world: { seed: 1 }, width: 640, height: 400, features: []
+      boss: true, ammo: "normal", mode: "campaign", map: "", rounds: 4, music: "boss", world: { seed: 1 }, width: 640, height: 400, features: []
     },
 
     check: function (spec) {
@@ -167,7 +183,9 @@
       if (!THEMES[spec.theme]) errors.push("bilinmeyen tema: " + spec.theme + " (var olanlar: " + Object.keys(THEMES).join(", ") + ")");
       if (!SIZES[spec.size]) errors.push("bilinmeyen boyut: " + spec.size + " (var olanlar: " + Object.keys(SIZES).join(", ") + ")");
       if (!AMMO[spec.ammo]) errors.push("bilinmeyen mermi bolluğu: " + spec.ammo + " (scarce, normal, plenty)");
-      if (MODES.indexOf(spec.mode) < 0) errors.push("bilinmeyen mod: " + spec.mode + " (campaign, arena)");
+      if (MODES.indexOf(spec.mode) < 0) errors.push("bilinmeyen mod: " + spec.mode + " (campaign, arena, tactical)");
+      if (spec.map && !MAPS[spec.map]) errors.push("bilinmeyen harita: " + spec.map + " (var olanlar: " + Object.keys(MAPS).join(", ") + ")");
+      if (typeof spec.rounds !== "number" || spec.rounds < 1 || spec.rounds > 9) errors.push("rounds 1-9 olmalı");
       if (!(spec.enemies instanceof Array) || !spec.enemies.length) errors.push("enemies boş olmamalı");
       else spec.enemies.forEach(function (k) { if (!KINDS[k]) errors.push("bilinmeyen düşman: " + k + " (var olanlar: " + Object.keys(KINDS).join(", ") + ")"); });
       if (!(spec.weapons instanceof Array) || !spec.weapons.length) errors.push("weapons boş olmamalı");
@@ -183,7 +201,7 @@
       var g = K.game({ width: spec.width, height: spec.height, gravity: 0 });
       var seed = (spec.world && spec.world.seed) || 1, theme = THEMES[spec.theme], weapons = WEAPON_ORDER.filter(function (w) { return spec.weapons.indexOf(w) >= 0; });
       var state = { g: g, spec: spec, level: null, levelIndex: 0, p: null, enemies: [], pickups: [], open: {}, paused: false, ended: false, won: false, message: "", messageT: 0, flash: 0, shake: 0,
-                    kills: 0, shots: 0, hits: 0, firing: false, fireT: 0, recoil: 0, muzzle: 0, heroHooks: [], regen: false, sprintMul: 1, startArmor: 0, wave: 0, waves: 0, waveQueue: [], explored: {}, time: 0, hurtT: 0, bossDead: false };
+                    kills: 0, shots: 0, hits: 0, firing: false, fireT: 0, recoil: 0, muzzle: 0, heroHooks: [], regen: false, sprintMul: 1, startArmor: 0, wave: 0, waves: 0, waveQueue: [], explored: {}, time: 0, hurtT: 0, bossDead: false, tac: null };
       state.menu = { open: K.fps.menuAtStart !== false, kind: "main", index: 0, started: false }; state.paused = state.menu.open; state.musicOn = true;
       var tune = spec.music;
       if (spec.musicStyle) { K.music.define("style", K.music.compose(spec.musicStyle)); tune = "style"; }
@@ -196,33 +214,87 @@
       function blocked(x, y, r) { return solid(Math.floor(x - r), Math.floor(y - r)) || solid(Math.floor(x + r), Math.floor(y - r)) || solid(Math.floor(x - r), Math.floor(y + r)) || solid(Math.floor(x + r), Math.floor(y + r)); }
       function make(kind, x, y) { var def = kind === "boss" ? BOSS : KINDS[kind]; return { kind: kind, def: def, x: x, y: y, hp: def.hp, state: "idle", cd: 1 + rnd(), flash: 0, dead: false, alert: false, age: 0, dir: rnd() * 6.28 }; }
       state.loadLevel = function (index) {
-        var lvSeed = seed * 131 + index * 7919, L = spec.mode === "arena" ? genArena(lvSeed, spec) : genLevel(lvSeed, index, spec, index === spec.levels - 1);
+        var lvSeed = seed * 131 + index * 7919, mapName = spec.mode === "tactical" ? (spec.map || "depo") : spec.mode === "arena" ? spec.map : "";
+        var L = mapName ? mapLevel(mapName, spec) : spec.mode === "arena" ? genArena(lvSeed, spec) : genLevel(lvSeed, index, spec, index === spec.levels - 1);
         state.level = L; state.levelIndex = index; state.open = {}; state.explored = {}; state.bossDead = !L.enemies.some(function (e) { return e.kind === "boss"; });
         state.enemies = L.enemies.map(function (e) { return make(e.kind, e.x, e.y); });
+        if (spec.mode === "tactical") {   // the defenders stand where the map says, as many as the difficulty asks
+          var spots = L.spawns.slice(), picked = [], kinds = spec.enemies.filter(function (k) { return k !== "turret"; }); if (!kinds.length) kinds = spec.enemies;
+          while (spots.length && picked.length < Math.min(L.spawns.length, 2 + spec.difficulty)) picked.push(spots.splice(Math.floor(rnd() * spots.length), 1)[0]);
+          state.enemies = picked.map(function (sp) { return make(kinds[Math.floor(rnd() * kinds.length)], sp.x, sp.y); });
+        }
         state.pickups = L.pickups.map(function (p) { return { kind: p.kind, ammo: p.ammo, x: p.x, y: p.y, n: p.n, taken: false }; });
         if (L.exit) state.pickups.push({ kind: "exit", x: L.exit.x, y: L.exit.y, taken: false, n: 0, fixed: true });
+        if (spec.mode === "tactical") L.sites.forEach(function (st) { state.pickups.push({ kind: "site", x: st.x, y: st.y, taken: false, n: 0, fixed: true, site: st.name }); });
         if (!state.p) state.p = { x: L.start.x, y: L.start.y, a: -Math.PI / 2, hp: 100, armor: state.startArmor, ammo: { bullets: 0, shells: 0, heavy: 0 }, weapon: 0, keys: 0, vx: 0, vy: 0, bob: 0, pitch: 0 };
         else { state.p.x = L.start.x; state.p.y = L.start.y; state.p.a = -Math.PI / 2; state.p.keys = 0; state.p.pitch = 0; }
+        if (L.map) state.p.a = Math.atan2(L.H / 2 - L.start.y, L.W / 2 - L.start.x);   // you look into the map, not at the wall
+        if (spec.mode === "tactical" && state.tac) { var T0 = state.tac; state.p.hp = 100; state.p.pitch = 0; T0.phase = "buy"; T0.t = 15; T0.plant = null; T0.hold = 0; T0.roundT = 100; T0.owned[weapons[0]] = true; weapons.forEach(function (w) { if (T0.owned[w]) { var t = WEAPONS[w].ammo; state.p.ammo[t] = Math.max(state.p.ammo[t] || 0, START_AMMO[t]); } }); if (!T0.owned[weapons[state.p.weapon]]) state.p.weapon = 0; }
         if (spec.mode === "arena") { state.waves = spec.levels * 2 + 1; state.wave = 0; state.waveQueue = []; state.betweenT = 2; }
-        state.say(spec.mode === "arena" ? "Arena: dalgalar geliyor!" : "Bölüm " + (index + 1) + (L.locked ? ": çıkış kilitli, anahtarı bul" : ""));
+        state.say(spec.mode === "tactical" ? "Hazırlık: 1-" + weapons.length + " silah, 5 zırh satın al. Enter: başla" : spec.mode === "arena" ? "Arena: dalgalar geliyor!" : "Bölüm " + (index + 1) + (L.locked ? ": çıkış kilitli, anahtarı bul" : ""));
         state.message2 = "";
       };
       state.say = function (text) { state.message = text; state.messageT = 2.5; };
       state.reset = function () {
         state.p = null; state.ended = false; state.won = false; state.kills = 0; state.shots = 0; state.hits = 0; state.time = 0;
+        state.tac = spec.mode === "tactical" ? { round: 1, wins: 0, losses: 0, credits: 800, phase: "buy", t: 15, roundT: 100, plant: null, hold: 0, endT: 0, win: false, owned: {} } : null;
         state.loadLevel(0); var p = state.p; p.ammo = { bullets: 0, shells: 0, heavy: 0 };
         weapons.forEach(function (w) { var t = WEAPONS[w].ammo; p.ammo[t] = START_AMMO[t]; }); p.weapon = 0; p.armor = state.startArmor; p.hp = 100;
         if (g.current !== "play") g.go("play");
       };
       state.weaponName = function () { return weapons[state.p.weapon]; };
-      state.selectWeapon = function (i) { if (i >= 0 && i < weapons.length) { state.p.weapon = i; state.recoil = 0; } };
+      state.selectWeapon = function (i) {
+        if (i < 0 || i >= weapons.length) return;
+        if (state.tac && !state.tac.owned[weapons[i]]) { state.say("Bu silahın yok: hazırlıkta satın al"); return; }
+        state.p.weapon = i; state.recoil = 0;
+      };
+      // ---- the tactical mode: rounds with a buy phase, defenders on the map, a spike you plant on a site (hold E on it) and defend until it goes off ----
+      state.buy = function (i) {
+        var T = state.tac, p = state.p; if (!T || T.phase !== "buy") return false;
+        if (i === 4) { if (p.armor >= 100) { state.say("Zırh zaten dolu"); return false; } if (T.credits < ARMOR_COST) { state.say("Kredi yetmiyor"); return false; } T.credits -= ARMOR_COST; p.armor = 100; state.say("Zırh alındı"); K.sfx("coin"); return true; }
+        if (i < 0 || i >= weapons.length) return false;
+        var w = weapons[i], cost = BUY[w] || 0;
+        if (T.owned[w]) { state.selectWeapon(i); return false; }
+        if (T.credits < cost) { state.say("Kredi yetmiyor: " + cost); return false; }
+        T.credits -= cost; T.owned[w] = true; var t = WEAPONS[w].ammo; p.ammo[t] = Math.max(p.ammo[t] || 0, START_AMMO[t]); state.selectWeapon(i); state.say(WEAPONS[w].name + " alındı"); K.sfx("coin"); return true;
+      };
+      state.nearSite = function () { var p = state.p, best = null; (state.level.sites || []).forEach(function (st) { if (Math.hypot(st.x - p.x, st.y - p.y) < 2.3) best = st; }); return best; };
+      state.roundEnd = function (win, text) {
+        var T = state.tac; if (!T || T.phase === "end") return;
+        T.phase = "end"; T.endT = 3.5; T.win = win; if (win) { T.wins++; T.credits += 3000; } else { T.losses++; T.credits += 1900; }
+        state.say((win ? "TUR KAZANDIN: " : "TUR KAYBETTİN: ") + text); state.flash = win ? 0 : 0.35;
+      };
+      state.tacStep = function (dt) {
+        var T = state.tac, p = state.p; if (!T) return;
+        if (T.phase === "buy") {
+          T.t -= dt; var go = K.key("Enter") && !state.enterHeld; state.enterHeld = K.key("Enter");
+          if (T.t <= 0 || go) { T.phase = "live"; state.say("Tur başladı! Bir bölgeye git, E basılı tut: spike"); }
+        } else if (T.phase === "live" || T.phase === "planted") {
+          var alive = state.enemies.filter(function (e) { return !e.dead; }).length;
+          if (T.phase === "live") {
+            T.roundT -= dt; var site = state.nearSite();
+            if (site && K.key("e")) { T.hold += dt; if (T.hold >= 3) { T.phase = "planted"; T.plant = { site: site.name, t: 25 }; T.hold = 0; T.credits += 300; state.say("Spike " + site.name + " bölgesine kuruldu! 25 sn hayatta kal"); K.sfx("boom"); state.enemies.forEach(function (e) { if (!e.dead && e.state === "idle") { e.state = "chase"; e.alert = true; } }); } }
+            else T.hold = 0;
+            if (T.roundT <= 0 && T.phase === "live") { state.roundEnd(false, "süre doldu"); return; }
+          } else { T.plant.t -= dt; if (T.plant.t <= 0) { state.roundEnd(true, "spike patladı"); return; } }
+          if (alive === 0) state.roundEnd(true, "hepsi etkisiz");
+        } else if (T.phase === "end") {
+          T.endT -= dt;
+          if (T.endT <= 0) {
+            if (T.wins >= spec.rounds) { state.won = true; state.ended = true; K.music.stop(); g.go("win"); }
+            else if (T.losses >= spec.rounds) { state.ended = true; K.music.stop(); g.go("over"); }
+            else { T.round++; state.loadLevel(0); }
+          }
+        }
+      };
 
       // ---- the player ----
       state.hurt = function (n, why) {
         var p = state.p; if (state.ended) return false;
+        if (state.tac && state.tac.phase !== "live" && state.tac.phase !== "planted") return false;
         var soak = p.armor > 0 ? Math.min(p.armor, Math.ceil(n * 0.5)) : 0; p.armor -= soak; n -= soak;
         p.hp -= n; state.flash = 0.35; state.hurtT = 0; state.shake = 0.15; K.sfx("hit");
-        if (p.hp <= 0) { p.hp = 0; state.ended = true; K.music.stop(); g.go("over"); }
+        if (p.hp <= 0) { p.hp = 0; if (state.tac) { state.roundEnd(false, "elendin"); return true; } state.ended = true; K.music.stop(); g.go("over"); }
         return true;
       };
       function rayWall(ox, oy, dx, dy, max) {   // distance along the ray to the first solid cell (grid walk)
@@ -256,14 +328,14 @@
       function damageEnemy(e, dmg) {
         e.hp -= dmg; e.flash = 0.2; e.alert = true; if (e.state === "idle") e.state = "chase"; state.hits++;
         if (e.hp <= 0 && !e.dead) {
-          e.dead = true; e.state = "dead"; state.kills++; K.sfx("boom");
+          e.dead = true; e.state = "dead"; state.kills++; K.sfx("boom"); if (state.tac) state.tac.credits += 200;
           if (e.kind === "boss") { state.bossDead = true; state.say("Patron düştü! Çıkış açık."); }
           if (hash(Math.floor(e.x * 7), Math.floor(e.y * 7), state.kills) < 0.35 && !e.def.static) state.pickups.push({ kind: "ammo", ammo: AMMO_TYPES_OF(weapons)[0], x: e.x, y: e.y, n: Math.max(2, Math.round(AMMO_PACK[AMMO_TYPES_OF(weapons)[0]] * (AMMO[spec.ammo] || 1) * 0.5)), taken: false });
         }
       }
       state.fire = function () {   // one shot with the chosen weapon, when the ammo and the pause allow
         var p = state.p, w = WEAPONS[weapons[p.weapon]];
-        if (state.ended || state.paused || state.fireT > 0) return false;
+        if (state.ended || state.paused || state.fireT > 0 || (state.tac && state.tac.phase !== "live" && state.tac.phase !== "planted")) return false;
         if (p.ammo[w.ammo] <= 0) { state.say("Mermi bitti!"); state.fireT = 0.3; return false; }
         p.ammo[w.ammo]--; state.fireT = w.gap; state.recoil = 1; state.muzzle = 0.08; state.shots++; K.sfx("fire");
         var any = false;
@@ -322,7 +394,7 @@
           if (state.betweenT <= 0) {
             state.wave++; state.betweenT = 3; var n = Math.round((3 + state.wave * 1.6) * (0.7 + 0.2 * spec.difficulty)), i;
             for (i = 0; i < n; i++) {
-              var ex, ey, tries = 0; do { ex = 3.5 + Math.floor(rnd() * 20); ey = 3.5 + Math.floor(rnd() * 20); tries++; } while ((solid(Math.floor(ex), Math.floor(ey)) || Math.abs(ex - state.p.x) + Math.abs(ey - state.p.y) < 10) && tries < 40);
+              var ex, ey, tries = 0; do { ex = 2.5 + Math.floor(rnd() * (state.level.W - 5)); ey = 2.5 + Math.floor(rnd() * (state.level.H - 5)); tries++; } while ((solid(Math.floor(ex), Math.floor(ey)) || Math.abs(ex - state.p.x) + Math.abs(ey - state.p.y) < 10) && tries < 40);
               var kind = spec.enemies[Math.floor(rnd() * spec.enemies.length)];
               if (spec.boss && state.wave === state.waves && i === 0) kind = "boss";
               state.waveQueue.push({ kind: kind, x: ex, y: ey });
@@ -336,6 +408,7 @@
       state.step = function (dt) {
         var p = state.p; if (!p) return;
         if (state.paused) return;
+        if (state.tac && state.tac.phase === "end") { state.time += dt; state.messageT = Math.max(0, state.messageT - dt); state.flash = Math.max(0, state.flash - dt); state.tacStep(dt); return; }
         state.time += dt; state.fireT = Math.max(0, state.fireT - dt); state.recoil = Math.max(0, state.recoil - dt * 6); state.muzzle = Math.max(0, state.muzzle - dt);
         state.flash = Math.max(0, state.flash - dt); state.shake = Math.max(0, state.shake - dt); state.messageT = Math.max(0, state.messageT - dt); state.hurtT += dt;
         if (state.ended) return;
@@ -355,13 +428,14 @@
         if (!blocked(nx, p.y, R)) p.x = nx; if (!blocked(p.x, ny, R)) p.y = ny;
         if (K.key("e") && !state.eHeld) state.use(); state.eHeld = K.key("e");
         if (state.firing || K.key(" ")) { var w = WEAPONS[weapons[p.weapon]]; if (w.auto || !state.fireHeld) state.fire(); state.fireHeld = true; } else state.fireHeld = false;
-        for (var n = 1; n <= 4; n++) if (K.key(String(n)) && !state["held" + n]) { state["held" + n] = true; state.selectWeapon(n - 1); } else if (!K.key(String(n))) state["held" + n] = false;
+        for (var n = 1; n <= 5; n++) if (K.key(String(n)) && !state["held" + n]) { state["held" + n] = true; if (state.tac && state.tac.phase === "buy") state.buy(n - 1); else if (n <= 4) state.selectWeapon(n - 1); } else if (!K.key(String(n))) state["held" + n] = false;
         if (K.key("q") && !state.qHeld) state.selectWeapon((p.weapon + 1) % weapons.length); state.qHeld = K.key("q");
         if (state.regen && p.hp < 100 && state.hurtT > 5) p.hp = Math.min(100, p.hp + 4 * dt);
         // pickups
         state.pickups.forEach(function (pk) {
           if (pk.taken) return;
           var dx = pk.x - p.x, dy = pk.y - p.y; if (dx * dx + dy * dy > 0.45) return;
+          if (pk.kind === "site") return;
           if (pk.kind === "health") { if (p.hp >= 100) return; p.hp = Math.min(100, p.hp + pk.n); state.say("Can +" + pk.n); }
           else if (pk.kind === "armor") { if (p.armor >= 100) return; p.armor = Math.min(100, p.armor + pk.n); state.say("Zırh +" + pk.n); }
           else if (pk.kind === "ammo") { if (p.ammo[pk.ammo] >= AMMO_MAX[pk.ammo]) return; p.ammo[pk.ammo] = Math.min(AMMO_MAX[pk.ammo], p.ammo[pk.ammo] + pk.n); state.say("Mermi +" + pk.n); }
@@ -369,7 +443,8 @@
           else if (pk.kind === "exit") { if (!state.bossDead) { if (!state.exitHintT || state.time - state.exitHintT > 2) { state.exitHintT = state.time; state.say("Önce patronu yen!"); } return; } state.nextLevel(); return; }
           pk.taken = true; K.sfx("coin");
         });
-        state.stepEnemies(dt);
+        state.tacStep(dt);
+        if (!state.tac || state.tac.phase === "live" || state.tac.phase === "planted") state.stepEnemies(dt);
         state.heroHooks.forEach(function (h) { h(p, dt); });
         var cx = Math.floor(p.x), cy = Math.floor(p.y); for (var ey = -2; ey <= 2; ey++) for (var ex = -2; ex <= 2; ex++) state.explored[(cy + ey) * state.level.W + cx + ex] = true;
       };
@@ -436,7 +511,7 @@
         list.sort(function (a, b) { return b.d - a.d; });
         list.forEach(function (it) {
           if (it.e) { var e = it.e; if (e.dead) sprite(enemyArt(e), e.x, e.y, 0.28 * e.def.size, false, out); else sprite(enemyArt(e), e.x, e.y, 0.95 * e.def.size, e.flash > 0, out); }
-          else sprite(PICK[it.pk.kind], it.pk.x, it.pk.y, it.pk.kind === "exit" ? 0.7 : 0.35, false, out);
+          else sprite(PICK[it.pk.kind], it.pk.x, it.pk.y, it.pk.kind === "exit" || it.pk.kind === "site" ? 0.7 : 0.35, false, out);
         });
         return out;
       }
@@ -464,17 +539,32 @@
         var w = WEAPONS[weapons[p.weapon]]; c.fillStyle = "rgba(0,0,0,0.55)"; c.fillRect(W - 190, H - 58, 182, 50);
         c.fillStyle = "#ffd54f"; c.font = "bold 16px sans-serif"; c.fillText(w.name.toUpperCase() + "  " + p.ammo[w.ammo], W - 182, H - 34); c.font = "12px sans-serif"; c.fillStyle = "#cfd8dc"; c.fillText(weapons.map(function (n, i) { return (i + 1) + (i === p.weapon ? "*" : ""); }).join(" "), W - 182, H - 16);
         var alive = state.enemies.filter(function (e) { return !e.dead; }).length;
-        c.font = "13px sans-serif"; c.fillStyle = "#fff"; c.fillText((spec.mode === "arena" ? "Dalga " + state.wave + "/" + state.waves : "Bölüm " + (state.levelIndex + 1) + "/" + spec.levels) + "   düşman: " + alive + "   öldürülen: " + state.kills + (p.keys ? "   ANAHTAR" : ""), 10, 20);
+        c.font = "13px sans-serif"; c.fillStyle = "#fff"; c.fillText((spec.mode === "arena" ? "Dalga " + state.wave + "/" + state.waves : spec.mode === "tactical" ? "Harita: " + (spec.map || "depo") : "Bölüm " + (state.levelIndex + 1) + "/" + spec.levels) + "   düşman: " + alive + "   öldürülen: " + state.kills + (p.keys ? "   ANAHTAR" : ""), 10, 20);
+        var T = state.tac;
+        if (T) {
+          c.textAlign = "center"; c.font = "bold 15px sans-serif"; c.fillStyle = "#fff"; c.fillText("TUR " + T.round + "    SEN " + T.wins + " - " + T.losses + " RAKİP    (" + spec.rounds + " tur kazanan)    KREDİ " + T.credits + "    " + (T.phase === "buy" ? "HAZIRLIK " + Math.ceil(T.t) : T.phase === "planted" ? "" : "SÜRE " + Math.max(0, Math.ceil(T.roundT))), W / 2, 40);
+          if (T.phase === "planted") { c.fillStyle = "#ff5252"; c.font = "bold 20px sans-serif"; c.fillText("SPIKE " + T.plant.site + ": " + Math.ceil(T.plant.t) + " sn", W / 2, 66); }
+          var near = state.nearSite();
+          if (T.phase === "live" && near) { c.fillStyle = "#ffe082"; c.font = "bold 14px sans-serif"; c.fillText("E basılı tut: spike kur (" + near.name + ")", W / 2, H / 2 + 48); if (T.hold > 0) { c.fillStyle = "rgba(255,255,255,0.3)"; c.fillRect(W / 2 - 60, H / 2 + 56, 120, 8); c.fillStyle = "#ffd54f"; c.fillRect(W / 2 - 60, H / 2 + 56, 120 * T.hold / 3, 8); } }
+          if (T.phase === "buy") {
+            c.fillStyle = "rgba(0,0,0,0.7)"; c.fillRect(W / 2 - 150, H / 2 - 100, 300, 128); c.textAlign = "left"; c.font = "bold 14px sans-serif"; c.fillStyle = "#ffd54f"; c.fillText("SATIN AL (Enter: başla)", W / 2 - 138, H / 2 - 78); c.font = "13px sans-serif";
+            weapons.forEach(function (wn, i) { c.fillStyle = T.owned[wn] ? "#81c784" : (T.credits >= (BUY[wn] || 0) ? "#fff" : "#888"); c.fillText((i + 1) + "  " + WEAPONS[wn].name + "   " + (T.owned[wn] ? "sende" : BUY[wn] || 0), W / 2 - 138, H / 2 - 56 + i * 18); });
+            c.fillStyle = p.armor >= 100 ? "#81c784" : (T.credits >= ARMOR_COST ? "#fff" : "#888"); c.fillText("5  zırh   " + (p.armor >= 100 ? "dolu" : ARMOR_COST), W / 2 - 138, H / 2 - 56 + weapons.length * 18);
+          }
+          if (T.phase === "end") { c.fillStyle = T.win ? "rgba(30,120,50,0.45)" : "rgba(150,20,20,0.45)"; c.fillRect(0, H / 2 - 40, W, 80); c.fillStyle = "#fff"; c.font = "bold 30px sans-serif"; c.fillText(T.win ? "TUR KAZANDIN" : "TUR KAYBETTİN", W / 2, H / 2 + 10); }
+          c.textAlign = "left";
+        }
         if (state.messageT > 0) { c.textAlign = "center"; c.font = "bold 16px sans-serif"; c.fillStyle = "#ffe082"; c.fillText(state.message, W / 2, 56); c.textAlign = "left"; }
         if (state.flash > 0) { c.fillStyle = "rgba(220,0,0," + Math.min(0.5, state.flash) + ")"; c.fillRect(0, 0, W, H); }
         var L = state.level, sz = 3, mx = W - L.W * sz - 8, my = 8;   // the map of what you have seen
         c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(mx - 2, my - 2, L.W * sz + 4, L.H * sz + 4);
         for (var yy = 0; yy < L.H; yy++) for (var xx = 0; xx < L.W; xx++) if (state.explored[yy * L.W + xx]) { var cv = L.cells[yy * L.W + xx]; c.fillStyle = cv === 0 ? "rgba(255,255,255,0.35)" : cv === 8 || cv === 9 ? (state.open[yy * L.W + xx] ? "rgba(255,255,255,0.35)" : "#c62828") : "rgba(120,120,140,0.8)"; c.fillRect(mx + xx * sz, my + yy * sz, sz, sz); }
+        (L.sites || []).forEach(function (st) { c.fillStyle = "#ffd54f"; c.font = "bold 8px sans-serif"; c.fillText(st.name, mx + st.x * sz - 2, my + st.y * sz + 3); });
         c.fillStyle = "#4caf50"; c.fillRect(mx + p.x * sz - 1, my + p.y * sz - 1, 3, 3);
         state.enemies.forEach(function (e) { if (!e.dead && state.explored[Math.floor(e.y) * L.W + Math.floor(e.x)]) { c.fillStyle = "#ff5252"; c.fillRect(mx + e.x * sz - 1, my + e.y * sz - 1, 2, 2); } });
       }
       // ---- the menus: a main menu at the start, and Esc opens the pause menu (the game stands still behind it) ----
-      var CONTROLS = ["W A S D  yürü      Shift  koş      Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık ya da Boşluk  ateş      1-4, Q ya da tekerlek  silah      E  kapıyı aç", "Anahtarı bul, kilitli kapıyı aç, çıkışa ulaş.      Esc  menü"];
+      var CONTROLS = ["W A S D  yürü      Shift  koş      Fare ya da oklar  bak (önce ekrana tıkla)", "Sol tık ya da Boşluk  ateş      1-4, Q ya da tekerlek  silah      E  kapıyı aç", "Anahtarı bul, kilitli kapıyı aç, çıkışa ulaş.      Esc  menü", "Taktik mod: hazırlıkta 1-5 satın al, Enter başlat; bir bölgede E basılı tut = spike kur, patlayana dek hayatta kal."];
       state.lockMouse = function () { if (typeof document !== "undefined" && g.canvas && g.canvas.requestPointerLock && document.pointerLockElement !== g.canvas) { try { g.canvas.requestPointerLock(); } catch (e) { /* keys still work */ } } };
       state.openMenu = function (kind) { state.menu.open = true; state.menu.kind = kind; state.menu.index = 0; state.paused = true; state.firing = false; if (typeof document !== "undefined" && document.exitPointerLock && document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) { /* not locked */ } } };
       state.closeMenu = function () { state.menu.open = false; state.menu.started = true; state.paused = false; state.lockMouse(); };

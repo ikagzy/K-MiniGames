@@ -17,7 +17,9 @@
     "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
     "levels": { "type": "integer", "minimum": 1, "maximum": 6 },
     "size": { "type": "string", "enum": ["small", "medium", "large"] },
-    "mode": { "type": "string", "enum": ["campaign", "arena"] },
+    "mode": { "type": "string", "enum": ["campaign", "arena", "tactical"] },
+    "map": { "type": "string", "enum": ["depo", "liman", "kale", "tunel"] },
+    "rounds": { "type": "integer", "minimum": 1, "maximum": 9 },
     "ammo": { "type": "string", "enum": ["scarce", "normal", "plenty"] },
     "enemies": {
       "type": "array",

@@ -219,10 +219,15 @@ def apply_fps(spec: dict, description: str) -> dict:
         spec["boss"] = False
     elif re.search(r"\bpatron|\bboss", text):
         spec["boss"] = True
-    if re.search(r"\barena|dalga dalga|hayatta kal", text):
+    if re.search(r"valorant|taktik|spike|tur tur|\btaktiksel", text):
+        spec["mode"] = "tactical"
+    elif re.search(r"\barena|dalga dalga|hayatta kal", text):
         spec["mode"] = "arena"
     elif re.search(r"kampanya|bolumler", text):
         spec["mode"] = "campaign"
+    maps = [n for n, rx in (("depo", r"\bdepo"), ("liman", r"\bliman"), ("kale", r"\bkale\b"), ("tunel", r"\btunel")) if re.search(rx, text)]
+    if len(maps) == 1 and spec.get("mode") in ("arena", "tactical"):
+        spec["map"] = maps[0]
     if re.search(r"bol mermi|sinirsiz mermi|mermi bol", text):
         spec["ammo"] = "plenty"
     elif re.search(r"az mermi|kit mermi|mermi az|mermi kit", text):

@@ -56,6 +56,11 @@ _CHECKS["fps"] = [
     ("Oyuncu duvarların içine girmez.", "return !game.state.solid(Math.floor(game.p.x), Math.floor(game.p.y));"),
 ]
 
+# the menus: a game may open on its main menu, and the tactical mode on its buy phase; the checks start the game first
+_PREP = "const st = game.state; if (st && st.closeMenu) st.closeMenu(); if (st && st.tac && st.tac.phase === 'buy') st.tac.phase = 'live'; "
+for _kit in ("sandbox", "fps"):
+    _CHECKS[_kit] = [(name, _PREP + code) for name, code in _CHECKS[_kit]]
+
 _SYSTEM = (
     "Sen bir oyun tasarımcısısın. Kullanıcının tarif ettiği oyun için KOD YAZMA; yalnızca oyunun ÖZETİNİ (tek bir JSON "
     "nesnesi) ver. Uygulama bu özeti hazır kit ile oyuna çevirir. Özetteki seçenekleri aşağıdaki kılavuzdan seç; olmayan "
