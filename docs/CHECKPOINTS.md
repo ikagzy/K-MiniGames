@@ -124,3 +124,4 @@ Dönüş: `git checkout <commit>` (yeni iş için ondan dal açılır) ya da ger
 | CP-115 | 2026-10-31 | bulmaca kiti: düşen bloklar, üçlü eşleştirme, hafıza kartları (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 272 JS, 558 Python testi | 04ede7d |
 | CP-116 | 2026-10-31 | macera kiti: kat kat zindan, kilitli kapı ve anahtar, 3 kahraman, 5 canavar, patron, seviye atlama (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 280 JS, 563 Python testi | b356115 |
 | CP-117 | 2026-10-31 | kule savunması kiti: tohumdan yol, 4 kule (3 seviye), 4 düşman + patron, dalgalar, fare/klavye (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 289 JS, 568 Python testi | 0b6e3c5 |
+| CP-118 | 2026-10-31 | dövüş kiti: yumruk, tekme, blok, ateş topu, kombo, turlar, yapay zekâ rakip, iki kişilik (2B piksel), özel müzik, Python kuralları, eğitim verisi hazır; 299 JS, 573 Python testi | 5665b88 |
