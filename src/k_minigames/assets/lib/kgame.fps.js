@@ -607,7 +607,7 @@
         if (!small) { small = document.createElement("canvas"); small.width = RW; small.height = RH; smallCtx = small.getContext("2d"); image = smallCtx.createImageData(RW, RH); }
         render(image.data); smallCtx.putImageData(image, 0, 0);
         c.imageSmoothingEnabled = false; c.drawImage(small, 0, 0, g.width, g.height);
-        drawHud(c); if (state.menu.open) drawMenu(c);
+        if (!(state.menu.open && state.menu.kind === "main")) drawHud(c); if (state.menu.open) drawMenu(c);
       } }];
 
       // ---- input from the mouse ----
